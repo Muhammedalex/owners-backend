@@ -1,0 +1,270 @@
+<?php
+
+namespace App\Models\V1\Auth;
+
+use App\Models\V1\Ownership\Ownership;
+use App\Models\V1\Ownership\OwnershipBoardMember;
+use App\Models\V1\Ownership\UserOwnershipMapping;
+use App\Traits\V1\Auth\GeneratesTokens;
+use App\Traits\V1\Auth\HasUuid;
+use App\Traits\V1\Auth\LogsActivity;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
+use Spatie\Permission\Traits\HasRoles;
+
+/**
+ * @method array generateTokens(?string $deviceName = null)
+ * @method array|null refreshAccessToken(string $refreshToken)
+ * @method void revokeAllTokens()
+ * @method bool revokeTokenByRefreshToken(string $refreshToken)
+ * @method \Laravel\Sanctum\PersonalAccessToken|null currentAccessToken()
+ */
+class User extends Authenticatable implements MustVerifyEmail
+{
+    use HasApiTokens, HasFactory, Notifiable, HasRoles, HasUuid, GeneratesTokens, LogsActivity;
+
+    /**
+     * Create a new factory instance for the model.
+     */
+    protected static function newFactory()
+    {
+        return \Database\Factories\UserFactory::new();
+    }
+
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var array<int, string>
+     */
+    protected $fillable = [
+        'uuid',
+        'type',
+        'email',
+        'phone',
+        'phone_verified_at',
+        'password',
+        'first',
+        'last',
+        'company',
+        'avatar',
+        'active',
+        'last_login_at',
+        'attempts',
+        'timezone',
+        'locale',
+    ];
+
+    /**
+     * The attributes that should be hidden for serialization.
+     *
+     * @var array<int, string>
+     */
+    protected $hidden = [
+        'password',
+        'remember_token',
+    ];
+
+    /**
+     * Get the attributes that should be cast.
+     *
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'email_verified_at' => 'datetime',
+            'phone_verified_at' => 'datetime',
+            'last_login_at' => 'datetime',
+            'password' => 'hashed',
+            'active' => 'boolean',
+            'attempts' => 'integer',
+        ];
+    }
+
+    /**
+     * Get the user's full name.
+     */
+    public function getNameAttribute(): string
+    {
+        return trim("{$this->first} {$this->last}") ?: $this->email;
+    }
+
+    /**
+     * Scope a query to only include active users.
+     */
+    public function scopeActive($query)
+    {
+        return $query->where('active', true);
+    }
+
+    /**
+     * Scope a query to filter by type.
+     */
+    public function scopeOfType($query, string $type)
+    {
+        return $query->where('type', $type);
+    }
+
+    /**
+     * Check if user is active.
+     */
+    public function isActive(): bool
+    {
+        return $this->active === true;
+    }
+
+    /**
+     * Check if user is verified.
+     */
+    public function isVerified(): bool
+    {
+        return $this->email_verified_at !== null;
+    }
+
+    /**
+     * Check if phone is verified.
+     */
+    public function isPhoneVerified(): bool
+    {
+        return $this->phone_verified_at !== null;
+    }
+
+    /**
+     * Increment login attempts.
+     */
+    public function incrementAttempts(): void
+    {
+        $this->increment('attempts');
+    }
+
+    /**
+     * Reset login attempts.
+     */
+    public function resetAttempts(): void
+    {
+        $this->update(['attempts' => 0]);
+    }
+
+    /**
+     * Record successful login.
+     */
+    public function recordLogin(): void
+    {
+        $this->update([
+            'last_login_at' => now(),
+            'attempts' => 0,
+        ]);
+    }
+
+    /**
+     * Check if user is Super Admin.
+     */
+    public function isSuperAdmin(): bool
+    {
+        return $this->hasRole('Super Admin');
+    }
+
+    /**
+     * Get ownerships created by this user.
+     */
+    public function ownedOwnerships(): HasMany
+    {
+        return $this->hasMany(Ownership::class, 'created_by');
+    }
+
+    /**
+     * Get ownerships mapped to this user.
+     */
+    public function ownerships(): BelongsToMany
+    {
+        return $this->belongsToMany(Ownership::class, 'user_ownership_mapping', 'user_id', 'ownership_id')
+            ->withPivot('default', 'created_at');
+    }
+
+    /**
+     * Get user ownership mappings.
+     */
+    public function ownershipMappings(): HasMany
+    {
+        return $this->hasMany(UserOwnershipMapping::class, 'user_id');
+    }
+
+    /**
+     * Get board memberships.
+     */
+    public function boardMemberships(): HasMany
+    {
+        return $this->hasMany(OwnershipBoardMember::class, 'user_id');
+    }
+
+    /**
+     * Get default ownership for this user.
+     */
+    public function getDefaultOwnership(): ?Ownership
+    {
+        // First, try to find mapping with default flag set to true
+        $mapping = $this->ownershipMappings()
+            ->where('default', true)
+            ->first();
+
+        // If no default mapping found, get the first mapping
+        if (!$mapping) {
+            $mapping = $this->ownershipMappings()
+                ->first();
+        }
+
+        return $mapping ? $mapping->ownership : null;
+    }
+
+    /**
+     * Check if user has access to a specific ownership.
+     */
+    public function hasOwnership(int $ownershipId): bool
+    {
+        if ($this->isSuperAdmin()) {
+            return true;
+        }
+
+        return $this->ownershipMappings()
+            ->where('ownership_id', $ownershipId)
+            ->exists();
+    }
+
+    /**
+     * Check if user has access to a specific ownership by UUID.
+     */
+    public function hasOwnershipByUuid(string $ownershipUuid): bool
+    {
+        if ($this->isSuperAdmin()) {
+            return true;
+        }
+
+        $ownership = Ownership::where('uuid', $ownershipUuid)->first();
+
+        if (!$ownership) {
+            return false;
+        }
+
+        return $this->hasOwnership($ownership->id);
+    }
+
+    /**
+     * Get all ownership IDs that user has access to.
+     */
+    public function getOwnershipIds(): array
+    {
+        if ($this->isSuperAdmin()) {
+            return Ownership::pluck('id')->toArray();
+        }
+
+        return $this->ownershipMappings()
+            ->pluck('ownership_id')
+            ->toArray();
+    }
+}
+
