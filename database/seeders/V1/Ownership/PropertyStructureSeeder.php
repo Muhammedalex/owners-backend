@@ -33,8 +33,8 @@ class PropertyStructureSeeder extends Seeder
         foreach ($ownerships as $ownership) {
             $this->command->info("Processing ownership: {$ownership->name}");
 
-            // Create 2-5 portfolios per ownership
-            $portfoliosCount = rand(2, 5);
+            // Create 3 portfolios per ownership
+            $portfoliosCount = 3;
             $portfolios = [];
 
             for ($p = 1; $p <= $portfoliosCount; $p++) {
@@ -69,11 +69,14 @@ class PropertyStructureSeeder extends Seeder
                 $portfolios[] = $portfolio;
                 $this->command->info("  ✓ Created portfolio: {$portfolio->name} ({$portfolio->code})");
 
-                // Create 3-8 buildings per portfolio
-                $buildingsCount = rand(3, 8);
+                // Create 3 buildings per portfolio
+                $buildingsCount = 3;
                 $buildings = [];
 
                 for ($b = 1; $b <= $buildingsCount; $b++) {
+                    // First building has 3 floors, others have 1 floor each
+                    $floorsCount = ($b === 1) ? 3 : 1;
+                    
                     $building = Building::create([
                         'uuid' => (string) Str::uuid(),
                         'portfolio_id' => $portfolio->id,
@@ -90,7 +93,7 @@ class PropertyStructureSeeder extends Seeder
                         'zip_code' => $this->generateZipCode(),
                         'latitude' => $this->getLatitudeForCity($ownership->city),
                         'longitude' => $this->getLongitudeForCity($ownership->city),
-                        'floors' => $floorsCount = rand(3, 15),
+                        'floors' => $floorsCount,
                         'year' => rand(2010, 2024),
                         'active' => true,
                     ]);
@@ -101,25 +104,21 @@ class PropertyStructureSeeder extends Seeder
                     // Create floors for building
                     $floors = [];
                     for ($f = 1; $f <= $floorsCount; $f++) {
-                        // Create some basements (negative numbers)
                         $floorNumber = $f;
-                        if ($f <= 2 && rand(0, 1)) {
-                            $floorNumber = -($f); // Basement floors
-                        }
 
                         $floor = BuildingFloor::create([
                             'building_id' => $building->id,
                             'number' => $floorNumber,
                             'name' => $this->getFloorName($floorNumber),
                             'description' => "Floor {$floorNumber} of {$building->name}",
-                            'units' => rand(5, 20),
+                            'units' => rand(3, 10),
                             'active' => true,
                         ]);
 
                         $floors[] = $floor;
 
-                        // Create 5-20 units per floor
-                        $unitsCount = rand(5, 20);
+                        // Create 3-10 units per floor
+                        $unitsCount = rand(3, 10);
                         for ($u = 1; $u <= $unitsCount; $u++) {
                             $unitNumber = $this->generateUnitNumber($floorNumber, $u);
                             $unitType = $this->getRandomUnitType();

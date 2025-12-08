@@ -1,0 +1,50 @@
+{
+  "uuid": "770e8400-e29b-41d4-a716-446655440004",
+  "number": "B101",
+  "type": "warehouse",
+  "name": "Unit B101",
+  "description": "warehouse unit B101 on floor -1",
+  "area": 300.00,
+  "price_monthly": 8000.00,
+  "price_quarterly": 22800.00,
+  "price_yearly": 86400.00,
+  "status": "available",
+  "active": true,
+  "ownership": {
+    "uuid": "550e8400-e29b-41d4-a716-446655440000",
+    "name": "Al-Rashid Real Estate Company"
+  },
+  "building": {
+    "uuid": "660e8400-e29b-41d4-a716-446655440001",
+    "name": "Tower A",
+    "code": "BLD-001-01"
+  },
+  "floor": {
+    "id": 4,
+    "number": -1,
+    "name": "Basement 1"
+  },
+  "specifications": [
+    {
+      "id": 13,
+      "key": "loading_dock",
+      "value": "true",
+      "type": "boolean"
+    },
+    {
+      "id": 14,
+      "key": "ceiling_height",
+      "value": "8",
+      "type": "integer"
+    },
+    {
+      "id": 15,
+      "key": "security",
+      "value": "true",
+      "type": "boolean"
+    }
+  ],
+  "created_at": "2025-01-15T10:55:00.000000Z",
+  "updated_at": "2025-01-15T10:55:00.000000Z"
+}
+

@@ -1,0 +1,14 @@
+{
+  "id": 1,
+  "number": 1,
+  "name": "Ground Floor",
+  "description": "Floor 1 of Tower A",
+  "units": 5,
+  "active": true,
+  "building": {
+    "uuid": "660e8400-e29b-41d4-a716-446655440001",
+    "name": "Tower A",
+    "code": "BLD-001-01"
+  }
+}
+

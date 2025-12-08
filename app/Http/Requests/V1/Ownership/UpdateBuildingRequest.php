@@ -65,10 +65,10 @@ class UpdateBuildingRequest extends FormRequest
                 'nullable',
                 'integer',
                 Rule::exists('buildings', 'id')
-                    ->where(function ($query) use ($ownershipId) {
-                        return $query->where('ownership_id', $ownershipId);
-                    })
-                    ->ignore($buildingId), // Prevent self-reference
+                    ->where(function ($query) use ($ownershipId, $buildingId) {
+                        return $query->where('ownership_id', $ownershipId)
+                                     ->where('id', '!=', $buildingId); // Prevent self-reference
+                    }),
             ],
             'active' => ['sometimes', 'nullable', 'boolean'],
         ];

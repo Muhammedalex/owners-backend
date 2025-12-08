@@ -48,10 +48,10 @@ class UpdatePortfolioRequest extends FormRequest
                 'nullable',
                 'integer',
                 Rule::exists('portfolios', 'id')
-                    ->where(function ($query) use ($ownershipId) {
-                        return $query->where('ownership_id', $ownershipId);
-                    })
-                    ->ignore($portfolioId), // Prevent self-reference
+                    ->where(function ($query) use ($ownershipId, $portfolioId) {
+                        return $query->where('ownership_id', $ownershipId)
+                                     ->where('id', '!=', $portfolioId); // Prevent self-reference
+                    }),
             ],
             'active' => ['sometimes', 'nullable', 'boolean'],
         ];

@@ -37,10 +37,10 @@ class OwnershipSeeder extends Seeder
         $staffUsers = User::whereIn('type', ['manager', 'accountant', 'maintenance', 'staff', 'legal', 'marketing', 'it', 'assistant'])
             ->get();
 
-        $this->command->info('Creating 20 ownerships with realistic data...');
+        $this->command->info('Creating 3 ownerships with realistic data...');
         $this->command->info('');
 
-        // Realistic ownership data
+        // Realistic ownership data (only first 3)
         $ownershipsData = [
             // Riyadh Ownerships
             [
@@ -79,215 +79,6 @@ class OwnershipSeeder extends Seeder
                 'email' => 'info@srei.com',
                 'phone' => '+966112345680',
             ],
-            [
-                'name' => 'King Fahd Properties',
-                'legal' => 'King Fahd Properties LLC',
-                'type' => 'company',
-                'ownership_type' => 'commercial',
-                'registration' => 'CR7004567890',
-                'tax_id' => '300456789000003',
-                'city' => 'Riyadh',
-                'state' => 'Riyadh Province',
-                'email' => 'info@kfproperties.com',
-                'phone' => '+966112345681',
-            ],
-            [
-                'name' => 'Olaya Real Estate Group',
-                'legal' => 'Olaya Real Estate Group Co.',
-                'type' => 'company',
-                'ownership_type' => 'commercial',
-                'registration' => 'CR7005678901',
-                'tax_id' => '300567890100003',
-                'city' => 'Riyadh',
-                'state' => 'Riyadh Province',
-                'email' => 'contact@olayare.com',
-                'phone' => '+966112345682',
-            ],
-            // Jeddah Ownerships
-            [
-                'name' => 'Al-Madinah Investment Group',
-                'legal' => 'Al-Madinah Investment Group Co.',
-                'type' => 'company',
-                'ownership_type' => 'investment',
-                'registration' => 'CR7006789012',
-                'tax_id' => '300678901200003',
-                'city' => 'Jeddah',
-                'state' => 'Makkah Province',
-                'email' => 'info@almadinah.com',
-                'phone' => '+966122345678',
-            ],
-            [
-                'name' => 'Red Sea Properties',
-                'legal' => 'Red Sea Properties LLC',
-                'type' => 'company',
-                'ownership_type' => 'commercial',
-                'registration' => 'CR7007890123',
-                'tax_id' => '300789012300003',
-                'city' => 'Jeddah',
-                'state' => 'Makkah Province',
-                'email' => 'info@redseaprop.com',
-                'phone' => '+966122345679',
-            ],
-            [
-                'name' => 'Corniche Real Estate',
-                'legal' => 'Corniche Real Estate Co.',
-                'type' => 'company',
-                'ownership_type' => 'commercial',
-                'registration' => 'CR7008901234',
-                'tax_id' => '300890123400003',
-                'city' => 'Jeddah',
-                'state' => 'Makkah Province',
-                'email' => 'contact@cornichere.com',
-                'phone' => '+966122345680',
-            ],
-            // Dammam/Khobar Ownerships
-            [
-                'name' => 'Eastern Province Properties',
-                'legal' => 'Eastern Province Properties LLC',
-                'type' => 'company',
-                'ownership_type' => 'commercial',
-                'registration' => 'CR7009012345',
-                'tax_id' => '300901234500003',
-                'city' => 'Dammam',
-                'state' => 'Eastern Province',
-                'email' => 'info@epproperties.com',
-                'phone' => '+966133456789',
-            ],
-            [
-                'name' => 'Khobar Real Estate Group',
-                'legal' => 'Khobar Real Estate Group Co.',
-                'type' => 'company',
-                'ownership_type' => 'commercial',
-                'registration' => 'CR7000123456',
-                'tax_id' => '300012345600003',
-                'city' => 'Khobar',
-                'state' => 'Eastern Province',
-                'email' => 'info@khobarre.com',
-                'phone' => '+966133456790',
-            ],
-            // More Riyadh Ownerships
-            [
-                'name' => 'Al-Wurud Investment',
-                'legal' => 'Al-Wurud Investment Co.',
-                'type' => 'company',
-                'ownership_type' => 'investment',
-                'registration' => 'CR7001234568',
-                'tax_id' => '300123456800003',
-                'city' => 'Riyadh',
-                'state' => 'Riyadh Province',
-                'email' => 'info@alwurud.com',
-                'phone' => '+966112345683',
-            ],
-            [
-                'name' => 'Malqa Properties',
-                'legal' => 'Malqa Properties LLC',
-                'type' => 'company',
-                'ownership_type' => 'commercial',
-                'registration' => 'CR7002345679',
-                'tax_id' => '300234567900003',
-                'city' => 'Riyadh',
-                'state' => 'Riyadh Province',
-                'email' => 'contact@malqaprop.com',
-                'phone' => '+966112345684',
-            ],
-            [
-                'name' => 'Sulaimaniyah Real Estate',
-                'legal' => 'Sulaimaniyah Real Estate Co.',
-                'type' => 'company',
-                'ownership_type' => 'commercial',
-                'registration' => 'CR7003456790',
-                'tax_id' => '300345679000003',
-                'city' => 'Riyadh',
-                'state' => 'Riyadh Province',
-                'email' => 'info@sulaimaniyah.com',
-                'phone' => '+966112345685',
-            ],
-            [
-                'name' => 'Al-Nakheel Properties',
-                'legal' => 'Al-Nakheel Properties LLC',
-                'type' => 'company',
-                'ownership_type' => 'commercial',
-                'registration' => 'CR7004567901',
-                'tax_id' => '300456790100003',
-                'city' => 'Riyadh',
-                'state' => 'Riyadh Province',
-                'email' => 'info@alnakheel.com',
-                'phone' => '+966112345686',
-            ],
-            [
-                'name' => 'King Abdullah Real Estate',
-                'legal' => 'King Abdullah Real Estate Co.',
-                'type' => 'company',
-                'ownership_type' => 'commercial',
-                'registration' => 'CR7005679012',
-                'tax_id' => '300567901200003',
-                'city' => 'Riyadh',
-                'state' => 'Riyadh Province',
-                'email' => 'contact@kare.com',
-                'phone' => '+966112345687',
-            ],
-            // More Jeddah Ownerships
-            [
-                'name' => 'Al-Balad Properties',
-                'legal' => 'Al-Balad Properties LLC',
-                'type' => 'company',
-                'ownership_type' => 'commercial',
-                'registration' => 'CR7006789013',
-                'tax_id' => '300678901300003',
-                'city' => 'Jeddah',
-                'state' => 'Makkah Province',
-                'email' => 'info@albalad.com',
-                'phone' => '+966122345681',
-            ],
-            [
-                'name' => 'Al-Hamra Real Estate',
-                'legal' => 'Al-Hamra Real Estate Co.',
-                'type' => 'company',
-                'ownership_type' => 'commercial',
-                'registration' => 'CR7007890124',
-                'tax_id' => '300789012400003',
-                'city' => 'Jeddah',
-                'state' => 'Makkah Province',
-                'email' => 'contact@alhamra.com',
-                'phone' => '+966122345682',
-            ],
-            // More Dammam/Khobar Ownerships
-            [
-                'name' => 'Al-Khobar Towers',
-                'legal' => 'Al-Khobar Towers LLC',
-                'type' => 'company',
-                'ownership_type' => 'commercial',
-                'registration' => 'CR7008901235',
-                'tax_id' => '300890123500003',
-                'city' => 'Khobar',
-                'state' => 'Eastern Province',
-                'email' => 'info@alkhobartowers.com',
-                'phone' => '+966133456791',
-            ],
-            [
-                'name' => 'Dammam Commercial Center',
-                'legal' => 'Dammam Commercial Center Co.',
-                'type' => 'company',
-                'ownership_type' => 'commercial',
-                'registration' => 'CR7009012346',
-                'tax_id' => '300901234600003',
-                'city' => 'Dammam',
-                'state' => 'Eastern Province',
-                'email' => 'info@dcc.com',
-                'phone' => '+966133456792',
-            ],
-            [
-                'name' => 'Al-Dhahran Properties',
-                'legal' => 'Al-Dhahran Properties LLC',
-                'type' => 'company',
-                'ownership_type' => 'commercial',
-                'registration' => 'CR7000123457',
-                'tax_id' => '300012345700003',
-                'city' => 'Dhahran',
-                'state' => 'Eastern Province',
-                'email' => 'contact@aldhahran.com',
-                'phone' => '+966133456793',
-            ],
         ];
 
         $createdOwnerships = [];
@@ -317,7 +108,7 @@ class OwnershipSeeder extends Seeder
                     'created_by' => $superAdmin->id,
                 ]);
 
-                $this->command->info("✓ Created ownership " . ($index + 1) . "/20: {$ownership->name}");
+                $this->command->info("✓ Created ownership " . ($index + 1) . "/3: {$ownership->name}");
             } else {
                 $this->command->info("✓ Ownership already exists: {$ownership->name}");
             }

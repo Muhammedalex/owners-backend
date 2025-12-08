@@ -3,6 +3,7 @@
 namespace App\Services\V1\Ownership;
 
 use App\Models\V1\Ownership\Building;
+use App\Models\V1\Ownership\Portfolio;
 use App\Repositories\V1\Ownership\Interfaces\BuildingRepositoryInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
@@ -76,6 +77,13 @@ class BuildingService
     public function update(Building $building, array $data): Building
     {
         return DB::transaction(function () use ($building, $data) {
+            // Verify portfolio belongs to same ownership if portfolio_id is being updated
+            if (isset($data['portfolio_id'])) {
+                $portfolio = Portfolio::where('id', $data['portfolio_id'])
+                    ->where('ownership_id', $building->ownership_id)
+                    ->firstOrFail();
+            }
+            
             return $this->buildingRepository->update($building, $data);
         });
     }

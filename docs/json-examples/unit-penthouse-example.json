@@ -1,0 +1,62 @@
+{
+  "uuid": "770e8400-e29b-41d4-a716-446655440005",
+  "number": "0301",
+  "type": "penthouse",
+  "name": "Unit 0301",
+  "description": "penthouse unit 0301 on floor 3",
+  "area": 350.00,
+  "price_monthly": 35000.00,
+  "price_quarterly": 99750.00,
+  "price_yearly": 378000.00,
+  "status": "reserved",
+  "active": true,
+  "ownership": {
+    "uuid": "550e8400-e29b-41d4-a716-446655440000",
+    "name": "Al-Rashid Real Estate Company"
+  },
+  "building": {
+    "uuid": "660e8400-e29b-41d4-a716-446655440001",
+    "name": "Tower A",
+    "code": "BLD-001-01"
+  },
+  "floor": {
+    "id": 3,
+    "number": 3,
+    "name": "Floor 3"
+  },
+  "specifications": [
+    {
+      "id": 16,
+      "key": "bedrooms",
+      "value": "5",
+      "type": "integer"
+    },
+    {
+      "id": 17,
+      "key": "bathrooms",
+      "value": "4",
+      "type": "integer"
+    },
+    {
+      "id": 18,
+      "key": "balcony",
+      "value": "true",
+      "type": "boolean"
+    },
+    {
+      "id": 19,
+      "key": "parking",
+      "value": "3",
+      "type": "integer"
+    },
+    {
+      "id": 20,
+      "key": "furnished",
+      "value": "true",
+      "type": "boolean"
+    }
+  ],
+  "created_at": "2025-01-15T11:00:00.000000Z",
+  "updated_at": "2025-01-15T11:00:00.000000Z"
+}
+

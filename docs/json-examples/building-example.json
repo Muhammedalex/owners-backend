@@ -1,0 +1,114 @@
+{
+  "id": 1,
+  "uuid": "660e8400-e29b-41d4-a716-446655440001",
+  "name": "Tower A",
+  "code": "BLD-001-01",
+  "type": "residential",
+  "description": "Building 1 in Main Portfolio - Al-Rashid Real Estate Company",
+  "street": "King Fahd Road, 123",
+  "city": "Riyadh",
+  "state": "Riyadh Province",
+  "country": "Saudi Arabia",
+  "zip_code": "12345",
+  "latitude": 24.7136,
+  "longitude": 46.6753,
+  "floors_count": 3,
+  "year": 2020,
+  "active": true,
+  "ownership": {
+    "uuid": "550e8400-e29b-41d4-a716-446655440000",
+    "name": "Al-Rashid Real Estate Company"
+  },
+  "portfolio": {
+    "uuid": "550e8400-e29b-41d4-a716-446655440001",
+    "name": "Main Portfolio - Al-Rashid Real Estate Company",
+    "code": "PORT-001-01"
+  },
+  "parent": null,
+  "children": [
+    {
+      "id": 2,
+      "uuid": "660e8400-e29b-41d4-a716-446655440002",
+      "name": "Tower B",
+      "code": "BLD-001-02",
+      "type": "commercial",
+      "description": "Child building of Tower A",
+      "street": "King Fahd Road, 125",
+      "city": "Riyadh",
+      "state": "Riyadh Province",
+      "country": "Saudi Arabia",
+      "zip_code": "12345",
+      "latitude": 24.7138,
+      "longitude": 46.6755,
+      "floors_count": 1,
+      "year": 2021,
+      "active": true,
+      "ownership": {
+        "uuid": "550e8400-e29b-41d4-a716-446655440000",
+        "name": "Al-Rashid Real Estate Company"
+      },
+      "portfolio": {
+        "uuid": "550e8400-e29b-41d4-a716-446655440001",
+        "name": "Main Portfolio - Al-Rashid Real Estate Company",
+        "code": "PORT-001-01"
+      },
+      "parent": {
+        "uuid": "660e8400-e29b-41d4-a716-446655440001",
+        "name": "Tower A",
+        "code": "BLD-001-01"
+      },
+      "children": [],
+      "floors": [],
+      "floors_count": null,
+      "children_count": null,
+      "created_at": "2025-01-15T10:35:00.000000Z",
+      "updated_at": "2025-01-15T10:35:00.000000Z"
+    }
+  ],
+  "floors": [
+    {
+      "id": 1,
+      "number": 1,
+      "name": "Ground Floor",
+      "description": "Floor 1 of Tower A",
+      "units": 5,
+      "active": true,
+      "building": {
+        "uuid": "660e8400-e29b-41d4-a716-446655440001",
+        "name": "Tower A",
+        "code": "BLD-001-01"
+      }
+    },
+    {
+      "id": 2,
+      "number": 2,
+      "name": "Floor 2",
+      "description": "Floor 2 of Tower A",
+      "units": 7,
+      "active": true,
+      "building": {
+        "uuid": "660e8400-e29b-41d4-a716-446655440001",
+        "name": "Tower A",
+        "code": "BLD-001-01"
+      }
+    },
+    {
+      "id": 3,
+      "number": 3,
+      "name": "Floor 3",
+      "description": "Floor 3 of Tower A",
+      "units": 6,
+      "active": true,
+      "building": {
+        "uuid": "660e8400-e29b-41d4-a716-446655440001",
+        "name": "Tower A",
+        "code": "BLD-001-01"
+      }
+    }
+  ],
+  "floors_count": 3,
+  "children_count": 1,
+  "created_at": "2025-01-15T10:30:00.000000Z",
+  "updated_at": "2025-01-15T10:30:00.000000Z"
+}
+

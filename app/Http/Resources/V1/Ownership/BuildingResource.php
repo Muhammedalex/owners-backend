@@ -15,6 +15,7 @@ class BuildingResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
+            'id' => $this->id,
             'uuid' => $this->uuid,
             'name' => $this->name,
             'code' => $this->code,
@@ -30,26 +31,35 @@ class BuildingResource extends JsonResource
             'floors_count' => $this->floors,
             'year' => $this->year,
             'active' => $this->active,
-            'ownership' => $this->whenLoaded('ownership', function () {
-                return [
-                    'uuid' => $this->ownership->uuid,
-                    'name' => $this->ownership->name,
-                ];
-            }),
-            'portfolio' => $this->whenLoaded('portfolio', function () {
-                return [
-                    'uuid' => $this->portfolio->uuid,
-                    'name' => $this->portfolio->name,
-                    'code' => $this->portfolio->code,
-                ];
-            }),
-            'parent' => $this->whenLoaded('parent', function () {
-                return [
-                    'uuid' => $this->parent->uuid,
-                    'name' => $this->parent->name,
-                    'code' => $this->parent->code,
-                ];
-            }),
+            'ownership' => $this->when(
+                $this->relationLoaded('ownership') && $this->ownership !== null,
+                function () {
+                    return [
+                        'uuid' => $this->ownership->uuid,
+                        'name' => $this->ownership->name,
+                    ];
+                }
+            ),
+            'portfolio' => $this->when(
+                $this->relationLoaded('portfolio') && $this->portfolio !== null,
+                function () {
+                    return [
+                        'uuid' => $this->portfolio->uuid,
+                        'name' => $this->portfolio->name,
+                        'code' => $this->portfolio->code,
+                    ];
+                }
+            ),
+            'parent' => $this->when(
+                $this->relationLoaded('parent') && $this->parent !== null,
+                function () {
+                    return [
+                        'uuid' => $this->parent->uuid,
+                        'name' => $this->parent->name,
+                        'code' => $this->parent->code,
+                    ];
+                }
+            ),
             'children' => $this->whenLoaded('children', function () {
                 return BuildingResource::collection($this->children);
             }),
