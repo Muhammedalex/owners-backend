@@ -13,7 +13,7 @@ class ExcludeSystemRolesScope implements Scope
      * These are system-level roles that should be hidden from all API responses.
      */
     protected array $systemRoles = [
-        
+        'super admin'
     ];
 
     /**

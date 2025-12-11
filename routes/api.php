@@ -26,6 +26,14 @@ Route::prefix('v1')->group(function () {
     require __DIR__.'/api/v1/permissions.php';
     require __DIR__.'/api/v1/notifications.php';
     require __DIR__.'/api/v1/ownerships.php';
+    require __DIR__.'/api/v1/tenants.php';
+    require __DIR__.'/api/v1/contracts.php';
+    require __DIR__.'/api/v1/invoices.php';
+    require __DIR__.'/api/v1/payments.php';
+    require __DIR__.'/api/v1/reports.php';
+    require __DIR__.'/api/v1/settings.php';
+    require __DIR__.'/api/v1/media.php';
+    require __DIR__.'/api/v1/documents.php';
     // Add other V1 module routes here
 });
 

@@ -1,0 +1,1110 @@
+{
+	"info": {
+		"_postman_id": "settings-media-documents-api-collection",
+		"name": "Settings, Media & Documents API - V1",
+		"description": "API collection for Settings, Media Files, and Documents modules.\n\n**Token Storage Strategy:**\n- Access Token: Stored in environment variable (use in Authorization header)\n- Refresh Token: Stored in httpOnly cookie (automatically managed by Postman)\n- Ownership UUID: Stored in httpOnly cookie (automatically managed by Postman)\n\n**Important Notes:**\n- Cookies are automatically sent with requests in Postman\n- View cookies: Click 'Cookies' link below the URL bar\n- Refresh token and ownership_uuid are NOT in JSON responses (they're in httpOnly cookies)\n- Ensure cookies are enabled in Postman settings\n- All endpoints require `ownership.scope` middleware (ownership_id is taken from cookie)\n- Ownership scope is MANDATORY for all users (including Super Admin)\n\n**Settings Module:**\n- System-wide settings: Only Super Admin can access (use scope=system)\n- Ownership-specific settings: Regular users can access their ownership settings\n- Settings are grouped by category (financial, contract, invoice, tenant, etc.)\n- Settings support different value types: string, integer, decimal, boolean, json, array\n- Settings have fallback: ownership → system → default\n\n**Media Module:**\n- Polymorphic relationships: Any model can have media files\n- Supported types: logo, avatar, photo, video, etc.\n- Auto image processing: resize, optimize, generate thumbnails\n- Display order: Media files can be reordered\n- Public/Private: Control visibility of media files\n\n**Documents Module:**\n- Polymorphic relationships: Any model can have documents\n- Document types: contract_document, invoice_pdf, payment_receipt, etc.\n- Expiration tracking: Documents can have expiration dates\n- Download support: Secure document download with access control\n- Public/Private: Control visibility of documents",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "30358504"
+	},
+	"item": [
+		{
+			"name": "Authentication",
+			"item": [
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    pm.environment.set('access_token', response.data.tokens.access_token);",
+									"    pm.environment.set('user_id', response.data.user.id);",
+									"    // Note: refresh_token is automatically stored in httpOnly cookie",
+									"    // Cookies are managed automatically by Postman",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"admin@example.com\",\n    \"password\": \"password123\",\n    \"device_name\": \"Postman\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/auth/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"login"
+							]
+						},
+						"description": "Authenticate a user and receive access tokens.\n\n**Required Fields:**\n- `email` OR `phone`: User identifier (one is required)\n- `password`: User password\n\n**Optional Fields:**\n- `device_name`: Device identifier for token management\n\n**Response:**\n- Access token is returned in JSON response (stored in environment variable)\n- Refresh token is stored in httpOnly cookie (automatically managed)\n- Ownership UUID cookie is set if user has default ownership\n\n**Example Response:**\n```json\n{\n    \"success\": true,\n    \"message\": \"Login successful.\",\n    \"data\": {\n        \"user\": { ... },\n        \"tokens\": {\n            \"access_token\": \"1|xxxxxxxxxxxxx\",\n            \"token_type\": \"Bearer\",\n            \"expires_in\": 3600\n        }\n    }\n}\n```"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Settings",
+			"item": [
+				{
+					"name": "List Settings",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/settings?scope=ownership&group=financial&per_page=15",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"settings"
+							],
+							"query": [
+								{
+									"key": "scope",
+									"value": "ownership",
+									"description": "Scope: 'system' for system-wide settings (Super Admin only), omit for ownership-specific settings"
+								},
+								{
+									"key": "group",
+									"value": "financial",
+									"description": "Filter by group: financial, contract, invoice, tenant, notification, document, media, reporting, localization, security, system"
+								},
+								{
+									"key": "search",
+									"value": "",
+									"description": "Search in key or description",
+									"disabled": true
+								},
+								{
+									"key": "value_type",
+									"value": "",
+									"description": "Filter by value type: string, integer, decimal, boolean, json, array",
+									"disabled": true
+								},
+								{
+									"key": "per_page",
+									"value": "15",
+									"description": "Items per page"
+								}
+							]
+						},
+						"description": "List all settings with pagination.\n\n**Query Parameters:**\n- `scope` (optional): 'system' for system-wide settings (Super Admin only), omit for ownership-specific\n- `group` (optional): Filter by setting group\n- `search` (optional): Search in key or description\n- `value_type` (optional): Filter by value type\n- `per_page` (optional): Items per page (default: 15)\n\n**Permissions Required:**\n- `settings.view` or `settings.{group}.view`\n- For system settings: `settings.system.view` (Super Admin only)\n\n**Example Response:**\n```json\n{\n    \"success\": true,\n    \"data\": [\n        {\n            \"id\": 1,\n            \"ownership_id\": 1,\n            \"key\": \"tax_rate\",\n            \"value\": 15.00,\n            \"value_type\": \"decimal\",\n            \"group\": \"financial\",\n            \"description\": \"VAT/Tax rate percentage\",\n            \"is_system_wide\": false\n        }\n    ],\n    \"meta\": {\n        \"current_page\": 1,\n        \"last_page\": 1,\n        \"per_page\": 15,\n        \"total\": 1\n    }\n}\n```"
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Settings for Ownership",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/settings/all",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"settings",
+								"all"
+							]
+						},
+						"description": "Get all settings for current ownership (including system defaults as fallback).\n\n**Response:**\nReturns merged settings where ownership-specific settings override system defaults.\n\n**Example Response:**\n```json\n{\n    \"success\": true,\n    \"data\": [\n        {\n            \"id\": 1,\n            \"key\": \"tax_rate\",\n            \"value\": 15.00,\n            \"value_type\": \"decimal\",\n            \"group\": \"financial\"\n        }\n    ]\n}\n```"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Settings by Group",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/settings/group/financial",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"settings",
+								"group",
+								"{{group}}"
+							],
+							"variable": [
+								{
+									"key": "group",
+									"value": "financial",
+									"description": "Group name: financial, contract, invoice, tenant, notification, document, media, reporting, localization, security, system"
+								}
+							]
+						},
+						"description": "Get all settings for a specific group.\n\n**Path Parameters:**\n- `group`: Setting group name\n\n**Available Groups:**\n- `financial`: Financial settings (tax, currency, numbering)\n- `contract`: Contract settings (duration, approval, Ejar)\n- `invoice`: Invoice settings (due days, reminders, tax)\n- `tenant`: Tenant settings (tracking, verification, requirements)\n- `notification`: Notification settings (email, SMS, reminders)\n- `document`: Document settings (retention, types, size)\n- `media`: Media settings (size, types, storage)\n- `reporting`: Reporting settings (cache, delivery, period)\n- `localization`: Localization settings (language, format, timezone)\n- `security`: Security settings (session, login, 2FA)\n- `system`: System settings (Super Admin only)\n\n**Permissions Required:**\n- `settings.{group}.view`\n- For system group: `settings.system.view` (Super Admin only)\n\n**Example Response:**\n```json\n{\n    \"success\": true,\n    \"data\": [\n        {\n            \"id\": 1,\n            \"key\": \"tax_rate\",\n            \"value\": 15.00,\n            \"value_type\": \"decimal\",\n            \"group\": \"financial\"\n        }\n    ]\n}\n```"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Setting by Key",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/settings/key/tax_rate",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"settings",
+								"key",
+								"{{key}}"
+							],
+							"variable": [
+								{
+									"key": "key",
+									"value": "tax_rate",
+									"description": "Setting key"
+								}
+							]
+						},
+						"description": "Get a specific setting by key. Returns ownership-specific setting if exists, otherwise system default.\n\n**Path Parameters:**\n- `key`: Setting key identifier\n\n**Example Response:**\n```json\n{\n    \"success\": true,\n    \"data\": {\n        \"id\": 1,\n        \"key\": \"tax_rate\",\n        \"value\": 15.00,\n        \"value_type\": \"decimal\",\n        \"group\": \"financial\"\n    }\n}\n```"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Setting",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"key\": \"custom_setting_key\",\n    \"value\": \"custom_value\",\n    \"value_type\": \"string\",\n    \"group\": \"financial\",\n    \"description\": \"Custom setting description\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/settings",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"settings"
+							]
+						},
+						"description": "Create a new setting.\n\n**Required Fields:**\n- `key`: Setting key (unique per ownership)\n- `value_type`: Type of value (string, integer, decimal, boolean, json, array)\n- `group`: Setting group\n\n**Optional Fields:**\n- `value`: Setting value (will be converted based on value_type)\n- `description`: Setting description\n- `ownership_id`: Omit for ownership-specific (taken from cookie), set to null for system-wide (Super Admin only)\n\n**Value Types:**\n- `string`: Text value\n- `integer`: Whole number\n- `decimal`: Decimal number\n- `boolean`: true/false\n- `json`: JSON object\n- `array`: JSON array\n\n**Permissions Required:**\n- `settings.create` or `settings.{group}.update`\n- For system settings: `settings.system.update` (Super Admin only)\n\n**Example Request (Boolean):**\n```json\n{\n    \"key\": \"auto_calculate_tax\",\n    \"value\": true,\n    \"value_type\": \"boolean\",\n    \"group\": \"financial\"\n}\n```\n\n**Example Request (Array):**\n```json\n{\n    \"key\": \"allowed_document_types\",\n    \"value\": [\"pdf\", \"doc\", \"docx\"],\n    \"value_type\": \"array\",\n    \"group\": \"document\"\n}\n```"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Setting",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"value\": 20.00,\n    \"description\": \"Updated tax rate\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/settings/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"settings",
+								"{{setting_id}}"
+							],
+							"variable": [
+								{
+									"key": "setting_id",
+									"value": "1",
+									"description": "Setting ID"
+								}
+							]
+						},
+						"description": "Update an existing setting.\n\n**Path Parameters:**\n- `setting_id`: Setting ID\n\n**Optional Fields:**\n- `value`: New value (will be converted based on current value_type)\n- `value_type`: Change value type\n- `group`: Change group\n- `description`: Update description\n\n**Permissions Required:**\n- `settings.update` or `settings.{group}.update`\n- For system settings: `settings.system.update` (Super Admin only)\n\n**Example Response:**\n```json\n{\n    \"success\": true,\n    \"message\": \"Setting updated successfully.\",\n    \"data\": {\n        \"id\": 1,\n        \"key\": \"tax_rate\",\n        \"value\": 20.00,\n        \"value_type\": \"decimal\",\n        \"group\": \"financial\"\n    }\n}\n```"
+					},
+					"response": []
+				},
+				{
+					"name": "Bulk Update Settings",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"settings\": [\n        {\n            \"key\": \"tax_rate\",\n            \"value\": 15.00,\n            \"value_type\": \"decimal\",\n            \"group\": \"financial\"\n        },\n        {\n            \"key\": \"currency\",\n            \"value\": \"SAR\",\n            \"value_type\": \"string\",\n            \"group\": \"financial\"\n        }\n    ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/settings/bulk",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"settings",
+								"bulk"
+							]
+						},
+						"description": "Bulk update multiple settings at once.\n\n**Required Fields:**\n- `settings`: Array of setting objects\n  - `key`: Setting key\n  - `value`: Setting value\n  - `value_type`: Value type\n  - `group`: Setting group\n  - `description` (optional): Description\n\n**Permissions Required:**\n- `settings.{group}.update` for each group in the request\n\n**Example Response:**\n```json\n{\n    \"success\": true,\n    \"message\": \"Settings updated successfully.\",\n    \"data\": [\n        {\n            \"id\": 1,\n            \"key\": \"tax_rate\",\n            \"value\": 15.00\n        },\n        {\n            \"id\": 2,\n            \"key\": \"currency\",\n            \"value\": \"SAR\"\n        }\n    ]\n}\n```"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Setting",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/settings/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"settings",
+								"{{setting_id}}"
+							],
+							"variable": [
+								{
+									"key": "setting_id",
+									"value": "1",
+									"description": "Setting ID"
+								}
+							]
+						},
+						"description": "Delete a setting.\n\n**Path Parameters:**\n- `setting_id`: Setting ID\n\n**Permissions Required:**\n- `settings.delete` or `settings.{group}.update`\n- For system settings: `settings.system.update` (Super Admin only)\n\n**Example Response:**\n```json\n{\n    \"success\": true,\n    \"message\": \"Setting deleted successfully.\"\n}\n```"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Media Files",
+			"item": [
+				{
+					"name": "Upload Media",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "entity_type",
+									"value": "ownership",
+									"type": "text",
+									"description": "Entity type: ownership, user, tenant, contract, invoice, payment, building, unit, portfolio"
+								},
+								{
+									"key": "entity_id",
+									"value": "1",
+									"type": "text",
+									"description": "Entity ID"
+								},
+								{
+									"key": "type",
+									"value": "logo",
+									"type": "text",
+									"description": "Media type: logo, avatar, photo, video, etc."
+								},
+								{
+									"key": "file",
+									"type": "file",
+									"src": [],
+									"description": "File to upload"
+								},
+								{
+									"key": "title",
+									"value": "Company Logo",
+									"type": "text",
+									"description": "Media title (optional)",
+									"disabled": true
+								},
+								{
+									"key": "description",
+									"value": "",
+									"type": "text",
+									"description": "Media description (optional)",
+									"disabled": true
+								},
+								{
+									"key": "public",
+									"value": "true",
+									"type": "text",
+									"description": "Public visibility (default: true)",
+									"disabled": true
+								},
+								{
+									"key": "order",
+									"value": "",
+									"type": "text",
+									"description": "Display order (optional, auto-assigned if not provided)",
+									"disabled": true
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/media/upload",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"media",
+								"upload"
+							]
+						},
+						"description": "Upload a media file for an entity.\n\n**Required Fields:**\n- `entity_type`: Entity type (ownership, user, tenant, contract, invoice, payment, building, unit, portfolio)\n- `entity_id`: Entity ID\n- `type`: Media type (logo, avatar, photo, video, etc.)\n- `file`: File to upload\n\n**Optional Fields:**\n- `title`: Media title (defaults to original filename)\n- `description`: Media description\n- `public`: Public visibility (default: true)\n- `order`: Display order (auto-assigned if not provided)\n\n**Supported File Types:**\n- Images: JPG, PNG, GIF, SVG\n- Videos: MP4, MOV, AVI\n- Documents: PDF (for media)\n\n**File Size Limits:**\n- Images: 5MB (configurable in settings)\n- Videos: 100MB (configurable in settings)\n\n**Auto Processing:**\n- Images are automatically resized and optimized\n- Thumbnails are generated (small, medium, large)\n- Quality is optimized based on settings\n\n**Permissions Required:**\n- `media.create`\n- Access to the entity (ownership scope)\n\n**Example Response:**\n```json\n{\n    \"success\": true,\n    \"message\": \"Media file uploaded successfully.\",\n    \"data\": {\n        \"id\": 1,\n        \"type\": \"logo\",\n        \"url\": \"https://example.com/storage/media/ownerships/1/logo/logo_20250101_abc123.jpg\",\n        \"name\": \"logo.jpg\",\n        \"size\": 102400,\n        \"human_readable_size\": \"100 KB\",\n        \"mime\": \"image/jpeg\",\n        \"title\": \"Company Logo\",\n        \"order\": 1,\n        \"public\": true,\n        \"is_image\": true\n    }\n}\n```"
+					},
+					"response": []
+				},
+				{
+					"name": "List Media Files",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/media?entity_type=ownership&entity_id=1&type=logo",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"media"
+							],
+							"query": [
+								{
+									"key": "entity_type",
+									"value": "ownership",
+									"description": "Entity type"
+								},
+								{
+									"key": "entity_id",
+									"value": "1",
+									"description": "Entity ID"
+								},
+								{
+									"key": "type",
+									"value": "logo",
+									"description": "Filter by media type (optional)",
+									"disabled": true
+								}
+							]
+						},
+						"description": "List all media files for an entity.\n\n**Query Parameters:**\n- `entity_type`: Entity type (required)\n- `entity_id`: Entity ID (required)\n- `type`: Filter by media type (optional)\n\n**Response:**\nReturns media files ordered by display order.\n\n**Example Response:**\n```json\n{\n    \"success\": true,\n    \"data\": [\n        {\n            \"id\": 1,\n            \"type\": \"logo\",\n            \"url\": \"https://example.com/storage/media/...\",\n            \"name\": \"logo.jpg\",\n            \"size\": 102400,\n            \"order\": 1,\n            \"public\": true\n        }\n    ]\n}\n```"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Media File",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/media/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"media",
+								"{{media_id}}"
+							],
+							"variable": [
+								{
+									"key": "media_id",
+									"value": "1",
+									"description": "Media file ID"
+								}
+							]
+						},
+						"description": "Get a specific media file by ID.\n\n**Path Parameters:**\n- `media_id`: Media file ID\n\n**Permissions Required:**\n- `media.view`\n- Access to the media file's ownership\n\n**Example Response:**\n```json\n{\n    \"success\": true,\n    \"data\": {\n        \"id\": 1,\n        \"type\": \"logo\",\n        \"url\": \"https://example.com/storage/media/...\",\n        \"name\": \"logo.jpg\",\n        \"size\": 102400,\n        \"order\": 1\n    }\n}\n```"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Media File",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"Updated Logo Title\",\n    \"description\": \"Updated description\",\n    \"public\": false,\n    \"order\": 2\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/media/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"media",
+								"{{media_id}}"
+							],
+							"variable": [
+								{
+									"key": "media_id",
+									"value": "1",
+									"description": "Media file ID"
+								}
+							]
+						},
+						"description": "Update media file metadata.\n\n**Path Parameters:**\n- `media_id`: Media file ID\n\n**Optional Fields:**\n- `title`: Update title\n- `description`: Update description\n- `public`: Update visibility\n- `order`: Update display order\n\n**Permissions Required:**\n- `media.update`\n- Access to the media file's ownership\n\n**Example Response:**\n```json\n{\n    \"success\": true,\n    \"message\": \"Media file updated successfully.\",\n    \"data\": {\n        \"id\": 1,\n        \"title\": \"Updated Logo Title\",\n        \"order\": 2\n    }\n}\n```"
+					},
+					"response": []
+				},
+				{
+					"name": "Reorder Media Files",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"media_file_ids\": [3, 1, 2]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/media/reorder",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"media",
+								"reorder"
+							]
+						},
+						"description": "Reorder media files by providing array of media file IDs in desired order.\n\n**Required Fields:**\n- `media_file_ids`: Array of media file IDs in desired order\n\n**Example:**\nIf you have media files with IDs [1, 2, 3] and want order [3, 1, 2], send:\n```json\n{\n    \"media_file_ids\": [3, 1, 2]\n}\n```\n\n**Permissions Required:**\n- `media.update`\n\n**Example Response:**\n```json\n{\n    \"success\": true,\n    \"message\": \"Media files reordered successfully.\"\n}\n```"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Media File",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/media/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"media",
+								"{{media_id}}"
+							],
+							"variable": [
+								{
+									"key": "media_id",
+									"value": "1",
+									"description": "Media file ID"
+								}
+							]
+						},
+						"description": "Delete a media file. This will also delete the file from storage and all generated thumbnails.\n\n**Path Parameters:**\n- `media_id`: Media file ID\n\n**Permissions Required:**\n- `media.delete`\n- Access to the media file's ownership\n\n**Example Response:**\n```json\n{\n    \"success\": true,\n    \"message\": \"Media file deleted successfully.\"\n}\n```"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Documents",
+			"item": [
+				{
+					"name": "Upload Document",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "entity_type",
+									"value": "contract",
+									"type": "text",
+									"description": "Entity type: ownership, user, tenant, contract, invoice, payment, building, unit, portfolio"
+								},
+								{
+									"key": "entity_id",
+									"value": "1",
+									"type": "text",
+									"description": "Entity ID"
+								},
+								{
+									"key": "type",
+									"value": "contract_document",
+									"type": "text",
+									"description": "Document type: contract_document, invoice_pdf, payment_receipt, national_id, etc."
+								},
+								{
+									"key": "title",
+									"value": "Contract Document",
+									"type": "text",
+									"description": "Document title (required)"
+								},
+								{
+									"key": "file",
+									"type": "file",
+									"src": [],
+									"description": "File to upload"
+								},
+								{
+									"key": "description",
+									"value": "",
+									"type": "text",
+									"description": "Document description (optional)",
+									"disabled": true
+								},
+								{
+									"key": "public",
+									"value": "false",
+									"type": "text",
+									"description": "Public visibility (default: false)",
+									"disabled": true
+								},
+								{
+									"key": "expires_at",
+									"value": "",
+									"type": "text",
+									"description": "Expiration date (optional, format: YYYY-MM-DD)",
+									"disabled": true
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/documents/upload",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"documents",
+								"upload"
+							]
+						},
+						"description": "Upload a document for an entity.\n\n**Required Fields:**\n- `entity_type`: Entity type (ownership, user, tenant, contract, invoice, payment, building, unit, portfolio)\n- `entity_id`: Entity ID\n- `type`: Document type (contract_document, invoice_pdf, payment_receipt, national_id, etc.)\n- `title`: Document title\n- `file`: File to upload\n\n**Optional Fields:**\n- `description`: Document description\n- `public`: Public visibility (default: false)\n- `expires_at`: Expiration date (format: YYYY-MM-DD)\n\n**Supported File Types:**\n- Documents: PDF, DOC, DOCX\n- Images: JPG, PNG (for scanned documents)\n\n**File Size Limits:**\n- Documents: 10MB (configurable in settings)\n\n**Document Types:**\n- `contract_document`: Signed contract PDF\n- `invoice_pdf`: Generated invoice PDF\n- `payment_receipt`: Payment receipt\n- `national_id`: National ID copy\n- `employment_certificate`: Employment certificate\n- `income_proof`: Income proof document\n- `building_license`: Building license\n- `tax_certificate`: Tax certificate\n\n**Permissions Required:**\n- `documents.create`\n- Access to the entity (ownership scope)\n\n**Example Response:**\n```json\n{\n    \"success\": true,\n    \"message\": \"Document uploaded successfully.\",\n    \"data\": {\n        \"id\": 1,\n        \"type\": \"contract_document\",\n        \"title\": \"Contract Document\",\n        \"url\": \"https://example.com/storage/documents/...\",\n        \"size\": 204800,\n        \"human_readable_size\": \"200 KB\",\n        \"mime\": \"application/pdf\",\n        \"public\": false,\n        \"expires_at\": null,\n        \"is_expired\": false\n    }\n}\n```"
+					},
+					"response": []
+				},
+				{
+					"name": "List Documents",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/documents?entity_type=contract&entity_id=1&type=contract_document",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"documents"
+							],
+							"query": [
+								{
+									"key": "entity_type",
+									"value": "contract",
+									"description": "Entity type"
+								},
+								{
+									"key": "entity_id",
+									"value": "1",
+									"description": "Entity ID"
+								},
+								{
+									"key": "type",
+									"value": "contract_document",
+									"description": "Filter by document type (optional)",
+									"disabled": true
+								}
+							]
+						},
+						"description": "List all documents for an entity.\n\n**Query Parameters:**\n- `entity_type`: Entity type (required)\n- `entity_id`: Entity ID (required)\n- `type`: Filter by document type (optional)\n\n**Response:**\nReturns documents ordered by creation date (newest first).\n\n**Example Response:**\n```json\n{\n    \"success\": true,\n    \"data\": [\n        {\n            \"id\": 1,\n            \"type\": \"contract_document\",\n            \"title\": \"Contract Document\",\n            \"url\": \"https://example.com/storage/documents/...\",\n            \"size\": 204800,\n            \"expires_at\": null,\n            \"is_expired\": false\n        }\n    ]\n}\n```"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Document",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/documents/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"documents",
+								"{{document_id}}"
+							],
+							"variable": [
+								{
+									"key": "document_id",
+									"value": "1",
+									"description": "Document ID"
+								}
+							]
+						},
+						"description": "Get a specific document by ID.\n\n**Path Parameters:**\n- `document_id`: Document ID\n\n**Permissions Required:**\n- `documents.view`\n- Access to the document's ownership\n\n**Example Response:**\n```json\n{\n    \"success\": true,\n    \"data\": {\n        \"id\": 1,\n        \"type\": \"contract_document\",\n        \"title\": \"Contract Document\",\n        \"url\": \"https://example.com/storage/documents/...\",\n        \"size\": 204800,\n        \"expires_at\": null,\n        \"is_expired\": false,\n        \"expires_soon\": false\n    }\n}\n```"
+					},
+					"response": []
+				},
+				{
+					"name": "Download Document",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/documents/1/download",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"documents",
+								"{{document_id}}",
+								"download"
+							],
+							"variable": [
+								{
+									"key": "document_id",
+									"value": "1",
+									"description": "Document ID"
+								}
+							]
+						},
+						"description": "Download a document file.\n\n**Path Parameters:**\n- `document_id`: Document ID\n\n**Response:**\nReturns the document file as a download stream.\n\n**Permissions Required:**\n- `documents.view`\n- Access to the document's ownership\n\n**Note:**\n- The file will be downloaded with the original filename\n- Content-Type will be set based on document MIME type"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Document",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"Updated Document Title\",\n    \"description\": \"Updated description\",\n    \"public\": true,\n    \"expires_at\": \"2025-12-31\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/documents/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"documents",
+								"{{document_id}}"
+							],
+							"variable": [
+								{
+									"key": "document_id",
+									"value": "1",
+									"description": "Document ID"
+								}
+							]
+						},
+						"description": "Update document metadata.\n\n**Path Parameters:**\n- `document_id`: Document ID\n\n**Optional Fields:**\n- `title`: Update title\n- `description`: Update description\n- `public`: Update visibility\n- `expires_at`: Update expiration date (format: YYYY-MM-DD, or null to remove expiration)\n\n**Permissions Required:**\n- `documents.update`\n- Access to the document's ownership\n\n**Example Response:**\n```json\n{\n    \"success\": true,\n    \"message\": \"Document updated successfully.\",\n    \"data\": {\n        \"id\": 1,\n        \"title\": \"Updated Document Title\",\n        \"expires_at\": \"2025-12-31T00:00:00.000000Z\"\n    }\n}\n```"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Document",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/documents/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"documents",
+								"{{document_id}}"
+							],
+							"variable": [
+								{
+									"key": "document_id",
+									"value": "1",
+									"description": "Document ID"
+								}
+							]
+						},
+						"description": "Delete a document. This will also delete the file from storage.\n\n**Path Parameters:**\n- `document_id`: Document ID\n\n**Permissions Required:**\n- `documents.delete`\n- Access to the document's ownership\n\n**Example Response:**\n```json\n{\n    \"success\": true,\n    \"message\": \"Document deleted successfully.\"\n}\n```"
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8000",
+			"type": "string"
+		},
+		{
+			"key": "access_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "user_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "setting_id",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "media_id",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "document_id",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "group",
+			"value": "financial",
+			"type": "string"
+		},
+		{
+			"key": "key",
+			"value": "tax_rate",
+			"type": "string"
+		}
+	]
+}
+

@@ -191,3 +191,66 @@ Ownership
               └── UnitSpecification (0-N)
 ```
 
+---
+
+## Phase 1 Modules Examples
+
+### Tenant Example
+- **File**: `tenant-example.json`
+- **Endpoint**: `GET /api/v1/tenants/{id}`
+- **Description**: Complete tenant data with user, ownership, and contracts relationships
+- **Relationships Included**:
+  - `user`: Full user information (email, phone, name, type, etc.)
+  - `ownership`: Ownership details (name, type, address, contact info)
+  - `contracts`: List of all contracts for this tenant (with unit, tenant, ownership)
+
+### Contract Example
+- **File**: `contract-example.json`
+- **Endpoint**: `GET /api/v1/contracts/{uuid}`
+- **Description**: Complete contract data with all relationships
+- **Relationships Included**:
+  - `unit`: Unit details (with building, floor, ownership)
+  - `tenant`: Tenant information (with user, ownership)
+  - `ownership`: Ownership details
+  - `created_by`: User who created the contract
+  - `approved_by`: User who approved the contract
+  - `parent`: Parent contract (for contract versions)
+  - `children`: Child contracts (contract versions/renewals)
+  - `terms`: Contract terms (key-value pairs)
+  - `invoices`: List of all invoices for this contract (with items, payments)
+
+### Invoice Example
+- **File**: `invoice-example.json`
+- **Endpoint**: `GET /api/v1/invoices/{uuid}`
+- **Description**: Complete invoice data with all relationships
+- **Relationships Included**:
+  - `contract`: Contract details (with unit, tenant.user, ownership)
+  - `ownership`: Ownership details
+  - `generated_by`: User who generated the invoice
+  - `items`: Invoice items list (type, description, quantity, unit_price, total)
+  - `payments`: List of all payments for this invoice (with confirmed_by)
+  - `total_paid`: Sum of all paid payments
+  - `remaining_amount`: Remaining amount to be paid (total - total_paid)
+
+### Payment Example
+- **File**: `payment-example.json`
+- **Endpoint**: `GET /api/v1/payments/{uuid}`
+- **Description**: Complete payment data with all relationships
+- **Relationships Included**:
+  - `invoice`: Invoice details (with contract.unit, contract.tenant.user, contract.ownership, items, payments, ownership, generated_by)
+  - `ownership`: Ownership details
+  - `confirmed_by`: User who confirmed the payment
+
+## Phase 1 Modules Notes
+
+- All examples show the full response structure including nested relationships
+- Relationships are loaded using `with()` in the controller's `show()` method
+- Some nested relationships may be `null` if not loaded (using `whenLoaded()`)
+- All dates are in ISO 8601 format (e.g., `2025-01-15T10:30:00+00:00`)
+- All monetary values are in SAR (Saudi Riyal)
+- Phone numbers are in international format with country code (+966 for Saudi Arabia)
+- Contract `ejar_code` is optional (can be `null` for older/unregistered contracts)
+- Payment `transaction_id` is optional (can be `null`)
+- Invoice `items_total` is calculated from items when items are loaded
+- Invoice `total_paid` and `remaining_amount` are calculated from payments when payments are loaded
+

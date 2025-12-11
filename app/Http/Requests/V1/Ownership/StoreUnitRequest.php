@@ -72,4 +72,56 @@ class StoreUnitRequest extends FormRequest
         // Ownership ID will be set from middleware (current_ownership_id)
         // It will be added in the controller before calling service
     }
+
+    /**
+     * Get custom attributes for validator errors.
+     */
+    public function attributes(): array
+    {
+        return [
+            'building_id' => __('messages.attributes.building_id'),
+            'floor_id' => __('messages.attributes.floor_id'),
+            'number' => __('messages.attributes.number'),
+            'type' => __('messages.attributes.type'),
+            'name' => __('messages.attributes.name'),
+            'description' => __('messages.attributes.description'),
+            'area' => __('messages.attributes.area'),
+            'price_monthly' => __('messages.attributes.price_monthly'),
+            'price_quarterly' => __('messages.attributes.price_quarterly'),
+            'price_yearly' => __('messages.attributes.price_yearly'),
+            'status' => __('messages.attributes.status'),
+            'active' => __('messages.attributes.active'),
+            'specifications' => __('messages.attributes.specifications'),
+            'specifications.*.key' => __('messages.attributes.key'),
+            'specifications.*.value' => __('messages.attributes.value'),
+            'specifications.*.type' => __('messages.attributes.type'),
+        ];
+    }
+
+    /**
+     * Get custom messages for validator errors.
+     */
+    public function messages(): array
+    {
+        return [
+            'building_id.required' => __('messages.validation.required', ['attribute' => __('messages.attributes.building_id')]),
+            'building_id.exists' => __('messages.validation.exists', ['attribute' => __('messages.attributes.building_id')]),
+            'floor_id.exists' => __('messages.validation.exists', ['attribute' => __('messages.attributes.floor_id')]),
+            'number.required' => __('messages.validation.required', ['attribute' => __('messages.attributes.number')]),
+            'number.unique' => __('messages.validation.unique', ['attribute' => __('messages.attributes.number')]),
+            'type.required' => __('messages.validation.required', ['attribute' => __('messages.attributes.type')]),
+            'area.required' => __('messages.validation.required', ['attribute' => __('messages.attributes.area')]),
+            'area.numeric' => __('messages.validation.numeric', ['attribute' => __('messages.attributes.area')]),
+            'area.min' => __('messages.validation.min', ['attribute' => __('messages.attributes.area'), 'min' => 0]),
+            'price_monthly.numeric' => __('messages.validation.numeric', ['attribute' => __('messages.attributes.price_monthly')]),
+            'price_monthly.min' => __('messages.validation.min', ['attribute' => __('messages.attributes.price_monthly'), 'min' => 0]),
+            'price_quarterly.numeric' => __('messages.validation.numeric', ['attribute' => __('messages.attributes.price_quarterly')]),
+            'price_quarterly.min' => __('messages.validation.min', ['attribute' => __('messages.attributes.price_quarterly'), 'min' => 0]),
+            'price_yearly.numeric' => __('messages.validation.numeric', ['attribute' => __('messages.attributes.price_yearly')]),
+            'price_yearly.min' => __('messages.validation.min', ['attribute' => __('messages.attributes.price_yearly'), 'min' => 0]),
+            'status.in' => __('messages.validation.in', ['attribute' => __('messages.attributes.status')]),
+            'specifications.array' => __('messages.validation.array', ['attribute' => __('messages.attributes.specifications')]),
+            'specifications.*.key.required_with' => __('messages.validation.required', ['attribute' => __('messages.attributes.key')]),
+        ];
+    }
 }

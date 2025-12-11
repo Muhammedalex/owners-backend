@@ -27,7 +27,16 @@ return Application::configure(basePath: dirname(__DIR__))
         // This middleware should run after authentication
         $middleware->alias([
             'ownership.scope' => \App\Http\Middleware\OwnershipScopeMiddleware::class,
+            'locale' => \App\Http\Middleware\LocaleMiddleware::class,
         ]);
+        
+        // Add locale middleware to all API routes (appended to API group)
+        // This ensures all API responses are localized based on:
+        // 1. Accept-Language header
+        // 2. lang query parameter
+        // 3. locale cookie
+        // 4. Default locale from config
+        $middleware->appendToGroup('api', \App\Http\Middleware\LocaleMiddleware::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

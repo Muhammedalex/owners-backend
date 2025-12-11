@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\V1\Ownership;
 
+use App\Rules\SaudiPhoneNumber;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -43,8 +44,20 @@ class UpdateOwnershipRequest extends FormRequest
             'country' => ['nullable', 'string', 'max:100'],
             'zip_code' => ['nullable', 'string', 'max:20'],
             'email' => ['nullable', 'string', 'email', 'max:255'],
-            'phone' => ['nullable', 'string', 'max:20'],
+            'phone' => ['nullable', new SaudiPhoneNumber(), 'max:20'],
             'active' => ['nullable', 'boolean'],
         ];
+    }
+
+    /**
+     * Prepare the data for validation.
+     */
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('phone') && !empty($this->phone)) {
+            $this->merge([
+                'phone' => SaudiPhoneNumber::normalize($this->phone),
+            ]);
+        }
     }
 }

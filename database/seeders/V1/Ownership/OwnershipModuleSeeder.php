@@ -16,14 +16,9 @@ class OwnershipModuleSeeder extends Seeder
         $this->command->info('Starting Ownership Module seeding...');
         $this->command->info('');
 
-        // Step 1: Seed Ownerships (with user mappings and board members)
-        $this->command->info('Step 1: Seeding ownerships...');
-        $this->call(OwnershipSeeder::class);
-        $this->command->info('');
-
-        // Step 2: Seed Property Structure (portfolios, buildings, floors, units)
-        $this->command->info('Step 2: Seeding property structure...');
-        $this->call(PropertyStructureSeeder::class);
+        // Seed Bumahriz Center (مركز بامحرز) - Complete cycle
+        $this->command->info('Seeding Bumahriz Center (مركز بامحرز)...');
+        $this->call(BumahrizCenterSeeder::class);
         $this->command->info('');
 
         $this->command->info('✅ Ownership Module seeding completed successfully!');

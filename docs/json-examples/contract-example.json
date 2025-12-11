@@ -1,0 +1,182 @@
+{
+  "success": true,
+  "message": "تم جلب البيانات بنجاح",
+  "data": {
+    "id": 1,
+    "uuid": "660e8400-e29b-41d4-a716-446655440001",
+    "unit": {
+      "id": 1,
+      "uuid": "770e8400-e29b-41d4-a716-446655440001",
+      "number": "0101",
+      "type": "apartment",
+      "name": "Unit 0101",
+      "description": "شقة 0101 في الطابق الأول",
+      "area": 120.50,
+      "price_monthly": 6000.00,
+      "price_quarterly": 17100.00,
+      "price_yearly": 64800.00,
+      "status": "rented",
+      "active": true,
+      "ownership": {
+        "uuid": "550e8400-e29b-41d4-a716-446655440000",
+        "name": "شركة الراشد العقارية"
+      },
+      "building": {
+        "uuid": "660e8400-e29b-41d4-a716-446655440001",
+        "name": "برج أ",
+        "code": "BLD-001-01"
+      },
+      "floor": {
+        "id": 1,
+        "number": 1,
+        "name": "الطابق الأول"
+      }
+    },
+    "tenant": {
+      "id": 1,
+      "user": {
+        "id": 5,
+        "uuid": "550e8400-e29b-41d4-a716-446655440005",
+        "email": "ahmed.ali@example.com",
+        "phone": "+966501234567",
+        "name": "أحمد علي محمد",
+        "first": "أحمد",
+        "last": "محمد",
+        "type": "tenant",
+        "active": true
+      },
+      "ownership": {
+        "uuid": "550e8400-e29b-41d4-a716-446655440000",
+        "name": "شركة الراشد العقارية"
+      },
+      "national_id": "1234567890",
+      "id_type": "national_id",
+      "id_expiry": "2030-12-31",
+      "id_valid": true,
+      "id_expired": false,
+      "emergency_name": "محمد علي",
+      "emergency_phone": "+966507654321",
+      "emergency_relation": "أخ",
+      "employment": "موظف",
+      "employer": "شركة التقنية المتقدمة",
+      "income": 15000.00,
+      "rating": 4.5
+    },
+    "ownership": {
+      "uuid": "550e8400-e29b-41d4-a716-446655440000",
+      "name": "شركة الراشد العقارية",
+      "legal": "شركة الراشد العقارية",
+      "type": "company",
+      "ownership_type": "real_estate",
+      "registration": "CR-1234567890",
+      "tax_id": "300012345600003",
+      "street": "طريق الملك فهد",
+      "city": "الرياض",
+      "state": "الرياض",
+      "country": "السعودية",
+      "zip_code": "12345",
+      "email": "info@alrashid.com",
+      "phone": "+966112345678",
+      "active": true
+    },
+    "number": "CNT-001-2025-00001",
+    "version": 1,
+    "parent": null,
+    "children": [],
+    "ejar_code": "EJAR-2025-001234",
+    "has_ejar_code": true,
+    "start": "2025-01-01",
+    "end": "2025-12-31",
+    "rent": 6000.00,
+    "payment_frequency": "monthly",
+    "deposit": 12000.00,
+    "deposit_status": "paid",
+    "document": "documents/contracts/CNT-001-2025-00001.pdf",
+    "signature": null,
+    "status": "active",
+    "is_active": true,
+    "is_expired": false,
+    "is_draft": false,
+    "created_by": {
+      "id": 1,
+      "uuid": "550e8400-e29b-41d4-a716-446655440001",
+      "email": "admin@alrashid.com",
+      "phone": "+966501111111",
+      "name": "مدير النظام",
+      "first": "مدير",
+      "last": "النظام",
+      "type": "admin",
+      "active": true
+    },
+    "approved_by": {
+      "id": 2,
+      "uuid": "550e8400-e29b-41d4-a716-446655440002",
+      "email": "manager@alrashid.com",
+      "phone": "+966502222222",
+      "name": "المدير العام",
+      "first": "المدير",
+      "last": "العام",
+      "type": "owner",
+      "active": true
+    },
+    "terms": [
+      {
+        "id": 1,
+        "contract_id": 1,
+        "key": "maintenance_responsibility",
+        "value": "المستأجر مسؤول عن الصيانة البسيطة. المالك يتولى الإصلاحات الكبرى.",
+        "type": "text"
+      },
+      {
+        "id": 2,
+        "contract_id": 1,
+        "key": "utilities",
+        "value": "المستأجر مسؤول عن فواتير الكهرباء والماء والإنترنت",
+        "type": "text"
+      },
+      {
+        "id": 3,
+        "contract_id": 1,
+        "key": "pets_allowed",
+        "value": "غير مسموح",
+        "type": "text"
+      }
+    ],
+    "invoices": [
+      {
+        "id": 1,
+        "uuid": "880e8400-e29b-41d4-a716-446655440001",
+        "contract": null,
+        "ownership": null,
+        "number": "INV-001-2025-00001",
+        "period_start": "2025-01-01",
+        "period_end": "2025-01-31",
+        "due": "2025-02-07",
+        "amount": 6000.00,
+        "tax": 900.00,
+        "tax_rate": 15.00,
+        "total": 6900.00,
+        "status": "paid",
+        "is_paid": true,
+        "is_overdue": false,
+        "is_draft": false,
+        "notes": null,
+        "generated_by": null,
+        "generated_at": "2025-01-01T10:00:00+00:00",
+        "paid_at": "2025-01-05T14:30:00+00:00",
+        "items": [],
+        "items_total": null,
+        "payments": [],
+        "payments_count": null,
+        "total_paid": null,
+        "remaining_amount": null,
+        "created_at": "2025-01-01T10:00:00+00:00",
+        "updated_at": "2025-01-05T14:30:00+00:00"
+      }
+    ],
+    "invoices_count": 1,
+    "created_at": "2025-01-01T10:00:00+00:00",
+    "updated_at": "2025-01-01T10:00:00+00:00"
+  }
+}
+

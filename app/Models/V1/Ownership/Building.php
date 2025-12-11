@@ -3,6 +3,8 @@
 namespace App\Models\V1\Ownership;
 
 use App\Traits\V1\Auth\HasUuid;
+use App\Traits\V1\Media\HasMedia;
+use App\Traits\V1\Document\HasDocuments;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -10,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Building extends Model
 {
-    use HasFactory, HasUuid;
+    use HasFactory, HasUuid, HasMedia, HasDocuments;
 
     /**
      * The table associated with the model.

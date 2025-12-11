@@ -1,0 +1,133 @@
+<?php
+
+namespace App\Models\V1\Tenant;
+
+use App\Models\V1\Auth\User;
+use App\Models\V1\Ownership\Ownership;
+use App\Models\V1\Contract\Contract;
+use App\Traits\V1\Media\HasMedia;
+use App\Traits\V1\Document\HasDocuments;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+class Tenant extends Model
+{
+    use HasFactory, HasMedia, HasDocuments;
+
+    /**
+     * The table associated with the model.
+     *
+     * @var string
+     */
+    protected $table = 'tenants';
+
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var array<int, string>
+     */
+    protected $fillable = [
+        'user_id',
+        'ownership_id',
+        'national_id',
+        'id_type',
+        'id_document',
+        'id_expiry',
+        'emergency_name',
+        'emergency_phone',
+        'emergency_relation',
+        'employment',
+        'employer',
+        'income',
+        'rating',
+        'notes',
+    ];
+
+    /**
+     * Get the attributes that should be cast.
+     *
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'id_expiry' => 'date',
+            'income' => 'decimal:2',
+        ];
+    }
+
+    /**
+     * Get the user associated with this tenant.
+     */
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
+
+    /**
+     * Get the ownership associated with this tenant.
+     */
+    public function ownership(): BelongsTo
+    {
+        return $this->belongsTo(Ownership::class, 'ownership_id');
+    }
+
+    /**
+     * Get the contracts for this tenant.
+     */
+    public function contracts(): HasMany
+    {
+        return $this->hasMany(Contract::class, 'tenant_id');
+    }
+
+    /**
+     * Scope a query to only include tenants for a specific ownership.
+     */
+    public function scopeForOwnership($query, int $ownershipId)
+    {
+        return $query->where('ownership_id', $ownershipId);
+    }
+
+    /**
+     * Scope a query to filter by rating.
+     */
+    public function scopeWithRating($query, string $rating)
+    {
+        return $query->where('rating', $rating);
+    }
+
+    /**
+     * Scope a query to filter by employment status.
+     */
+    public function scopeWithEmployment($query, string $employment)
+    {
+        return $query->where('employment', $employment);
+    }
+
+    /**
+     * Check if tenant has valid ID document.
+     */
+    public function hasValidId(): bool
+    {
+        if (!$this->id_expiry) {
+            return false;
+        }
+
+        return $this->id_expiry->isFuture();
+    }
+
+    /**
+     * Check if tenant ID is expired.
+     */
+    public function isIdExpired(): bool
+    {
+        if (!$this->id_expiry) {
+            return false;
+        }
+
+        return $this->id_expiry->isPast();
+    }
+}
+

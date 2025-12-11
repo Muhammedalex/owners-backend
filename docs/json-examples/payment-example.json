@@ -1,0 +1,164 @@
+{
+  "success": true,
+  "message": "تم جلب البيانات بنجاح",
+  "data": {
+    "id": 1,
+    "uuid": "990e8400-e29b-41d4-a716-446655440001",
+    "invoice": {
+      "id": 1,
+      "uuid": "880e8400-e29b-41d4-a716-446655440001",
+      "contract": {
+        "id": 1,
+        "uuid": "660e8400-e29b-41d4-a716-446655440001",
+        "unit": {
+          "id": 1,
+          "uuid": "770e8400-e29b-41d4-a716-446655440001",
+          "number": "0101",
+          "type": "apartment",
+          "name": "Unit 0101",
+          "description": "شقة 0101 في الطابق الأول",
+          "area": 120.50,
+          "price_monthly": 6000.00,
+          "price_quarterly": 17100.00,
+          "price_yearly": 64800.00,
+          "status": "rented",
+          "active": true
+        },
+        "tenant": {
+          "id": 1,
+          "user": {
+            "id": 5,
+            "uuid": "550e8400-e29b-41d4-a716-446655440005",
+            "email": "ahmed.ali@example.com",
+            "phone": "+966501234567",
+            "name": "أحمد علي محمد",
+            "first": "أحمد",
+            "last": "محمد",
+            "type": "tenant",
+            "active": true
+          },
+          "ownership": {
+            "uuid": "550e8400-e29b-41d4-a716-446655440000",
+            "name": "شركة الراشد العقارية"
+          },
+          "national_id": "1234567890",
+          "id_type": "national_id",
+          "id_expiry": "2030-12-31",
+          "id_valid": true,
+          "id_expired": false,
+          "emergency_name": "محمد علي",
+          "emergency_phone": "+966507654321",
+          "emergency_relation": "أخ",
+          "employment": "موظف",
+          "employer": "شركة التقنية المتقدمة",
+          "income": 15000.00,
+          "rating": 4.5
+        },
+        "ownership": {
+          "uuid": "550e8400-e29b-41d4-a716-446655440000",
+          "name": "شركة الراشد العقارية"
+        },
+        "number": "CNT-001-2025-00001",
+        "version": 1,
+        "ejar_code": "EJAR-2025-001234",
+        "has_ejar_code": true,
+        "start": "2025-01-01",
+        "end": "2025-12-31",
+        "rent": 6000.00,
+        "payment_frequency": "monthly",
+        "deposit": 12000.00,
+        "deposit_status": "paid",
+        "status": "active",
+        "is_active": true,
+        "is_expired": false,
+        "is_draft": false
+      },
+      "ownership": {
+        "uuid": "550e8400-e29b-41d4-a716-446655440000",
+        "name": "شركة الراشد العقارية"
+      },
+      "number": "INV-001-2025-00001",
+      "period_start": "2025-01-01",
+      "period_end": "2025-01-31",
+      "due": "2025-02-07",
+      "amount": 6000.00,
+      "tax": 900.00,
+      "tax_rate": 15.00,
+      "total": 6900.00,
+      "status": "paid",
+      "is_paid": true,
+      "is_overdue": false,
+      "is_draft": false,
+      "notes": "فاتورة إيجار شهر يناير 2025",
+      "generated_by": {
+        "id": 1,
+        "uuid": "550e8400-e29b-41d4-a716-446655440001",
+        "email": "admin@alrashid.com",
+        "phone": "+966501111111",
+        "name": "مدير النظام",
+        "first": "مدير",
+        "last": "النظام",
+        "type": "admin",
+        "active": true
+      },
+      "generated_at": "2025-01-01T10:00:00+00:00",
+      "paid_at": "2025-01-05T14:30:00+00:00",
+      "items": [
+        {
+          "id": 1,
+          "type": "rent",
+          "description": "إيجار شهر يناير 2025",
+          "quantity": 1,
+          "unit_price": 6000.00,
+          "total": 6000.00
+        }
+      ],
+      "items_total": 6000.00,
+      "payments": [],
+      "payments_count": null,
+      "total_paid": null,
+      "remaining_amount": null
+    },
+    "ownership": {
+      "uuid": "550e8400-e29b-41d4-a716-446655440000",
+      "name": "شركة الراشد العقارية",
+      "legal": "شركة الراشد العقارية",
+      "type": "company",
+      "ownership_type": "real_estate",
+      "registration": "CR-1234567890",
+      "tax_id": "300012345600003",
+      "street": "طريق الملك فهد",
+      "city": "الرياض",
+      "state": "الرياض",
+      "country": "السعودية",
+      "zip_code": "12345",
+      "email": "info@alrashid.com",
+      "phone": "+966112345678",
+      "active": true
+    },
+    "method": "bank_transfer",
+    "transaction_id": "TXN-2025-001234",
+    "amount": 6900.00,
+    "currency": "SAR",
+    "status": "paid",
+    "is_paid": true,
+    "is_pending": false,
+    "is_unpaid": false,
+    "paid_at": "2025-01-05T14:30:00+00:00",
+    "confirmed_by": {
+      "id": 2,
+      "uuid": "550e8400-e29b-41d4-a716-446655440002",
+      "email": "manager@alrashid.com",
+      "phone": "+966502222222",
+      "name": "المدير العام",
+      "first": "المدير",
+      "last": "العام",
+      "type": "owner",
+      "active": true
+    },
+    "notes": "تم التحويل البنكي بنجاح",
+    "created_at": "2025-01-05T14:30:00+00:00",
+    "updated_at": "2025-01-05T14:30:00+00:00"
+  }
+}
+

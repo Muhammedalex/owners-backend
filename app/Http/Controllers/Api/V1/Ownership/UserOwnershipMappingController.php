@@ -68,26 +68,34 @@ class UserOwnershipMappingController extends Controller
     public function assign(AssignUserToOwnershipRequest $request): JsonResponse
     {
         $currentUser = $request->user();
-
-        // Only Super Admin can use this endpoint to link users later
-        if (!$currentUser->isSuperAdmin()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Only Super Admin can assign users to ownerships. Regular owners should create users directly, which auto-links them.',
-            ], 403);
-        }
-
-        // Get ownership from cookie scope (set by middleware)
-        $ownershipId = $request->input('current_ownership_id');
-        if (!$ownershipId) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Ownership scope not found.',
-            ], 400);
-        }
+        $isSuperAdmin = $currentUser->isSuperAdmin();
 
         $data = $request->validated();
-        $data['ownership_id'] = $ownershipId;
+        
+        // Determine ownership_id:
+        // 1. If Super Admin: must provide ownership_uuid or ownership_id in request
+        // 2. If non-Super Admin: get from middleware (current_ownership_id)
+        if ($isSuperAdmin) {
+            // Super Admin must provide ownership_id or ownership_uuid
+            if (!isset($data['ownership_id']) || empty($data['ownership_id'])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ownership ID or UUID is required for Super Admin.',
+                ], 400);
+            }
+            $ownershipId = $data['ownership_id'];
+        } else {
+            // Non-Super Admin: get ownership_id from middleware
+            $ownershipId = $request->input('current_ownership_id');
+            if (!$ownershipId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ownership scope not found.',
+                ], 400);
+            }
+            // Set ownership_id in data
+            $data['ownership_id'] = $ownershipId;
+        }
 
         try {
             $mapping = $this->mappingService->create($data);

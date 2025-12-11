@@ -221,28 +221,30 @@ class AuthService
     /**
      * Create refresh token cookie.
      */
-    public function createRefreshTokenCookie(string $refreshToken): Cookie
+    public function createRefreshTokenCookie(string $refreshToken)
     {
         $expiry = now()->addDays(config('sanctum.refresh_expiration', 30));
         
-        // Create cookie using Symfony Cookie class directly
+        // Create cookie using Symfony Cookie class
+        // Using 'none' for sameSite to allow cookies in all cross-site requests
+        // Note: sameSite='none' requires secure=true (browser requirement)
         return Cookie::create(
             'refresh_token',
             $refreshToken,
             $expiry->getTimestamp(),
             '/',
-            null,
-            config('app.env') === 'production', // secure - true in production
-            true,  // httpOnly
+            null, // domain - null means current domain
+            true, // secure - always true (required for sameSite='none')
+            true, // httpOnly
             false, // raw
-            'strict'  // sameSite - 'strict' provides better CSRF protection than 'lax'
+            'none' // sameSite - 'none' allows cookies in all cross-site requests
         );
     }
 
     /**
      * Clear refresh token cookie.
      */
-    public function clearRefreshTokenCookie(): Cookie
+    public function clearRefreshTokenCookie()
     {
         // Create an expired cookie to clear it
         return Cookie::create(
@@ -251,37 +253,40 @@ class AuthService
             time() - 3600, // Expire in the past
             '/',
             null,
-            config('app.env') === 'production', // secure
-            true,  // httpOnly
+            true, // secure - always true (required for sameSite='none')
+            true, // httpOnly
             false, // raw
-            'strict'  // sameSite
+            'none' // sameSite - 'none' allows cookies in all cross-site requests
         );
     }
 
     /**
      * Create ownership UUID cookie.
      */
-    public function createOwnershipCookie(string $ownershipUuid): Cookie
+    public function createOwnershipCookie(string $ownershipUuid)
     {
         $expiry = now()->addDays(30); // 30 days
         
+        // Create cookie using Symfony Cookie class
+        // Using 'none' for sameSite to allow cookies in all cross-site requests
+        // Note: sameSite='none' requires secure=true (browser requirement)
         return Cookie::create(
             'ownership_uuid',
             $ownershipUuid,
             $expiry->getTimestamp(),
             '/',
-            null,
-            config('app.env') === 'production', // secure - true in production
-            true,  // httpOnly
+            null, // domain - null means current domain
+            true, // secure - always true (required for sameSite='none')
+            true, // httpOnly
             false, // raw
-            'strict'  // sameSite
+            'none' // sameSite - 'none' allows cookies in all cross-site requests
         );
     }
 
     /**
      * Clear ownership UUID cookie.
      */
-    public function clearOwnershipCookie(): Cookie
+    public function clearOwnershipCookie()
     {
         // Create an expired cookie to clear it
         return Cookie::create(
@@ -290,10 +295,10 @@ class AuthService
             time() - 3600, // Expire in the past
             '/',
             null,
-            config('app.env') === 'production', // secure
-            true,  // httpOnly
+            true, // secure - always true (required for sameSite='none')
+            true, // httpOnly
             false, // raw
-            'strict'  // sameSite
+            'none' // sameSite - 'none' allows cookies in all cross-site requests
         );
     }
 }

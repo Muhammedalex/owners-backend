@@ -9,11 +9,14 @@ use App\Http\Resources\V1\Ownership\UnitResource;
 use App\Models\V1\Ownership\Unit;
 use App\Models\V1\Ownership\UnitSpecification;
 use App\Services\V1\Ownership\UnitService;
+use App\Traits\HasLocalizedResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class UnitController extends Controller
 {
+    use HasLocalizedResponse;
+    
     public function __construct(
         private UnitService $unitService
     ) {}
@@ -29,10 +32,7 @@ class UnitController extends Controller
         // Get ownership ID from middleware (MANDATORY)
         $ownershipId = $request->input('current_ownership_id');
         if (!$ownershipId) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Ownership scope is required.',
-            ], 400);
+            return $this->errorResponse('messages.errors.ownership_required', 400);
         }
 
         $perPage = $request->input('per_page', 15);
@@ -43,16 +43,17 @@ class UnitController extends Controller
 
         $units = $this->unitService->paginate($perPage, $filters);
 
-        return response()->json([
-            'success' => true,
-            'data' => UnitResource::collection($units->items()),
-            'meta' => [
+        return $this->successResponse(
+            UnitResource::collection($units->items()),
+            null,
+            200,
+            [
                 'current_page' => $units->currentPage(),
                 'last_page' => $units->lastPage(),
                 'per_page' => $units->perPage(),
                 'total' => $units->total(),
-            ],
-        ]);
+            ]
+        );
     }
 
     /**
@@ -66,10 +67,7 @@ class UnitController extends Controller
         // Get ownership ID from middleware (MANDATORY)
         $ownershipId = $request->input('current_ownership_id');
         if (!$ownershipId) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Ownership scope is required.',
-            ], 400);
+            return $this->errorResponse('messages.errors.ownership_required', 400);
         }
 
         $data = $request->validated();
@@ -93,11 +91,11 @@ class UnitController extends Controller
             }
         }
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Unit created successfully.',
-            'data' => new UnitResource($unit->fresh()->load(['ownership', 'building.portfolio', 'floor', 'specifications'])),
-        ], 201);
+        return $this->successResponse(
+            new UnitResource($unit->fresh()->load(['ownership', 'building.portfolio', 'floor', 'specifications'])),
+            'units.created',
+            201
+        );
     }
 
     /**
@@ -111,25 +109,18 @@ class UnitController extends Controller
         // Verify ownership scope (MANDATORY)
         $ownershipId = $request->input('current_ownership_id');
         if (!$ownershipId || $unit->ownership_id != $ownershipId) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Unit not found or access denied.',
-            ], 404);
+            return $this->notFoundResponse('units.not_found');
         }
 
         $unit = $this->unitService->findByUuid($unit->uuid);
 
         if (!$unit) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Unit not found.',
-            ], 404);
+            return $this->notFoundResponse('units.not_found');
         }
 
-        return response()->json([
-            'success' => true,
-            'data' => new UnitResource($unit->load(['ownership', 'building.portfolio', 'floor', 'specifications'])),
-        ]);
+        return $this->successResponse(
+            new UnitResource($unit->load(['ownership', 'building.portfolio', 'floor', 'specifications']))
+        );
     }
 
     /**
@@ -143,10 +134,7 @@ class UnitController extends Controller
         // Verify ownership scope (MANDATORY)
         $ownershipId = $request->input('current_ownership_id');
         if (!$ownershipId || $unit->ownership_id != $ownershipId) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Unit not found or access denied.',
-            ], 404);
+            return $this->notFoundResponse('units.not_found');
         }
 
         $data = $request->validated();
@@ -175,11 +163,10 @@ class UnitController extends Controller
             }
         }
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Unit updated successfully.',
-            'data' => new UnitResource($unit->fresh()->load(['ownership', 'building.portfolio', 'floor', 'specifications'])),
-        ]);
+        return $this->successResponse(
+            new UnitResource($unit->fresh()->load(['ownership', 'building.portfolio', 'floor', 'specifications'])),
+            'units.updated'
+        );
     }
 
     /**
@@ -193,18 +180,12 @@ class UnitController extends Controller
         // Verify ownership scope (MANDATORY)
         $ownershipId = $request->input('current_ownership_id');
         if (!$ownershipId || $unit->ownership_id != $ownershipId) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Unit not found or access denied.',
-            ], 404);
+            return $this->notFoundResponse('units.not_found');
         }
 
         $this->unitService->delete($unit);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Unit deleted successfully.',
-        ]);
+        return $this->successResponse(null, 'units.deleted');
     }
 
     /**
@@ -218,19 +199,15 @@ class UnitController extends Controller
         // Verify ownership scope (MANDATORY)
         $ownershipId = $request->input('current_ownership_id');
         if (!$ownershipId || $unit->ownership_id != $ownershipId) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Unit not found or access denied.',
-            ], 404);
+            return $this->notFoundResponse('units.not_found');
         }
 
         $unit = $this->unitService->activate($unit);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Unit activated successfully.',
-            'data' => new UnitResource($unit->load(['ownership', 'building.portfolio', 'floor', 'specifications'])),
-        ]);
+        return $this->successResponse(
+            new UnitResource($unit->load(['ownership', 'building.portfolio', 'floor', 'specifications'])),
+            'units.activated'
+        );
     }
 
     /**
@@ -244,18 +221,14 @@ class UnitController extends Controller
         // Verify ownership scope (MANDATORY)
         $ownershipId = $request->input('current_ownership_id');
         if (!$ownershipId || $unit->ownership_id != $ownershipId) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Unit not found or access denied.',
-            ], 404);
+            return $this->notFoundResponse('units.not_found');
         }
 
         $unit = $this->unitService->deactivate($unit);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Unit deactivated successfully.',
-            'data' => new UnitResource($unit->load(['ownership', 'building.portfolio', 'floor', 'specifications'])),
-        ]);
+        return $this->successResponse(
+            new UnitResource($unit->load(['ownership', 'building.portfolio', 'floor', 'specifications'])),
+            'units.deactivated'
+        );
     }
 }

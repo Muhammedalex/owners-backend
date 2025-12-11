@@ -5,6 +5,8 @@ namespace Database\Seeders;
 use Database\Seeders\V1\Auth\AuthModuleSeeder;
 use Database\Seeders\V1\Notification\NotificationModuleSeeder;
 use Database\Seeders\V1\Ownership\OwnershipModuleSeeder;
+use Database\Seeders\V1\Phase1\Phase1ModuleSeeder;
+use Database\Seeders\V1\Setting\SettingModuleSeeder;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -30,6 +32,14 @@ class DatabaseSeeder extends Seeder
 
         // Seed Notification Module (Notifications for all users)
         $this->call(NotificationModuleSeeder::class);
+        $this->command->info('');
+
+        // Seed Phase 1 Modules (Tenants, Contracts, Invoices, Payments)
+        $this->call(Phase1ModuleSeeder::class);
+        $this->command->info('');
+
+        // Seed Settings Module (System-wide and Ownership-specific settings)
+        $this->call(SettingModuleSeeder::class);
 
         $this->command->info('');
         $this->command->info('✅ Database seeding completed!');

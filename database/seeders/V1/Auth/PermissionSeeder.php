@@ -80,16 +80,71 @@ class PermissionSeeder extends Seeder
             'contracts.sign',
             'contracts.terminate',
 
-            // Billing & Payment Module (for future)
-            'billing.invoices.view',
-            'billing.invoices.create',
-            'billing.invoices.update',
-            'billing.invoices.delete',
-            'billing.invoices.generate',
-            'billing.payments.view',
-            'billing.payments.create',
-            'billing.payments.confirm',
-            'billing.reports.view',
+            // Invoice Module
+            'invoices.view',
+            'invoices.create',
+            'invoices.update',
+            'invoices.delete',
+            
+            // Payment Module
+            'payments.view',
+            'payments.create',
+            'payments.update',
+            'payments.delete',
+
+            // Reports Module
+            'reports.view',
+
+            // Settings Module
+            'settings.view',
+            'settings.create',
+            'settings.update',
+            'settings.delete',
+            // Settings by group
+            'settings.financial.view',
+            'settings.financial.update',
+            'settings.contract.view',
+            'settings.contract.update',
+            'settings.invoice.view',
+            'settings.invoice.update',
+            'settings.tenant.view',
+            'settings.tenant.update',
+            'settings.notification.view',
+            'settings.notification.update',
+            'settings.maintenance.view',
+            'settings.maintenance.update',
+            'settings.facility.view',
+            'settings.facility.update',
+            'settings.document.view',
+            'settings.document.update',
+            'settings.media.view',
+            'settings.media.update',
+            'settings.reporting.view',
+            'settings.reporting.update',
+            'settings.localization.view',
+            'settings.localization.update',
+            'settings.security.view',
+            'settings.security.update',
+            'settings.system.view', // Super Admin only
+            'settings.system.update', // Super Admin only
+
+            // Media Module
+            'media.view',
+            'media.create',
+            'media.update',
+            'media.delete',
+            'media.upload',
+            'media.download',
+            'media.reorder',
+
+            // Documents Module
+            'documents.view',
+            'documents.create',
+            'documents.update',
+            'documents.delete',
+            'documents.upload',
+            'documents.download',
+            'documents.archive',
 
             // Maintenance Module (for future)
             'maintenance.categories.view',

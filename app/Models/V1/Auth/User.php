@@ -8,6 +8,8 @@ use App\Models\V1\Ownership\UserOwnershipMapping;
 use App\Traits\V1\Auth\GeneratesTokens;
 use App\Traits\V1\Auth\HasUuid;
 use App\Traits\V1\Auth\LogsActivity;
+use App\Traits\V1\Media\HasMedia;
+use App\Traits\V1\Document\HasDocuments;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -26,7 +28,7 @@ use Spatie\Permission\Traits\HasRoles;
  */
 class User extends Authenticatable implements MustVerifyEmail
 {
-    use HasApiTokens, HasFactory, Notifiable, HasRoles, HasUuid, GeneratesTokens, LogsActivity;
+    use HasApiTokens, HasFactory, Notifiable, HasRoles, HasUuid, GeneratesTokens, LogsActivity, HasMedia, HasDocuments;
 
     /**
      * Create a new factory instance for the model.
@@ -163,10 +165,14 @@ class User extends Authenticatable implements MustVerifyEmail
 
     /**
      * Check if user is Super Admin.
+     * Uses withSystemRoles() to bypass the global scope that excludes system roles.
      */
     public function isSuperAdmin(): bool
     {
-        return $this->hasRole('Super Admin');
+        return $this->roles()
+            ->withoutGlobalScope(\App\Models\Scopes\ExcludeSystemRolesScope::class)
+            ->where('name', 'Super Admin')
+            ->exists();
     }
 
     /**

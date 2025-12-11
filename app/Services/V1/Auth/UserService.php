@@ -59,8 +59,14 @@ class UserService
     {
         $user = $this->userRepository->create($data);
 
-        // Sync roles if provided
-        if (isset($data['roles']) && is_array($data['roles'])) {
+        // Auto-assign role based on user type if roles are not explicitly provided
+        if (!isset($data['roles']) || !is_array($data['roles']) || empty($data['roles'])) {
+            $roleName = $this->getRoleNameByUserType($data['type'] ?? null);
+            if ($roleName) {
+                $this->assignRole($user, $roleName);
+            }
+        } else {
+            // Sync roles if provided explicitly
             $this->syncRoles($user, $data['roles']);
         }
 
@@ -147,11 +153,20 @@ class UserService
      */
     public function update(User $user, array $data): User
     {
+        $oldType = $user->type;
         $user = $this->userRepository->update($user, $data);
 
-        // Sync roles if provided
+        // Sync roles if provided explicitly
         if (isset($data['roles']) && is_array($data['roles'])) {
             $this->syncRoles($user, $data['roles']);
+        } elseif (isset($data['type']) && $data['type'] !== $oldType) {
+            // If type changed and roles not explicitly provided, update role based on new type
+            $roleName = $this->getRoleNameByUserType($data['type']);
+            if ($roleName) {
+                // Remove old role and assign new role
+                $user->syncRoles([]); // Clear existing roles
+                $this->assignRole($user, $roleName);
+            }
         }
 
         return $user->load('roles');
@@ -213,6 +228,35 @@ class UserService
             $user->removeRole($role);
         }
         return $user->load('roles');
+    }
+
+    /**
+     * Get role name based on user type.
+     * Maps user types to their corresponding roles.
+     * 
+     * @param string|null $userType
+     * @return string|null Role name or null if no mapping exists
+     */
+    protected function getRoleNameByUserType(?string $userType): ?string
+    {
+        if (!$userType) {
+            return null;
+        }
+
+        // Map user types to role names
+        $typeToRoleMap = [
+            'super_admin' => 'Super Admin',
+            'owner' => 'Owner',
+            'tenant' => 'Tenant',
+            'accountant' => 'Accountant',
+            'moderator' => 'Moderator',
+            'board_member' => 'Board Member',
+            'property_manager' => 'Property Manager',
+            'maintenance_manager' => 'Maintenance Manager',
+            'facility_manager' => 'Facility Manager',
+        ];
+
+        return $typeToRoleMap[$userType] ?? null;
     }
 }
 

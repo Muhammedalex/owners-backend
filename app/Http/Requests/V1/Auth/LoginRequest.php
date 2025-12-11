@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\V1\Auth;
 
+use App\Rules\SaudiPhoneNumber;
 use Illuminate\Foundation\Http\FormRequest;
 
 class LoginRequest extends FormRequest
@@ -31,10 +32,23 @@ class LoginRequest extends FormRequest
             'phone' => [
                 'required_without:email',
                 'nullable',
-                'string',
+                new SaudiPhoneNumber(),
             ],
             'password' => ['required', 'string'],
             'device_name' => ['nullable', 'string', 'max:255'],
+        ];
+    }
+
+    /**
+     * Get custom attributes for validator errors.
+     */
+    public function attributes(): array
+    {
+        return [
+            'email' => __('messages.attributes.email'),
+            'phone' => __('messages.attributes.phone'),
+            'password' => __('messages.attributes.password'),
+            'device_name' => __('messages.attributes.device_name'),
         ];
     }
 
@@ -44,9 +58,23 @@ class LoginRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'email.required_without' => 'Email or phone is required.',
-            'phone.required_without' => 'Email or phone is required.',
+            'email.required_without' => __('messages.validation.required', ['attribute' => __('messages.attributes.email')]),
+            'phone.required_without' => __('messages.validation.required', ['attribute' => __('messages.attributes.phone')]),
+            'password.required' => __('messages.validation.required', ['attribute' => __('messages.attributes.password')]),
+            'email.email' => __('messages.validation.email', ['attribute' => __('messages.attributes.email')]),
         ];
+    }
+
+    /**
+     * Prepare the data for validation.
+     */
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('phone') && !empty($this->phone)) {
+            $this->merge([
+                'phone' => SaudiPhoneNumber::normalize($this->phone),
+            ]);
+        }
     }
 }
 

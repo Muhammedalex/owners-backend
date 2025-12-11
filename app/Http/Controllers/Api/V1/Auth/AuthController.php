@@ -90,7 +90,7 @@ class AuthController extends Controller
             // Set ownership cookie if default ownership exists
             if (isset($result['default_ownership_uuid']) && $result['default_ownership_uuid']) {
                 $ownershipCookie = $this->authService->createOwnershipCookie($result['default_ownership_uuid']);
-                $response->withCookie($ownershipCookie);
+                $response = $response->withCookie($ownershipCookie);
             }
 
             return $response;
@@ -144,7 +144,7 @@ class AuthController extends Controller
             // Set ownership cookie if default ownership exists
             if (isset($result['default_ownership_uuid']) && $result['default_ownership_uuid']) {
                 $ownershipCookie = $this->authService->createOwnershipCookie($result['default_ownership_uuid']);
-                $response->withCookie($ownershipCookie);
+                $response = $response->withCookie($ownershipCookie);
             }
 
             return $response;

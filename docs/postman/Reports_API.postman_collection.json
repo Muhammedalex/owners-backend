@@ -1,0 +1,950 @@
+{
+	"info": {
+		"_postman_id": "reports-api-collection",
+		"name": "Reports API - V1",
+		"description": "API collection for Reports module with comprehensive analytics and dashboard endpoints.\n\n**Token Storage Strategy:**\n- Access Token: Stored in environment variable (use in Authorization header)\n- Refresh Token: Stored in httpOnly cookie (automatically managed by Postman)\n- Ownership UUID: Stored in httpOnly cookie (automatically managed by Postman)\n\n**Important Notes:**\n- Cookies are automatically sent with requests in Postman\n- View cookies: Click 'Cookies' link below the URL bar\n- Refresh token and ownership_uuid are NOT in JSON responses (they're in httpOnly cookies)\n- Ensure cookies are enabled in Postman settings\n- All endpoints require `ownership.scope` middleware (ownership_id is taken from cookie)\n- Ownership scope is MANDATORY for all users (including Super Admin)\n- Reports are cached for 5 minutes for performance\n- Use cache/clear endpoint to manually clear cache\n\n**Available Reports:**\n- Dashboard: Comprehensive overview\n- Tenants: Summary, ratings, employment, top tenants\n- Contracts: Summary, status, financial, expiring\n- Invoices: Summary, status, overdue\n- Revenue: Monthly, by period (daily/weekly/monthly)\n- Payments: Summary, methods distribution",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "30358504"
+	},
+	"item": [
+		{
+			"name": "Authentication",
+			"item": [
+				{
+					"name": "Register",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const response = pm.response.json();",
+									"    pm.environment.set('access_token', response.data.tokens.access_token);",
+									"    pm.environment.set('user_id', response.data.user.id);",
+									"    // Note: refresh_token is automatically stored in httpOnly cookie",
+									"    // Cookies are managed automatically by Postman",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"user@example.com\",\n    \"password\": \"SecurePassword123!\",\n    \"password_confirmation\": \"SecurePassword123!\",\n    \"first\": \"John\",\n    \"last\": \"Doe\",\n    \"phone\": \"+966501234567\",\n    \"company\": \"Example Company\",\n    \"type\": \"owner\",\n    \"device_name\": \"iPhone 14 Pro\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/auth/register",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"register"
+							]
+						},
+						"description": "Register a new user account. After successful registration, an email verification link will be sent to the provided email address.\n\n**Required Fields:**\n- `email`: Valid email address (must be unique)\n- `password`: Password (min 8 characters, must match password_confirmation)\n- `password_confirmation`: Must match password\n\n**Optional Fields:**\n- `phone`: Saudi phone number (must be unique if provided, will be normalized to +966 format)\n- `first`: First name\n- `last`: Last name\n- `company`: Company name\n- `type`: User type (default: 'user')\n- `device_name`: Device identifier for token management"
+					}
+				},
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    pm.environment.set('access_token', response.data.tokens.access_token);",
+									"    pm.environment.set('user_id', response.data.user.id);",
+									"    // Note: refresh_token is automatically stored in httpOnly cookie",
+									"    // Cookies are managed automatically by Postman",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"user@example.com\",\n    \"password\": \"SecurePassword123!\",\n    \"device_name\": \"iPhone 14 Pro\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/auth/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"login"
+							]
+						},
+						"description": "Authenticate a user and receive access token.\n\n**Login Methods:**\nYou can login using either email OR phone:\n- `email` + `password`\n- `phone` + `password`\n\n**Required Fields:**\n- `email` OR `phone`: User identifier\n- `password`: User password\n\n**Optional Fields:**\n- `device_name`: Device identifier for token management\n\n**Response:**\n- `access_token`: Stored in environment variable (use for Authorization header)\n- `refresh_token`: Automatically stored in httpOnly cookie (not in JSON response)\n- `ownership_uuid`: Automatically stored in httpOnly cookie if user has default ownership"
+					}
+				},
+				{
+					"name": "Refresh Token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    pm.environment.set('access_token', response.data.tokens.access_token);",
+									"    // Note: refresh_token is automatically updated in httpOnly cookie",
+									"    // Cookies are managed automatically by Postman",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/auth/refresh",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"refresh"
+							]
+						},
+						"description": "Refresh an expired access token using refresh token from cookie.\n\n**How it works:**\n1. When access token expires, call this endpoint\n2. Refresh token is automatically sent from httpOnly cookie\n3. Old refresh token is invalidated\n4. New access token returned in JSON\n5. New refresh token set in httpOnly cookie\n6. Token rotation for enhanced security\n\n**Request:**\n- Empty body (refresh token comes from cookie)\n- Cookie is automatically sent by Postman"
+					}
+				},
+				{
+					"name": "Me",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/auth/me",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"me"
+							]
+						},
+						"description": "Get current authenticated user information.\n\n**Response includes:**\n- User profile data\n- Permissions\n- Roles\n- Ownerships access"
+					}
+				},
+				{
+					"name": "Logout",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/auth/logout",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"logout"
+							]
+						},
+						"description": "Logout current user and invalidate tokens.\n\n**What happens:**\n- Current access token is revoked\n- Refresh token cookie is cleared\n- User session is terminated"
+					}
+				}
+			]
+		},
+		{
+			"name": "Dashboard",
+			"item": [
+				{
+					"name": "Get Dashboard Overview",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/reports/dashboard?start_date=2025-01-01&end_date=2025-12-31",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"reports",
+								"dashboard"
+							],
+							"query": [
+								{
+									"key": "start_date",
+									"value": "2025-01-01",
+									"description": "Start date (Y-m-d format)"
+								},
+								{
+									"key": "end_date",
+									"value": "2025-12-31",
+									"description": "End date (Y-m-d format)"
+								}
+							]
+						},
+						"description": "Get comprehensive dashboard overview with all key metrics.\n\n**Query Parameters:**\n- `start_date` (optional): Start date for period (Y-m-d format)\n- `end_date` (optional): End date for period (Y-m-d format)\n\n**Response includes:**\n- Tenants summary (total, active, new this month, ratings)\n- Contracts summary (total, active, expiring soon, status, financial)\n- Invoices summary (total, status, amounts, overdue)\n- Payments summary (total, status, methods)\n- Revenue summary (this month, last month, growth, period revenue)\n- Performance metrics (collection rate, etc.)"
+					}
+				}
+			]
+		},
+		{
+			"name": "Tenants Reports",
+			"item": [
+				{
+					"name": "Get Tenants Summary",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/reports/tenants/summary",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"reports",
+								"tenants",
+								"summary"
+							]
+						},
+						"description": "Get tenants summary statistics.\n\n**Response includes:**\n- Total tenants\n- Active tenants (with active contracts)\n- New tenants this month\n- Ratings distribution (excellent, good, fair, poor)"
+					}
+				},
+				{
+					"name": "Get Tenants Ratings",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/reports/tenants/ratings",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"reports",
+								"tenants",
+								"ratings"
+							]
+						},
+						"description": "Get tenants ratings distribution.\n\n**Response includes:**\n- Count and percentage for each rating:\n  - Excellent\n  - Good\n  - Fair\n  - Poor\n- Total count"
+					}
+				},
+				{
+					"name": "Get Employment Distribution",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/reports/tenants/employment",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"reports",
+								"tenants",
+								"employment"
+							]
+						},
+						"description": "Get tenants employment status distribution.\n\n**Response includes:**\n- Count and percentage for each employment status:\n  - Employed\n  - Self Employed\n  - Unemployed\n  - Retired\n  - Student\n- Total count\n- Average income"
+					}
+				},
+				{
+					"name": "Get Top Tenants",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/reports/tenants/top?limit=10",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"reports",
+								"tenants",
+								"top"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "10",
+									"description": "Number of top tenants to return (default: 10, max: 100)"
+								}
+							]
+						},
+						"description": "Get top tenants by payment performance.\n\n**Query Parameters:**\n- `limit` (optional): Number of tenants to return (default: 10, max: 100)\n\n**Response includes:**\n- Tenant ID and name\n- Rating\n- Total invoices\n- Paid invoices\n- Payment rate\n- On-time payment rate\n- Total paid amount\n\n**Sorted by:** Payment rate (highest first)"
+					}
+				}
+			]
+		},
+		{
+			"name": "Contracts Reports",
+			"item": [
+				{
+					"name": "Get Contracts Summary",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/reports/contracts/summary",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"reports",
+								"contracts",
+								"summary"
+							]
+						},
+						"description": "Get contracts summary statistics.\n\n**Response includes:**\n- Total contracts\n- Active contracts\n- Expiring soon (within 30 days)\n- Status distribution (draft, pending, active, expired, terminated, cancelled)\n- Total rent (sum of active contracts)\n- Total deposits"
+					}
+				},
+				{
+					"name": "Get Contracts Status",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/reports/contracts/status",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"reports",
+								"contracts",
+								"status"
+							]
+						},
+						"description": "Get contracts status distribution.\n\n**Response includes:**\n- Count and percentage for each status:\n  - Draft\n  - Pending\n  - Active\n  - Expired\n  - Terminated\n  - Cancelled\n- Total count"
+					}
+				},
+				{
+					"name": "Get Contracts Financial",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/reports/contracts/financial",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"reports",
+								"contracts",
+								"financial"
+							]
+						},
+						"description": "Get contracts financial summary.\n\n**Response includes:**\n- Total rent (sum of active contracts)\n- Average rent\n- Minimum rent\n- Maximum rent\n- Deposits by status (pending, paid, refunded, forfeited)\n- Payment frequency distribution (monthly, quarterly, yearly, weekly)"
+					}
+				},
+				{
+					"name": "Get Expiring Contracts",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/reports/contracts/expiring?days=30",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"reports",
+								"contracts",
+								"expiring"
+							],
+							"query": [
+								{
+									"key": "days",
+									"value": "30",
+									"description": "Number of days to look ahead (default: 30, max: 365)"
+								}
+							]
+						},
+						"description": "Get contracts expiring within specified days.\n\n**Query Parameters:**\n- `days` (optional): Number of days to look ahead (default: 30, max: 365)\n\n**Response includes:**\n- Contract ID and UUID\n- Contract number\n- Tenant name\n- Unit number\n- End date\n- Days remaining\n- Rent amount\n\n**Sorted by:** End date (earliest first)"
+					}
+				}
+			]
+		},
+		{
+			"name": "Invoices Reports",
+			"item": [
+				{
+					"name": "Get Invoices Summary",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/reports/invoices/summary?start_date=2025-01-01&end_date=2025-12-31",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"reports",
+								"invoices",
+								"summary"
+							],
+							"query": [
+								{
+									"key": "start_date",
+									"value": "2025-01-01",
+									"description": "Start date (Y-m-d format)"
+								},
+								{
+									"key": "end_date",
+									"value": "2025-12-31",
+									"description": "End date (Y-m-d format)"
+								}
+							]
+						},
+						"description": "Get invoices summary for a period.\n\n**Query Parameters:**\n- `start_date` (optional): Start date for period (Y-m-d format, default: start of current month)\n- `end_date` (optional): End date for period (Y-m-d format, default: end of current month)\n\n**Response includes:**\n- Total invoices\n- Status distribution (draft, sent, paid, overdue, cancelled)\n- Amounts (total amount, total tax, total total, overdue amount)\n- Overdue count"
+					}
+				},
+				{
+					"name": "Get Invoices Status",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/reports/invoices/status?start_date=2025-01-01&end_date=2025-12-31",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"reports",
+								"invoices",
+								"status"
+							],
+							"query": [
+								{
+									"key": "start_date",
+									"value": "2025-01-01",
+									"description": "Start date (Y-m-d format)"
+								},
+								{
+									"key": "end_date",
+									"value": "2025-12-31",
+									"description": "End date (Y-m-d format)"
+								}
+							]
+						},
+						"description": "Get invoices status distribution for a period.\n\n**Query Parameters:**\n- `start_date` (optional): Start date for period (Y-m-d format)\n- `end_date` (optional): End date for period (Y-m-d format)\n\n**Response includes:**\n- Count and percentage for each status:\n  - Draft\n  - Sent\n  - Paid\n  - Overdue\n  - Cancelled\n- Total count"
+					}
+				},
+				{
+					"name": "Get Overdue Invoices",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/reports/invoices/overdue",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"reports",
+								"invoices",
+								"overdue"
+							]
+						},
+						"description": "Get all overdue invoices.\n\n**Response includes:**\n- Invoice ID and UUID\n- Invoice number\n- Tenant name\n- Unit number\n- Due date\n- Days overdue\n- Total amount\n- Amount (before tax)\n\n**Sorted by:** Due date (earliest first)"
+					}
+				}
+			]
+		},
+		{
+			"name": "Revenue Reports",
+			"item": [
+				{
+					"name": "Get Monthly Revenue",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/reports/revenue/monthly?months=12",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"reports",
+								"revenue",
+								"monthly"
+							],
+							"query": [
+								{
+									"key": "months",
+									"value": "12",
+									"description": "Number of months to return (default: 12, max: 24)"
+								}
+							]
+						},
+						"description": "Get monthly revenue data.\n\n**Query Parameters:**\n- `months` (optional): Number of months to return (default: 12, max: 24)\n\n**Response includes:**\n- Month (Y-m format)\n- Month name (F Y format)\n- Revenue (from paid invoices)\n- Payments (from payments table)\n\n**Data:** Last N months from current month"
+					}
+				},
+				{
+					"name": "Get Revenue By Period",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/reports/revenue/period?period=monthly&count=12",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"reports",
+								"revenue",
+								"period"
+							],
+							"query": [
+								{
+									"key": "period",
+									"value": "monthly",
+									"description": "Period type: daily, weekly, or monthly (default: monthly)"
+								},
+								{
+									"key": "count",
+									"value": "12",
+									"description": "Number of periods to return (default: 12, max: 365)"
+								}
+							]
+						},
+						"description": "Get revenue data by period (daily, weekly, or monthly).\n\n**Query Parameters:**\n- `period` (optional): Period type - 'daily', 'weekly', or 'monthly' (default: monthly)\n- `count` (optional): Number of periods to return (default: 12, max: 365)\n\n**Response includes:**\n- Period label\n- Period start date\n- Period end date\n- Revenue (from paid invoices)\n- Total invoices\n- Paid invoices\n- Collection rate\n\n**Data:** Last N periods from current period"
+					}
+				}
+			]
+		},
+		{
+			"name": "Payments Reports",
+			"item": [
+				{
+					"name": "Get Payments Summary",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/reports/payments/summary?start_date=2025-01-01&end_date=2025-12-31",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"reports",
+								"payments",
+								"summary"
+							],
+							"query": [
+								{
+									"key": "start_date",
+									"value": "2025-01-01",
+									"description": "Start date (Y-m-d format)"
+								},
+								{
+									"key": "end_date",
+									"value": "2025-12-31",
+									"description": "End date (Y-m-d format)"
+								}
+							]
+						},
+						"description": "Get payments summary for a period.\n\n**Query Parameters:**\n- `start_date` (optional): Start date for period (Y-m-d format, default: start of current month)\n- `end_date` (optional): End date for period (Y-m-d format, default: end of current month)\n\n**Response includes:**\n- Total payments\n- Status distribution (pending, paid, unpaid)\n- Total amount\n- Methods distribution (cash, bank_transfer, check, other) with count and amount"
+					}
+				},
+				{
+					"name": "Get Payment Methods",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/reports/payments/methods?start_date=2025-01-01&end_date=2025-12-31",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"reports",
+								"payments",
+								"methods"
+							],
+							"query": [
+								{
+									"key": "start_date",
+									"value": "2025-01-01",
+									"description": "Start date (Y-m-d format)"
+								},
+								{
+									"key": "end_date",
+									"value": "2025-12-31",
+									"description": "End date (Y-m-d format)"
+								}
+							]
+						},
+						"description": "Get payment methods distribution for a period.\n\n**Query Parameters:**\n- `start_date` (optional): Start date for period (Y-m-d format)\n- `end_date` (optional): End date for period (Y-m-d format)\n\n**Response includes:**\n- Count, amount, and percentage for each payment method:\n  - Cash\n  - Bank Transfer\n  - Check\n  - Other\n- Total count and amount"
+					}
+				}
+			]
+		},
+		{
+			"name": "Cache Management",
+			"item": [
+				{
+					"name": "Clear Reports Cache",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/reports/cache/clear",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"reports",
+								"cache",
+								"clear"
+							]
+						},
+						"description": "Clear all cached reports data for current ownership.\n\n**What happens:**\n- All cached reports for the current ownership are cleared\n- Next report request will fetch fresh data from database\n- Cache duration is 5 minutes by default\n\n**Use cases:**\n- After data updates that affect reports\n- When you need real-time data\n- For testing purposes"
+					}
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8000",
+			"type": "string"
+		},
+		{
+			"key": "access_token",
+			"value": "",
+			"type": "string"
+		}
+	]
+}
+

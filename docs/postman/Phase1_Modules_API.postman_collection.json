@@ -1,0 +1,1826 @@
+{
+	"info": {
+		"_postman_id": "phase1-modules-api-collection",
+		"name": "Phase 1 Modules API - V1",
+		"description": "API collection for Phase 1 modules: Authentication, Tenants, Contracts, Invoices, and Payments.\n\n**Token Storage Strategy:**\n- Access Token: Stored in environment variable (use in Authorization header)\n- Refresh Token: Stored in httpOnly cookie (automatically managed by Postman)\n- Ownership UUID: Stored in httpOnly cookie (automatically managed by Postman)\n\n**Important Notes:**\n- Cookies are automatically sent with requests in Postman\n- View cookies: Click 'Cookies' link below the URL bar\n- Refresh token and ownership_uuid are NOT in JSON responses (they're in httpOnly cookies)\n- Ensure cookies are enabled in Postman settings\n- All endpoints require `ownership.scope` middleware (ownership_id is taken from cookie)\n- Ownership scope is MANDATORY for all users (including Super Admin)\n\n**Module Relationships:**\n- Ownership → Tenant → Contract → Invoice → Payment\n- Contract Terms are nested under Contracts\n- Invoice Items are nested under Invoices",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "30358504"
+	},
+	"item": [
+		{
+			"name": "Authentication",
+			"item": [
+				{
+					"name": "Register",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const response = pm.response.json();",
+									"    pm.environment.set('access_token', response.data.tokens.access_token);",
+									"    pm.environment.set('user_id', response.data.user.id);",
+									"    // Note: refresh_token is automatically stored in httpOnly cookie",
+									"    // Cookies are managed automatically by Postman",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"user@example.com\",\n    \"password\": \"SecurePassword123!\",\n    \"password_confirmation\": \"SecurePassword123!\",\n    \"first\": \"John\",\n    \"last\": \"Doe\",\n    \"phone\": \"+966501234567\",\n    \"company\": \"Example Company\",\n    \"type\": \"owner\",\n    \"device_name\": \"iPhone 14 Pro\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/auth/register",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"register"
+							]
+						},
+						"description": "Register a new user account. After successful registration, an email verification link will be sent to the provided email address.\n\n**Required Fields:**\n- `email`: Valid email address (must be unique)\n- `password`: Password (min 8 characters, must match password_confirmation)\n- `password_confirmation`: Must match password\n\n**Optional Fields:**\n- `phone`: Phone number (must be unique if provided)\n- `first`: First name\n- `last`: Last name\n- `company`: Company name\n- `type`: User type (default: 'user')\n- `device_name`: Device identifier for token management"
+					}
+				},
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    pm.environment.set('access_token', response.data.tokens.access_token);",
+									"    pm.environment.set('user_id', response.data.user.id);",
+									"    // Note: refresh_token is automatically stored in httpOnly cookie",
+									"    // Cookies are managed automatically by Postman",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"user@example.com\",\n    \"password\": \"SecurePassword123!\",\n    \"device_name\": \"iPhone 14 Pro\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/auth/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"login"
+							]
+						},
+						"description": "Authenticate a user and receive access token.\n\n**Login Methods:**\nYou can login using either email OR phone:\n- `email` + `password`\n- `phone` + `password`\n\n**Required Fields:**\n- `email` OR `phone`: User identifier\n- `password`: User password\n\n**Optional Fields:**\n- `device_name`: Device identifier for token management\n\n**Response:**\n- `access_token`: Stored in environment variable (use for Authorization header)\n- `refresh_token`: Automatically stored in httpOnly cookie (not in JSON response)\n- `ownership_uuid`: Automatically stored in httpOnly cookie if user has default ownership"
+					}
+				},
+				{
+					"name": "Refresh Token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    pm.environment.set('access_token', response.data.tokens.access_token);",
+									"    // Note: refresh_token is automatically updated in httpOnly cookie",
+									"    // Cookies are managed automatically by Postman",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/auth/refresh",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"refresh"
+							]
+						},
+						"description": "Refresh an expired access token using refresh token from cookie.\n\n**How it works:**\n1. When access token expires, call this endpoint\n2. Refresh token is automatically sent from httpOnly cookie\n3. Old refresh token is invalidated\n4. New access token returned in JSON\n5. New refresh token set in httpOnly cookie\n6. Token rotation for enhanced security\n\n**Request:**\n- Empty body (refresh token comes from cookie)\n- Cookie is automatically sent by Postman"
+					}
+				},
+				{
+					"name": "Me",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/auth/me",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"me"
+							]
+						},
+						"description": "Get current authenticated user information.\n\n**Authentication:**\n- Requires valid access token\n- Requires ownership scope (ownership_uuid cookie)"
+					}
+				},
+				{
+					"name": "Logout",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/auth/logout",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"logout"
+							]
+						},
+						"description": "Logout from current device. Revokes the current access token and refresh token.\n\n**Authentication:**\n- Requires valid access token\n\n**Request:**\n- Empty body\n- Refresh token is automatically read from httpOnly cookie"
+					}
+				}
+			]
+		},
+		{
+			"name": "Tenants",
+			"item": [
+				{
+					"name": "List Tenants",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/tenants?per_page=15&search=&rating=&employment=",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"tenants"
+							],
+							"query": [
+								{
+									"key": "per_page",
+									"value": "15",
+									"description": "Items per page (default: 15)"
+								},
+								{
+									"key": "search",
+									"value": "",
+									"description": "Search in name, email, phone, national_id"
+								},
+								{
+									"key": "rating",
+									"value": "",
+									"description": "Filter by rating: excellent, good, fair, poor"
+								},
+								{
+									"key": "employment",
+									"value": "",
+									"description": "Filter by employment: employed, self_employed, unemployed, retired, student"
+								}
+							]
+						},
+						"description": "Get a paginated list of tenants for the current ownership.\n\n**Authentication:**\n- Requires valid access token\n- Requires ownership scope (ownership_uuid cookie)\n\n**Query Parameters:**\n- `per_page`: Items per page (default: 15)\n- `search`: Search in name, email, phone, national_id\n- `rating`: Filter by rating (excellent, good, fair, poor)\n- `employment`: Filter by employment status\n\n**Note:**\n- Ownership scope is automatically applied from cookie\n- Only tenants belonging to the current ownership are returned"
+					}
+				},
+				{
+					"name": "Create Tenant",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"user_id\": 1,\n    \"national_id\": \"1234567890\",\n    \"id_type\": \"national_id\",\n    \"id_document\": \"path/to/document.pdf\",\n    \"id_expiry\": \"2026-12-31\",\n    \"emergency_name\": \"Ahmed Ali\",\n    \"emergency_phone\": \"+966501234567\",\n    \"emergency_relation\": \"Brother\",\n    \"employment\": \"employed\",\n    \"employer\": \"ABC Company\",\n    \"income\": 15000.00,\n    \"rating\": \"good\",\n    \"notes\": \"Reliable tenant\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/tenants",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"tenants"
+							]
+						},
+						"description": "Create a new tenant.\n\n**Authentication:**\n- Requires valid access token\n- Requires ownership scope (ownership_uuid cookie)\n\n**Required Fields:**\n- `user_id`: User ID (must exist in users table, must be unique)\n\n**Optional Fields:**\n- `national_id`: National ID number\n- `id_type`: Type of ID (national_id, iqama, passport, commercial_registration)\n- `id_document`: Path to ID document\n- `id_expiry`: ID expiry date\n- `emergency_name`: Emergency contact name\n- `emergency_phone`: Emergency contact phone\n- `emergency_relation`: Relationship to tenant\n- `employment`: Employment status (employed, self_employed, unemployed, retired, student)\n- `employer`: Employer name\n- `income`: Monthly income\n- `rating`: Tenant rating (excellent, good, fair, poor)\n- `notes`: Additional notes\n\n**Note:**\n- `ownership_id` is automatically taken from ownership_uuid cookie (not required in request body)"
+					}
+				},
+				{
+					"name": "Get Tenant",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/tenants/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"tenants",
+								"1"
+							]
+						},
+						"description": "Get a specific tenant by ID.\n\n**Authentication:**\n- Requires valid access token\n- Requires ownership scope (ownership_uuid cookie)\n\n**Route Parameters:**\n- `tenant`: Tenant ID (integer)\n\n**Note:**\n- Only tenants belonging to the current ownership can be accessed"
+					}
+				},
+				{
+					"name": "Update Tenant",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"national_id\": \"1234567890\",\n    \"rating\": \"excellent\",\n    \"income\": 20000.00,\n    \"notes\": \"Updated notes\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/tenants/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"tenants",
+								"1"
+							]
+						},
+						"description": "Update a tenant.\n\n**Authentication:**\n- Requires valid access token\n- Requires ownership scope (ownership_uuid cookie)\n\n**Route Parameters:**\n- `tenant`: Tenant ID (integer)\n\n**Fields:**\n- All fields are optional (use only fields you want to update)\n- Same fields as Create Tenant\n\n**Note:**\n- `ownership_id` cannot be changed (automatically taken from cookie)"
+					}
+				},
+				{
+					"name": "Delete Tenant",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/tenants/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"tenants",
+								"1"
+							]
+						},
+						"description": "Delete a tenant.\n\n**Authentication:**\n- Requires valid access token\n- Requires ownership scope (ownership_uuid cookie)\n\n**Route Parameters:**\n- `tenant`: Tenant ID (integer)\n\n**Warning:**\n- This will permanently delete the tenant\n- Make sure the tenant has no active contracts"
+					}
+				}
+			]
+		},
+		{
+			"name": "Contracts",
+			"item": [
+				{
+					"name": "List Contracts",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/contracts?per_page=15&search=&status=&tenant_id=&unit_id=&start_date=&end_date=&ejar_code=",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"contracts"
+							],
+							"query": [
+								{
+									"key": "per_page",
+									"value": "15",
+									"description": "Items per page (default: 15)"
+								},
+								{
+									"key": "search",
+									"value": "",
+									"description": "Search in contract number, ejar_code"
+								},
+								{
+									"key": "status",
+									"value": "",
+									"description": "Filter by status: draft, pending, active, expired, terminated, cancelled"
+								},
+								{
+									"key": "tenant_id",
+									"value": "",
+									"description": "Filter by tenant ID"
+								},
+								{
+									"key": "unit_id",
+									"value": "",
+									"description": "Filter by unit ID"
+								},
+								{
+									"key": "start_date",
+									"value": "",
+									"description": "Filter contracts starting from this date"
+								},
+								{
+									"key": "end_date",
+									"value": "",
+									"description": "Filter contracts ending before this date"
+								},
+								{
+									"key": "ejar_code",
+									"value": "",
+									"description": "Filter by Ejar registration code"
+								}
+							]
+						},
+						"description": "Get a paginated list of contracts for the current ownership.\n\n**Authentication:**\n- Requires valid access token\n- Requires ownership scope (ownership_uuid cookie)\n\n**Query Parameters:**\n- `per_page`: Items per page (default: 15)\n- `search`: Search in contract number, ejar_code\n- `status`: Filter by status\n- `tenant_id`: Filter by tenant ID\n- `unit_id`: Filter by unit ID\n- `start_date`: Filter contracts starting from this date\n- `end_date`: Filter contracts ending before this date\n- `ejar_code`: Filter by Ejar registration code\n\n**Note:**\n- Ownership scope is automatically applied from cookie\n- Only contracts belonging to the current ownership are returned"
+					}
+				},
+				{
+					"name": "Create Contract",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"unit_id\": 1,\n    \"tenant_id\": 1,\n    \"number\": \"CNT-2025-001\",\n    \"version\": 1,\n    \"ejar_code\": \"EJAR123456\",\n    \"start\": \"2025-01-01\",\n    \"end\": \"2025-12-31\",\n    \"rent\": 5000.00,\n    \"payment_frequency\": \"monthly\",\n    \"deposit\": 10000.00,\n    \"deposit_status\": \"pending\",\n    \"document\": \"path/to/contract.pdf\",\n    \"signature\": \"base64_encoded_signature\",\n    \"status\": \"draft\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/contracts",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"contracts"
+							]
+						},
+						"description": "Create a new contract.\n\n**Authentication:**\n- Requires valid access token\n- Requires ownership scope (ownership_uuid cookie)\n\n**Required Fields:**\n- `unit_id`: Unit ID (must belong to current ownership)\n- `tenant_id`: Tenant ID (must belong to current ownership)\n- `number`: Contract number (must be unique within ownership)\n- `start`: Contract start date (must be today or future)\n- `end`: Contract end date (must be after start date)\n- `rent`: Monthly rent amount\n\n**Optional Fields:**\n- `version`: Contract version (default: 1)\n- `parent_id`: Parent contract ID (for contract renewals)\n- `ejar_code`: Ejar registration code (optional, for Saudi rental contracts)\n- `payment_frequency`: Payment frequency (monthly, quarterly, yearly, weekly)\n- `deposit`: Deposit amount\n- `deposit_status`: Deposit status (pending, paid, refunded, forfeited)\n- `document`: Path to contract document\n- `signature`: Base64 encoded signature\n- `status`: Contract status (draft, pending, active, expired, terminated, cancelled)\n\n**Note:**\n- `ownership_id` is automatically taken from ownership_uuid cookie\n- `created_by` is automatically set to current user\n- A unit can only have one active contract at a time"
+					}
+				},
+				{
+					"name": "Get Contract",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/contracts/{{contract_uuid}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"contracts",
+								"{{contract_uuid}}"
+							]
+						},
+						"description": "Get a specific contract by UUID.\n\n**Authentication:**\n- Requires valid access token\n- Requires ownership scope (ownership_uuid cookie)\n\n**Route Parameters:**\n- `contract`: Contract UUID\n\n**Note:**\n- Only contracts belonging to the current ownership can be accessed"
+					}
+				},
+				{
+					"name": "Update Contract",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"rent\": 5500.00,\n    \"status\": \"active\",\n    \"deposit_status\": \"paid\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/contracts/{{contract_uuid}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"contracts",
+								"{{contract_uuid}}"
+							]
+						},
+						"description": "Update a contract.\n\n**Authentication:**\n- Requires valid access token\n- Requires ownership scope (ownership_uuid cookie)\n\n**Route Parameters:**\n- `contract`: Contract UUID\n\n**Fields:**\n- All fields are optional (use only fields you want to update)\n- Same fields as Create Contract\n\n**Note:**\n- `ownership_id` cannot be changed (automatically taken from cookie)\n- Only draft contracts can be fully updated"
+					}
+				},
+				{
+					"name": "Approve Contract",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/contracts/{{contract_uuid}}/approve",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"contracts",
+								"{{contract_uuid}}",
+								"approve"
+							]
+						},
+						"description": "Approve a contract. Changes status from 'pending' or 'draft' to 'active'.\n\n**Authentication:**\n- Requires valid access token\n- Requires ownership scope (ownership_uuid cookie)\n\n**Route Parameters:**\n- `contract`: Contract UUID\n\n**Behavior:**\n- Sets contract status to 'active'\n- Sets `approved_by` to current user\n- Only pending or draft contracts can be approved"
+					}
+				},
+				{
+					"name": "Delete Contract",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/contracts/{{contract_uuid}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"contracts",
+								"{{contract_uuid}}"
+							]
+						},
+						"description": "Delete a contract.\n\n**Authentication:**\n- Requires valid access token\n- Requires ownership scope (ownership_uuid cookie)\n\n**Route Parameters:**\n- `contract`: Contract UUID\n\n**Warning:**\n- This will permanently delete the contract\n- Make sure the contract has no related invoices or payments"
+					}
+				},
+				{
+					"name": "Contract Terms",
+					"item": [
+						{
+							"name": "List Contract Terms",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}",
+										"type": "text"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/v1/contracts/{{contract_uuid}}/terms",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"contracts",
+										"{{contract_uuid}}",
+										"terms"
+									]
+								},
+								"description": "Get all terms for a specific contract.\n\n**Authentication:**\n- Requires valid access token\n- Requires ownership scope (ownership_uuid cookie)\n\n**Route Parameters:**\n- `contract`: Contract UUID"
+							}
+						},
+						{
+							"name": "Create Contract Term",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"key\": \"maintenance_responsibility\",\n    \"value\": \"Tenant is responsible for minor maintenance\",\n    \"type\": \"text\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{base_url}}/api/v1/contracts/{{contract_uuid}}/terms",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"contracts",
+										"{{contract_uuid}}",
+										"terms"
+									]
+								},
+								"description": "Create a new contract term.\n\n**Authentication:**\n- Requires valid access token\n- Requires ownership scope (ownership_uuid cookie)\n\n**Route Parameters:**\n- `contract`: Contract UUID\n\n**Required Fields:**\n- `key`: Term key (must be unique within contract)\n\n**Optional Fields:**\n- `value`: Term value\n- `type`: Term type (text, number, boolean, date, json)"
+							}
+						},
+						{
+							"name": "Get Contract Term",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}",
+										"type": "text"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/v1/contracts/{{contract_uuid}}/terms/{{term_id}}",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"contracts",
+										"{{contract_uuid}}",
+										"terms",
+										"{{term_id}}"
+									]
+								},
+								"description": "Get a specific contract term.\n\n**Authentication:**\n- Requires valid access token\n- Requires ownership scope (ownership_uuid cookie)\n\n**Route Parameters:**\n- `contract`: Contract UUID\n- `term`: Term ID"
+							}
+						},
+						{
+							"name": "Update Contract Term",
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"value\": \"Updated term value\",\n    \"type\": \"text\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{base_url}}/api/v1/contracts/{{contract_uuid}}/terms/{{term_id}}",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"contracts",
+										"{{contract_uuid}}",
+										"terms",
+										"{{term_id}}"
+									]
+								},
+								"description": "Update a contract term.\n\n**Authentication:**\n- Requires valid access token\n- Requires ownership scope (ownership_uuid cookie)\n\n**Route Parameters:**\n- `contract`: Contract UUID\n- `term`: Term ID\n\n**Fields:**\n- All fields are optional (use only fields you want to update)"
+							}
+						},
+						{
+							"name": "Delete Contract Term",
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}",
+										"type": "text"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/v1/contracts/{{contract_uuid}}/terms/{{term_id}}",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"contracts",
+										"{{contract_uuid}}",
+										"terms",
+										"{{term_id}}"
+									]
+								},
+								"description": "Delete a contract term.\n\n**Authentication:**\n- Requires valid access token\n- Requires ownership scope (ownership_uuid cookie)\n\n**Route Parameters:**\n- `contract`: Contract UUID\n- `term`: Term ID"
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "Invoices",
+			"item": [
+				{
+					"name": "List Invoices",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/invoices?per_page=15&search=&status=&contract_id=&overdue=&start_date=&end_date=",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"invoices"
+							],
+							"query": [
+								{
+									"key": "per_page",
+									"value": "15",
+									"description": "Items per page (default: 15)"
+								},
+								{
+									"key": "search",
+									"value": "",
+									"description": "Search in invoice number"
+								},
+								{
+									"key": "status",
+									"value": "",
+									"description": "Filter by status: draft, sent, paid, overdue, cancelled"
+								},
+								{
+									"key": "contract_id",
+									"value": "",
+									"description": "Filter by contract ID"
+								},
+								{
+									"key": "overdue",
+									"value": "",
+									"description": "Filter overdue invoices (true/false)"
+								},
+								{
+									"key": "start_date",
+									"value": "",
+									"description": "Filter invoices from this date"
+								},
+								{
+									"key": "end_date",
+									"value": "",
+									"description": "Filter invoices until this date"
+								}
+							]
+						},
+						"description": "Get a paginated list of invoices for the current ownership.\n\n**Authentication:**\n- Requires valid access token\n- Requires ownership scope (ownership_uuid cookie)\n\n**Query Parameters:**\n- `per_page`: Items per page (default: 15)\n- `search`: Search in invoice number\n- `status`: Filter by status\n- `contract_id`: Filter by contract ID\n- `overdue`: Filter overdue invoices (true/false)\n- `start_date`: Filter invoices from this date\n- `end_date`: Filter invoices until this date\n\n**Note:**\n- Ownership scope is automatically applied from cookie\n- Only invoices belonging to the current ownership are returned"
+					}
+				},
+				{
+					"name": "Create Invoice",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"contract_id\": 1,\n    \"number\": \"INV-2025-001\",\n    \"period_start\": \"2025-01-01\",\n    \"period_end\": \"2025-01-31\",\n    \"due\": \"2025-02-05\",\n    \"amount\": 5000.00,\n    \"tax\": 750.00,\n    \"tax_rate\": 15.00,\n    \"total\": 5750.00,\n    \"status\": \"draft\",\n    \"notes\": \"Monthly rent invoice\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/invoices",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"invoices"
+							]
+						},
+						"description": "Create a new invoice.\n\n**Authentication:**\n- Requires valid access token\n- Requires ownership scope (ownership_uuid cookie)\n\n**Required Fields:**\n- `contract_id`: Contract ID (must belong to current ownership)\n- `number`: Invoice number (must be unique within ownership)\n- `period_start`: Invoice period start date\n- `period_end`: Invoice period end date (must be after or equal to period_start)\n- `due`: Due date (must be after or equal to period_start)\n- `amount`: Invoice amount (before tax)\n\n**Optional Fields:**\n- `tax`: Tax amount (auto-calculated if not provided)\n- `tax_rate`: Tax rate percentage (default: 15.00 for Saudi VAT)\n- `total`: Total amount including tax (auto-calculated if not provided)\n- `status`: Invoice status (draft, sent, paid, overdue, cancelled)\n- `notes`: Additional notes\n\n**Note:**\n- `ownership_id` is automatically taken from ownership_uuid cookie\n- `generated_by` is automatically set to current user\n- Tax and total are auto-calculated if not provided\n- Invoices are created on-demand (not automatically)"
+					}
+				},
+				{
+					"name": "Get Invoice",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/invoices/{{invoice_uuid}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"invoices",
+								"{{invoice_uuid}}"
+							]
+						},
+						"description": "Get a specific invoice by UUID.\n\n**Authentication:**\n- Requires valid access token\n- Requires ownership scope (ownership_uuid cookie)\n\n**Route Parameters:**\n- `invoice`: Invoice UUID\n\n**Note:**\n- Only invoices belonging to the current ownership can be accessed"
+					}
+				},
+				{
+					"name": "Update Invoice",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"amount\": 5500.00,\n    \"tax_rate\": 15.00,\n    \"notes\": \"Updated invoice\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/invoices/{{invoice_uuid}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"invoices",
+								"{{invoice_uuid}}"
+							]
+						},
+						"description": "Update an invoice.\n\n**Authentication:**\n- Requires valid access token\n- Requires ownership scope (ownership_uuid cookie)\n\n**Route Parameters:**\n- `invoice`: Invoice UUID\n\n**Fields:**\n- All fields are optional (use only fields you want to update)\n- Same fields as Create Invoice\n- Tax and total are auto-recalculated if amount or tax_rate changes\n\n**Note:**\n- `ownership_id` cannot be changed (automatically taken from cookie)\n- Only draft invoices can be fully updated"
+					}
+				},
+				{
+					"name": "Mark Invoice as Paid",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/invoices/{{invoice_uuid}}/mark-as-paid",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"invoices",
+								"{{invoice_uuid}}",
+								"mark-as-paid"
+							]
+						},
+						"description": "Mark an invoice as paid.\n\n**Authentication:**\n- Requires valid access token\n- Requires ownership scope (ownership_uuid cookie)\n\n**Route Parameters:**\n- `invoice`: Invoice UUID\n\n**Behavior:**\n- Sets invoice status to 'paid'\n- Sets `paid_at` timestamp\n- Only sent or overdue invoices can be marked as paid"
+					}
+				},
+				{
+					"name": "Mark Invoice as Sent",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/invoices/{{invoice_uuid}}/mark-as-sent",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"invoices",
+								"{{invoice_uuid}}",
+								"mark-as-sent"
+							]
+						},
+						"description": "Mark an invoice as sent.\n\n**Authentication:**\n- Requires valid access token\n- Requires ownership scope (ownership_uuid cookie)\n\n**Route Parameters:**\n- `invoice`: Invoice UUID\n\n**Behavior:**\n- Sets invoice status to 'sent'\n- Only draft invoices can be marked as sent"
+					}
+				},
+				{
+					"name": "Delete Invoice",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/invoices/{{invoice_uuid}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"invoices",
+								"{{invoice_uuid}}"
+							]
+						},
+						"description": "Delete an invoice.\n\n**Authentication:**\n- Requires valid access token\n- Requires ownership scope (ownership_uuid cookie)\n\n**Route Parameters:**\n- `invoice`: Invoice UUID\n\n**Warning:**\n- This will permanently delete the invoice\n- Make sure the invoice has no related payments"
+					}
+				},
+				{
+					"name": "Invoice Items",
+					"item": [
+						{
+							"name": "List Invoice Items",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}",
+										"type": "text"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/v1/invoices/{{invoice_uuid}}/items",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"invoices",
+										"{{invoice_uuid}}",
+										"items"
+									]
+								},
+								"description": "Get all items for a specific invoice.\n\n**Authentication:**\n- Requires valid access token\n- Requires ownership scope (ownership_uuid cookie)\n\n**Route Parameters:**\n- `invoice`: Invoice UUID"
+							}
+						},
+						{
+							"name": "Create Invoice Item",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"type\": \"rent\",\n    \"description\": \"Monthly rent for January 2025\",\n    \"quantity\": 1,\n    \"unit_price\": 5000.00,\n    \"total\": 5000.00\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{base_url}}/api/v1/invoices/{{invoice_uuid}}/items",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"invoices",
+										"{{invoice_uuid}}",
+										"items"
+									]
+								},
+								"description": "Create a new invoice item.\n\n**Authentication:**\n- Requires valid access token\n- Requires ownership scope (ownership_uuid cookie)\n\n**Route Parameters:**\n- `invoice`: Invoice UUID\n\n**Required Fields:**\n- `type`: Item type (rent, service_fee, penalty, other)\n- `description`: Item description\n- `unit_price`: Unit price\n\n**Optional Fields:**\n- `quantity`: Quantity (default: 1)\n- `total`: Total amount (auto-calculated as quantity * unit_price if not provided)\n\n**Note:**\n- Only draft invoices can have items added\n- Invoice total is auto-recalculated when items are added/updated/deleted"
+							}
+						},
+						{
+							"name": "Get Invoice Item",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}",
+										"type": "text"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/v1/invoices/{{invoice_uuid}}/items/{{item_id}}",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"invoices",
+										"{{invoice_uuid}}",
+										"items",
+										"{{item_id}}"
+									]
+								},
+								"description": "Get a specific invoice item.\n\n**Authentication:**\n- Requires valid access token\n- Requires ownership scope (ownership_uuid cookie)\n\n**Route Parameters:**\n- `invoice`: Invoice UUID\n- `item`: Item ID"
+							}
+						},
+						{
+							"name": "Update Invoice Item",
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"quantity\": 2,\n    \"unit_price\": 5500.00\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{base_url}}/api/v1/invoices/{{invoice_uuid}}/items/{{item_id}}",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"invoices",
+										"{{invoice_uuid}}",
+										"items",
+										"{{item_id}}"
+									]
+								},
+								"description": "Update an invoice item.\n\n**Authentication:**\n- Requires valid access token\n- Requires ownership scope (ownership_uuid cookie)\n\n**Route Parameters:**\n- `invoice`: Invoice UUID\n- `item`: Item ID\n\n**Fields:**\n- All fields are optional (use only fields you want to update)\n- Total is auto-recalculated if quantity or unit_price changes\n\n**Note:**\n- Only draft invoices can have items updated"
+							}
+						},
+						{
+							"name": "Delete Invoice Item",
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}",
+										"type": "text"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/api/v1/invoices/{{invoice_uuid}}/items/{{item_id}}",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"invoices",
+										"{{invoice_uuid}}",
+										"items",
+										"{{item_id}}"
+									]
+								},
+								"description": "Delete an invoice item.\n\n**Authentication:**\n- Requires valid access token\n- Requires ownership scope (ownership_uuid cookie)\n\n**Route Parameters:**\n- `invoice`: Invoice UUID\n- `item`: Item ID\n\n**Note:**\n- Only draft invoices can have items deleted\n- Invoice total is auto-recalculated after deletion"
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "Payments",
+			"item": [
+				{
+					"name": "List Payments",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/payments?per_page=15&search=&status=&invoice_id=&method=",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"payments"
+							],
+							"query": [
+								{
+									"key": "per_page",
+									"value": "15",
+									"description": "Items per page (default: 15)"
+								},
+								{
+									"key": "search",
+									"value": "",
+									"description": "Search in transaction_id"
+								},
+								{
+									"key": "status",
+									"value": "",
+									"description": "Filter by status: pending, paid, unpaid"
+								},
+								{
+									"key": "invoice_id",
+									"value": "",
+									"description": "Filter by invoice ID"
+								},
+								{
+									"key": "method",
+									"value": "",
+									"description": "Filter by payment method: cash, bank_transfer, check, other"
+								}
+							]
+						},
+						"description": "Get a paginated list of payments for the current ownership.\n\n**Authentication:**\n- Requires valid access token\n- Requires ownership scope (ownership_uuid cookie)\n\n**Query Parameters:**\n- `per_page`: Items per page (default: 15)\n- `search`: Search in transaction_id\n- `status`: Filter by status\n- `invoice_id`: Filter by invoice ID\n- `method`: Filter by payment method\n\n**Note:**\n- Ownership scope is automatically applied from cookie\n- Only payments belonging to the current ownership are returned"
+					}
+				},
+				{
+					"name": "Create Payment",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"invoice_id\": 1,\n    \"method\": \"bank_transfer\",\n    \"transaction_id\": \"TXN123456789\",\n    \"amount\": 5750.00,\n    \"currency\": \"SAR\",\n    \"status\": \"pending\",\n    \"paid_at\": \"2025-01-15T10:30:00Z\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/payments",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"payments"
+							]
+						},
+						"description": "Create a new payment record.\n\n**Authentication:**\n- Requires valid access token\n- Requires ownership scope (ownership_uuid cookie)\n\n**Required Fields:**\n- `invoice_id`: Invoice ID (must belong to current ownership)\n- `method`: Payment method (cash, bank_transfer, check, other)\n- `amount`: Payment amount\n\n**Optional Fields:**\n- `transaction_id`: Transaction ID (must be unique if provided)\n- `currency`: Currency code (default: SAR)\n- `status`: Payment status (pending, paid, unpaid)\n- `paid_at`: Payment date and time\n\n**Note:**\n- `ownership_id` is automatically taken from ownership_uuid cookie\n- Payments are external to the system (only status is recorded)\n- When payment status is set to 'paid', invoice status is automatically updated\n- System does NOT handle electronic payments, only payment recording"
+					}
+				},
+				{
+					"name": "Get Payment",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/payments/{{payment_uuid}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"payments",
+								"{{payment_uuid}}"
+							]
+						},
+						"description": "Get a specific payment by UUID.\n\n**Authentication:**\n- Requires valid access token\n- Requires ownership scope (ownership_uuid cookie)\n\n**Route Parameters:**\n- `payment`: Payment UUID\n\n**Note:**\n- Only payments belonging to the current ownership can be accessed"
+					}
+				},
+				{
+					"name": "Update Payment",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"amount\": 6000.00,\n    \"status\": \"paid\",\n    \"paid_at\": \"2025-01-15T10:30:00Z\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/payments/{{payment_uuid}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"payments",
+								"{{payment_uuid}}"
+							]
+						},
+						"description": "Update a payment.\n\n**Authentication:**\n- Requires valid access token\n- Requires ownership scope (ownership_uuid cookie)\n\n**Route Parameters:**\n- `payment`: Payment UUID\n\n**Fields:**\n- All fields are optional (use only fields you want to update)\n- Same fields as Create Payment\n\n**Note:**\n- `ownership_id` cannot be changed (automatically taken from cookie)\n- When status is changed to 'paid', invoice status is automatically updated\n- When status is changed to 'unpaid', invoice status is recalculated based on total paid amount"
+					}
+				},
+				{
+					"name": "Mark Payment as Paid",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/payments/{{payment_uuid}}/mark-as-paid",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"payments",
+								"{{payment_uuid}}",
+								"mark-as-paid"
+							]
+						},
+						"description": "Mark a payment as paid.\n\n**Authentication:**\n- Requires valid access token\n- Requires ownership scope (ownership_uuid cookie)\n\n**Route Parameters:**\n- `payment`: Payment UUID\n\n**Behavior:**\n- Sets payment status to 'paid'\n- Sets `paid_at` timestamp to current time if not already set\n- Sets `confirmed_by` to current user\n- Automatically updates invoice status based on total paid amount"
+					}
+				},
+				{
+					"name": "Mark Payment as Unpaid",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/payments/{{payment_uuid}}/mark-as-unpaid",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"payments",
+								"{{payment_uuid}}",
+								"mark-as-unpaid"
+							]
+						},
+						"description": "Mark a payment as unpaid.\n\n**Authentication:**\n- Requires valid access token\n- Requires ownership scope (ownership_uuid cookie)\n\n**Route Parameters:**\n- `payment`: Payment UUID\n\n**Behavior:**\n- Sets payment status to 'unpaid'\n- Clears `paid_at` timestamp\n- Clears `confirmed_by`\n- Automatically updates invoice status based on total paid amount"
+					}
+				},
+				{
+					"name": "Delete Payment",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/payments/{{payment_uuid}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"payments",
+								"{{payment_uuid}}"
+							]
+						},
+						"description": "Delete a payment.\n\n**Authentication:**\n- Requires valid access token\n- Requires ownership scope (ownership_uuid cookie)\n\n**Route Parameters:**\n- `payment`: Payment UUID\n\n**Warning:**\n- This will permanently delete the payment\n- Invoice status will be automatically recalculated after deletion"
+					}
+				},
+				{
+					"name": "Get Payments by Invoice",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/invoices/{{invoice_uuid}}/payments",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"invoices",
+								"{{invoice_uuid}}",
+								"payments"
+							]
+						},
+						"description": "Get all payments for a specific invoice.\n\n**Authentication:**\n- Requires valid access token\n- Requires ownership scope (ownership_uuid cookie)\n\n**Route Parameters:**\n- `invoice`: Invoice UUID\n\n**Note:**\n- Only payments for invoices belonging to the current ownership are returned"
+					}
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8000",
+			"type": "string"
+		},
+		{
+			"key": "access_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "contract_uuid",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "invoice_uuid",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "payment_uuid",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "term_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "item_id",
+			"value": "",
+			"type": "string"
+		}
+	]
+}
+
