@@ -30,7 +30,7 @@ Route::prefix('tenants')->name('v1.tenants.')->middleware(['auth:sanctum', 'owne
     
     // Tenant CRUD routes (must come AFTER invitations to avoid conflict)
     Route::get('/{tenant}', [TenantController::class, 'show'])->name('show');
-    Route::put('/{tenant}', [TenantController::class, 'update'])->name('update');
+    Route::post('/{tenant}', [TenantController::class, 'update'])->name('update');
     Route::patch('/{tenant}', [TenantController::class, 'update'])->name('update.patch');
     Route::delete('/{tenant}', [TenantController::class, 'destroy'])->name('destroy');
 });

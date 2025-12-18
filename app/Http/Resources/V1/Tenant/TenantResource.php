@@ -4,6 +4,7 @@ namespace App\Http\Resources\V1\Tenant;
 
 use App\Http\Resources\V1\Auth\UserResource;
 use App\Http\Resources\V1\Contract\ContractResource;
+use App\Http\Resources\V1\Media\MediaFileResource;
 use App\Http\Resources\V1\Ownership\OwnershipResource;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -31,6 +32,22 @@ class TenantResource extends JsonResource
             'id_expiry' => $this->id_expiry?->format('Y-m-d'),
             'id_valid' => $this->hasValidId(),
             'id_expired' => $this->isIdExpired(),
+            'id_document_image' => $this->when(
+                $this->relationLoaded('mediaFiles'),
+                fn() => $this->getMediaFile('tenant_id_document') ? new MediaFileResource($this->getMediaFile('tenant_id_document')) : null
+            ),
+            'commercial_registration_number' => $this->commercial_registration_number,
+            'commercial_registration_expiry' => $this->commercial_registration_expiry?->format('Y-m-d'),
+            'commercial_owner_name' => $this->commercial_owner_name,
+            'commercial_registration_image' => $this->when(
+                $this->relationLoaded('mediaFiles'),
+                fn() => $this->getMediaFile('tenant_cr_document') ? new MediaFileResource($this->getMediaFile('tenant_cr_document')) : null
+            ),
+            'municipality_license_number' => $this->municipality_license_number,
+            'municipality_license_image' => $this->when(
+                $this->relationLoaded('mediaFiles'),
+                fn() => $this->getMediaFile('tenant_municipality_license') ? new MediaFileResource($this->getMediaFile('tenant_municipality_license')) : null
+            ),
             'emergency_name' => $this->emergency_name,
             'emergency_phone' => $this->emergency_phone,
             'emergency_relation' => $this->emergency_relation,

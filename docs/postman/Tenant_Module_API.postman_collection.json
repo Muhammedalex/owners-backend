@@ -1,0 +1,708 @@
+{
+	"info": {
+		"_postman_id": "tenant-module-api-collection",
+		"name": "Tenant Module API - V1",
+		"description": "Complete API collection for Tenant Management Module.\n\n**Authentication:**\n- Login endpoint included for easy testing\n- Access Token: Stored in environment variable (use in Authorization header)\n- Refresh Token: Stored in httpOnly cookie (automatically managed)\n- Ownership UUID: Stored in httpOnly cookie (automatically managed)\n\n**Important Notes:**\n- All tenant endpoints require authentication (Bearer token)\n- All tenant endpoints require ownership scope (ownership_id from cookie)\n- Use multipart/form-data for create/update requests with file uploads\n- Tenant ID is used in routes (not UUID)\n- Media files are uploaded directly with tenant create/update\n\n**Tenant Fields:**\n- Identity: national_id, id_type, id_expiry, id_document_image\n- Commercial Registration: commercial_registration_number, commercial_registration_expiry, commercial_owner_name, commercial_registration_image\n- Municipality License: municipality_license_number, municipality_license_image\n- Emergency Contact: emergency_name, emergency_phone, emergency_relation\n- Employment: employment, employer, income\n- Rating & Notes: rating, notes",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "30358504"
+	},
+	"item": [
+		{
+			"name": "Authentication",
+			"item": [
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    if (response.data && response.data.tokens) {",
+									"        pm.environment.set('access_token', response.data.tokens.access_token);",
+									"        pm.environment.set('user_id', response.data.user.id);",
+									"        console.log('Access token saved to environment');",
+									"    }",
+									"    // Note: refresh_token and ownership_uuid are automatically stored in httpOnly cookies",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"admin@example.com\",\n    \"password\": \"password123\",\n    \"device_name\": \"Postman\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/auth/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"login"
+							]
+						},
+						"description": "Login to get access token. After successful login:\n- Access token is saved to environment variable\n- Refresh token is stored in httpOnly cookie\n- Ownership UUID is stored in httpOnly cookie\n\n**Required Fields:**\n- `email`: User email address\n- `password`: User password\n- `device_name`: Device identifier (e.g., 'Postman', 'iPhone 14')"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Tenants",
+			"item": [
+				{
+					"name": "List Tenants",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/tenants?per_page=15&search=&rating=&employment=",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"tenants"
+							],
+							"query": [
+								{
+									"key": "per_page",
+									"value": "15",
+									"description": "Items per page (use -1 for all)"
+								},
+								{
+									"key": "search",
+									"value": "",
+									"description": "Search in tenant name, email, national_id"
+								},
+								{
+									"key": "rating",
+									"value": "",
+									"description": "Filter by rating: excellent, good, fair, poor"
+								},
+								{
+									"key": "employment",
+									"value": "",
+									"description": "Filter by employment: employed, self_employed, unemployed, retired, student"
+								}
+							]
+						},
+						"description": "Get paginated list of tenants for the current ownership.\n\n**Query Parameters:**\n- `per_page`: Number of items per page (default: 15, use -1 for all)\n- `search`: Search term (searches in name, email, national_id)\n- `rating`: Filter by rating (excellent, good, fair, poor)\n- `employment`: Filter by employment status\n\n**Response:**\n- Paginated list of tenants with user, ownership, and media files\n- Pagination metadata: current_page, last_page, per_page, total"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Tenant",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/tenants/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"tenants",
+								"1"
+							]
+						},
+						"description": "Get single tenant details by ID.\n\n**Path Parameters:**\n- `{tenant}`: Tenant ID\n\n**Response:**\n- Full tenant details including:\n  - User information\n  - Ownership information\n  - Identity documents (national_id, id_type, id_expiry)\n  - Commercial registration details\n  - Municipality license\n  - Emergency contact\n  - Employment information\n  - Rating and notes\n  - Media files (ID document, CR document, municipality license)\n  - Contracts list"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Tenant",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "user_id",
+									"value": "1",
+									"type": "text",
+									"description": "Required: User ID (must exist and be unique)"
+								},
+								{
+									"key": "national_id",
+									"value": "1234567890",
+									"type": "text",
+									"description": "Optional: National ID number"
+								},
+								{
+									"key": "id_type",
+									"value": "national_id",
+									"type": "text",
+									"description": "Optional: ID type (national_id, iqama, passport, commercial_registration)"
+								},
+								{
+									"key": "id_expiry",
+									"value": "2030-12-31",
+									"type": "text",
+									"description": "Optional: ID expiry date (YYYY-MM-DD)"
+								},
+								{
+									"key": "id_document_image",
+									"type": "file",
+									"src": [],
+									"description": "Optional: ID document image file"
+								},
+								{
+									"key": "commercial_registration_number",
+									"value": "CR-1234567890",
+									"type": "text",
+									"description": "Optional: Commercial registration number"
+								},
+								{
+									"key": "commercial_registration_expiry",
+									"value": "2030-12-31",
+									"type": "text",
+									"description": "Optional: Commercial registration expiry date (YYYY-MM-DD)"
+								},
+								{
+									"key": "commercial_owner_name",
+									"value": "أحمد محمد",
+									"type": "text",
+									"description": "Optional: Commercial registration owner name"
+								},
+								{
+									"key": "commercial_registration_image",
+									"type": "file",
+									"src": [],
+									"description": "Optional: Commercial registration document image"
+								},
+								{
+									"key": "municipality_license_number",
+									"value": "MUN-123456",
+									"type": "text",
+									"description": "Optional: Municipality license number"
+								},
+								{
+									"key": "municipality_license_image",
+									"type": "file",
+									"src": [],
+									"description": "Optional: Municipality license image"
+								},
+								{
+									"key": "emergency_name",
+									"value": "محمد علي",
+									"type": "text",
+									"description": "Optional: Emergency contact name"
+								},
+								{
+									"key": "emergency_phone",
+									"value": "+966507654321",
+									"type": "text",
+									"description": "Optional: Emergency contact phone (Saudi format)"
+								},
+								{
+									"key": "emergency_relation",
+									"value": "أخ",
+									"type": "text",
+									"description": "Optional: Emergency contact relation"
+								},
+								{
+									"key": "employment",
+									"value": "employed",
+									"type": "text",
+									"description": "Optional: Employment status (employed, self_employed, unemployed, retired, student)"
+								},
+								{
+									"key": "employer",
+									"value": "شركة التقنية المتقدمة",
+									"type": "text",
+									"description": "Optional: Employer name"
+								},
+								{
+									"key": "income",
+									"value": "15000.00",
+									"type": "text",
+									"description": "Optional: Monthly income"
+								},
+								{
+									"key": "rating",
+									"value": "good",
+									"type": "text",
+									"description": "Optional: Rating (excellent, good, fair, poor)"
+								},
+								{
+									"key": "notes",
+									"value": "مستأجر موثوق",
+									"type": "text",
+									"description": "Optional: Notes about tenant"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/tenants",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"tenants"
+							]
+						},
+						"description": "Create a new tenant. All fields except user_id are optional.\n\n**Required Fields:**\n- `user_id`: User ID (must exist in users table and be unique)\n\n**Optional Fields:**\n- Identity: national_id, id_type, id_expiry, id_document_image\n- Commercial Registration: commercial_registration_number, commercial_registration_expiry, commercial_owner_name, commercial_registration_image\n- Municipality License: municipality_license_number, municipality_license_image\n- Emergency Contact: emergency_name, emergency_phone, emergency_relation\n- Employment: employment, employer, income\n- Rating & Notes: rating, notes\n\n**File Uploads:**\n- Use multipart/form-data\n- Supported image formats: jpg, jpeg, png, gif\n- Files are automatically processed and optimized\n\n**Note:**\n- Ownership ID is taken from cookie (ownership.scope middleware)\n- Media files are uploaded and linked automatically"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Tenant",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "national_id",
+									"value": "1234567890",
+									"type": "text",
+									"description": "Optional: National ID number"
+								},
+								{
+									"key": "id_type",
+									"value": "national_id",
+									"type": "text",
+									"description": "Optional: ID type"
+								},
+								{
+									"key": "id_expiry",
+									"value": "2030-12-31",
+									"type": "text",
+									"description": "Optional: ID expiry date"
+								},
+								{
+									"key": "id_document_image",
+									"type": "file",
+									"src": [],
+									"description": "Optional: ID document image (replaces existing)"
+								},
+								{
+									"key": "commercial_registration_number",
+									"value": "CR-1234567890",
+									"type": "text",
+									"description": "Optional: Commercial registration number"
+								},
+								{
+									"key": "commercial_registration_expiry",
+									"value": "2030-12-31",
+									"type": "text",
+									"description": "Optional: Commercial registration expiry"
+								},
+								{
+									"key": "commercial_owner_name",
+									"value": "أحمد محمد",
+									"type": "text",
+									"description": "Optional: Commercial owner name"
+								},
+								{
+									"key": "commercial_registration_image",
+									"type": "file",
+									"src": [],
+									"description": "Optional: Commercial registration image (replaces existing)"
+								},
+								{
+									"key": "municipality_license_number",
+									"value": "MUN-123456",
+									"type": "text",
+									"description": "Optional: Municipality license number"
+								},
+								{
+									"key": "municipality_license_image",
+									"type": "file",
+									"src": [],
+									"description": "Optional: Municipality license image (replaces existing)"
+								},
+								{
+									"key": "emergency_name",
+									"value": "محمد علي",
+									"type": "text",
+									"description": "Optional: Emergency contact name"
+								},
+								{
+									"key": "emergency_phone",
+									"value": "+966507654321",
+									"type": "text",
+									"description": "Optional: Emergency contact phone"
+								},
+								{
+									"key": "emergency_relation",
+									"value": "أخ",
+									"type": "text",
+									"description": "Optional: Emergency contact relation"
+								},
+								{
+									"key": "employment",
+									"value": "employed",
+									"type": "text",
+									"description": "Optional: Employment status"
+								},
+								{
+									"key": "employer",
+									"value": "شركة التقنية المتقدمة",
+									"type": "text",
+									"description": "Optional: Employer name"
+								},
+								{
+									"key": "income",
+									"value": "15000.00",
+									"type": "text",
+									"description": "Optional: Monthly income"
+								},
+								{
+									"key": "rating",
+									"value": "good",
+									"type": "text",
+									"description": "Optional: Rating"
+								},
+								{
+									"key": "notes",
+									"value": "مستأجر موثوق",
+									"type": "text",
+									"description": "Optional: Notes"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/tenants/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"tenants",
+								"1"
+							]
+						},
+						"description": "Update an existing tenant. All fields are optional.\n\n**Path Parameters:**\n- `{tenant}`: Tenant ID\n\n**Update Behavior:**\n- Only provided fields will be updated\n- Uploading a new image replaces the existing one\n- Ownership ID cannot be changed\n- User ID can be changed (must be unique)\n\n**File Uploads:**\n- Use multipart/form-data\n- Only include files you want to update\n- New files replace existing files of the same type"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Tenant",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/tenants/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"tenants",
+								"1"
+							]
+						},
+						"description": "Delete a tenant by ID.\n\n**Path Parameters:**\n- `{tenant}`: Tenant ID\n\n**Note:**\n- This will also delete associated media files\n- Make sure tenant has no active contracts before deleting"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Public Tenant Invitations",
+			"item": [
+				{
+					"name": "Accept Invitation & Register Tenant (Self-Registration)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "first_name",
+									"value": "Ahmed",
+									"type": "text",
+									"description": "Required: First name"
+								},
+								{
+									"key": "last_name",
+									"value": "Ali",
+									"type": "text",
+									"description": "Required: Last name"
+								},
+								{
+									"key": "email",
+									"value": "tenant@example.com",
+									"type": "text",
+									"description": "Required: Email address (must match invitation email if present)"
+								},
+								{
+									"key": "phone",
+									"value": "+966501234567",
+									"type": "text",
+									"description": "Optional: Phone number (Saudi format)"
+								},
+								{
+									"key": "password",
+									"value": "Password123!",
+									"type": "text",
+									"description": "Required: Password (min 8 characters)"
+								},
+								{
+									"key": "password_confirmation",
+									"value": "Password123!",
+									"type": "text",
+									"description": "Required: Must match password"
+								},
+								{
+									"key": "national_id",
+									"value": "1234567890",
+									"type": "text",
+									"description": "Optional: National ID number"
+								},
+								{
+									"key": "id_type",
+									"value": "national_id",
+									"type": "text",
+									"description": "Optional: ID type (national_id, iqama, passport, commercial_registration)"
+								},
+								{
+									"key": "id_expiry",
+									"value": "2030-12-31",
+									"type": "text",
+									"description": "Optional: ID expiry date (YYYY-MM-DD)"
+								},
+								{
+									"key": "id_document_image",
+									"type": "file",
+									"src": [],
+									"description": "Optional: ID document image file"
+								},
+								{
+									"key": "commercial_registration_number",
+									"value": "CR-1234567890",
+									"type": "text",
+									"description": "Optional: Commercial registration number"
+								},
+								{
+									"key": "commercial_registration_expiry",
+									"value": "2030-12-31",
+									"type": "text",
+									"description": "Optional: Commercial registration expiry date (YYYY-MM-DD)"
+								},
+								{
+									"key": "commercial_owner_name",
+									"value": "Ahmed Mohammed",
+									"type": "text",
+									"description": "Optional: Commercial registration owner name"
+								},
+								{
+									"key": "commercial_registration_image",
+									"type": "file",
+									"src": [],
+									"description": "Optional: Commercial registration document image"
+								},
+								{
+									"key": "municipality_license_number",
+									"value": "MUN-123456",
+									"type": "text",
+									"description": "Optional: Municipality license number"
+								},
+								{
+									"key": "municipality_license_image",
+									"type": "file",
+									"src": [],
+									"description": "Optional: Municipality license image"
+								},
+								{
+									"key": "emergency_name",
+									"value": "Mohammed Ali",
+									"type": "text",
+									"description": "Optional: Emergency contact name"
+								},
+								{
+									"key": "emergency_phone",
+									"value": "+966507654321",
+									"type": "text",
+									"description": "Optional: Emergency contact phone (Saudi format)"
+								},
+								{
+									"key": "emergency_relation",
+									"value": "Brother",
+									"type": "text",
+									"description": "Optional: Emergency contact relation"
+								},
+								{
+									"key": "employment",
+									"value": "employed",
+									"type": "text",
+									"description": "Optional: Employment status (employed, self_employed, unemployed, retired, student)"
+								},
+								{
+									"key": "employer",
+									"value": "Tech Company",
+									"type": "text",
+									"description": "Optional: Employer name"
+								},
+								{
+									"key": "income",
+									"value": "15000.00",
+									"type": "text",
+									"description": "Optional: Monthly income"
+								},
+								{
+									"key": "notes",
+									"value": "New tenant registration via invitation",
+									"type": "text",
+									"description": "Optional: Additional notes"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/public/tenant-invitations/{{invitation_token}}/accept",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"public",
+								"tenant-invitations",
+								"{{invitation_token}}",
+								"accept"
+							]
+						},
+						"description": "Accept an invitation and complete tenant self-registration. Creates user account, tenant profile, and uploads identity/commercial/municipality documents.\\n\\n**Path Parameters:**\\n- `invitation_token`: Invitation token (64 characters)\\n\\n**Required Fields:**\\n- `first_name`: First name\\n- `last_name`: Last name\\n- `email`: Email address (must match invitation email if present)\\n- `password`: Password (min 8 characters)\\n- `password_confirmation`: Must match password\\n\\n**Optional Fields (Identity):**\\n- `phone`: Phone number (Saudi format)\\n- `national_id`: National ID number\\n- `id_type`: ID type (national_id, iqama, passport, commercial_registration)\\n- `id_expiry`: ID expiration date (YYYY-MM-DD)\\n- `id_document_image`: ID document image (jpg, jpeg, png, gif)\\n\\n**Optional Fields (Commercial Registration):**\\n- `commercial_registration_number`\\n- `commercial_registration_expiry`\\n- `commercial_owner_name`\\n- `commercial_registration_image` (image file)\\n\\n**Optional Fields (Municipality License):**\\n- `municipality_license_number`\\n- `municipality_license_image` (image file)\\n\\n**Optional Fields (Emergency & Employment):**\\n- `emergency_name`, `emergency_phone`, `emergency_relation`\\n- `employment`, `employer`, `income`\\n- `notes`\\n\\n**Notes:**\\n- No authentication required (public endpoint)\\n- Use multipart/form-data for file uploads\\n- Uploaded files are processed and linked to created tenant profile\\n"
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8000",
+			"type": "string"
+		},
+		{
+			"key": "access_token",
+			"value": "",
+			"type": "string"
+		}
+	]
+}
+

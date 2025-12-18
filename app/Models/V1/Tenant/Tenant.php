@@ -36,6 +36,10 @@ class Tenant extends Model
         'id_type',
         'id_document',
         'id_expiry',
+        'commercial_registration_number',
+        'commercial_registration_expiry',
+        'commercial_owner_name',
+        'municipality_license_number',
         'emergency_name',
         'emergency_phone',
         'emergency_relation',
@@ -55,6 +59,7 @@ class Tenant extends Model
     {
         return [
             'id_expiry' => 'date',
+            'commercial_registration_expiry' => 'date',
             'income' => 'decimal:2',
         ];
     }

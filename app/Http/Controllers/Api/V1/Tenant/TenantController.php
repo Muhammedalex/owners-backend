@@ -7,6 +7,7 @@ use App\Http\Requests\V1\Tenant\StoreTenantRequest;
 use App\Http\Requests\V1\Tenant\UpdateTenantRequest;
 use App\Http\Resources\V1\Tenant\TenantResource;
 use App\Models\V1\Tenant\Tenant;
+use App\Services\V1\Media\MediaService;
 use App\Services\V1\Tenant\TenantService;
 use App\Traits\HasLocalizedResponse;
 use Illuminate\Http\JsonResponse;
@@ -16,7 +17,8 @@ class TenantController extends Controller
 {
     use HasLocalizedResponse;
     public function __construct(
-        private TenantService $tenantService
+        private TenantService $tenantService,
+        private MediaService $mediaService
     ) {}
 
     /**
@@ -79,8 +81,11 @@ class TenantController extends Controller
 
         $tenant = $this->tenantService->create($data);
 
+        // Handle media uploads (ID, commercial registration, municipality license)
+        $this->handleMediaUploads($request, $tenant, $ownershipId);
+
         return $this->successResponse(
-            new TenantResource($tenant->load(['user', 'ownership'])),
+            new TenantResource($tenant->load(['user', 'ownership', 'mediaFiles'])),
             'tenants.created',
             201
         );
@@ -110,6 +115,7 @@ class TenantController extends Controller
         $tenant->load([
             'user',
             'ownership',
+            'mediaFiles',
             'contracts.unit',
             'contracts.tenant',
             'contracts.ownership',
@@ -135,9 +141,19 @@ class TenantController extends Controller
         unset($data['ownership_id']);
 
         $tenant = $this->tenantService->update($tenant, $data);
+        
+        // Refresh tenant to ensure we have latest data
+        $tenant->refresh();
+
+        // Handle media uploads (ID, commercial registration, municipality license)
+        // This will delete old images before uploading new ones
+        $this->handleMediaUploads($request, $tenant, $ownershipId);
+        
+        // Refresh tenant to get latest media files
+        $tenant->refresh();
 
         return $this->successResponse(
-            new TenantResource($tenant->load(['user', 'ownership'])),
+            new TenantResource($tenant->load(['user', 'ownership', 'mediaFiles'])),
             'tenants.updated'
         );
     }
@@ -152,6 +168,84 @@ class TenantController extends Controller
         $this->tenantService->delete($tenant);
 
         return $this->successResponse(null, 'tenants.deleted');
+    }
+
+    /**
+     * Handle media uploads for tenant on store/update.
+     * Deletes old images before uploading new ones.
+     */
+    private function handleMediaUploads(Request $request, Tenant $tenant, int $ownershipId): void
+    {
+        $userId = $request->user()?->id;
+
+        // ID Document Image
+        if ($request->hasFile('id_document_image')) {
+            $file = $request->file('id_document_image');
+            
+            // Delete old ID document image if exists
+            $oldImage = $tenant->mediaFiles()
+                ->where('type', 'tenant_id_document')
+                ->first();
+            
+            if ($oldImage) {
+                $this->mediaService->delete($oldImage);
+            }
+
+            // Upload new image
+            $this->mediaService->upload(
+                entity: $tenant,
+                file: $file,
+                type: 'tenant_id_document',
+                ownershipId: $ownershipId,
+                uploadedBy: $userId,
+            );
+        }
+
+        // Commercial Registration Image
+        if ($request->hasFile('commercial_registration_image')) {
+            $file = $request->file('commercial_registration_image');
+            
+            // Delete old commercial registration image if exists
+            $oldImage = $tenant->mediaFiles()
+                ->where('type', 'tenant_cr_document')
+                ->first();
+            
+            if ($oldImage) {
+                $this->mediaService->delete($oldImage);
+            }
+
+            // Upload new image
+            $this->mediaService->upload(
+                entity: $tenant,
+                file: $file,
+                type: 'tenant_cr_document',
+                ownershipId: $ownershipId,
+                uploadedBy: $userId,
+            );
+        }
+
+        // Municipality License Image
+        if ($request->hasFile('municipality_license_image')) {
+            $file = $request->file('municipality_license_image');
+            
+            // Delete old municipality license image if exists
+            $oldImage = $tenant->mediaFiles()
+                ->where('type', 'tenant_municipality_license')
+                ->first();
+            
+            if ($oldImage) {
+                $this->mediaService->delete($oldImage);
+            }
+
+            // Upload new image
+            $this->mediaService->upload(
+                entity: $tenant,
+                file: $file,
+                type: 'tenant_municipality_license',
+                ownershipId: $ownershipId,
+                uploadedBy: $userId,
+            );
+        }
     }
 }
 

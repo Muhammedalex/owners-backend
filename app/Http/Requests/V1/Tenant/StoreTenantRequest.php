@@ -35,6 +35,10 @@ class StoreTenantRequest extends FormRequest
             'id_type' => ['nullable', 'string', 'max:50', Rule::in(['national_id', 'iqama', 'passport', 'commercial_registration'])],
             'id_document' => ['nullable', 'string', 'max:255'],
             'id_expiry' => ['nullable', 'date'],
+            'commercial_registration_number' => ['nullable', 'string', 'max:100'],
+            'commercial_registration_expiry' => ['nullable', 'date'],
+            'commercial_owner_name' => ['nullable', 'string', 'max:255'],
+            'municipality_license_number' => ['nullable', 'string', 'max:100'],
             'emergency_name' => ['nullable', 'string', 'max:100'],
             'emergency_phone' => ['nullable', new SaudiPhoneNumber(), 'max:20'],
             'emergency_relation' => ['nullable', 'string', 'max:50'],
@@ -43,6 +47,10 @@ class StoreTenantRequest extends FormRequest
             'income' => ['nullable', 'numeric', 'min:0', 'max:9999999999.99'],
             'rating' => ['nullable', 'string', 'max:50', Rule::in(['excellent', 'good', 'fair', 'poor'])],
             'notes' => ['nullable', 'string'],
+            // Optional files uploaded with store endpoint
+            'id_document_image' => ['nullable', 'file', 'image'],
+            'commercial_registration_image' => ['nullable', 'file', 'image'],
+            'municipality_license_image' => ['nullable', 'file', 'image'],
         ];
     }
 
@@ -69,6 +77,10 @@ class StoreTenantRequest extends FormRequest
             'id_type' => __('messages.attributes.id_type'),
             'id_document' => __('messages.attributes.id_document'),
             'id_expiry' => __('messages.attributes.id_expiry'),
+            'commercial_registration_number' => __('messages.attributes.commercial_registration_number'),
+            'commercial_registration_expiry' => __('messages.attributes.commercial_registration_expiry'),
+            'commercial_owner_name' => __('messages.attributes.commercial_owner_name'),
+            'municipality_license_number' => __('messages.attributes.municipality_license_number'),
             'emergency_name' => __('messages.attributes.emergency_name'),
             'emergency_phone' => __('messages.attributes.emergency_phone'),
             'emergency_relation' => __('messages.attributes.emergency_relation'),
@@ -94,6 +106,7 @@ class StoreTenantRequest extends FormRequest
             'rating.in' => __('messages.validation.in', ['attribute' => __('messages.attributes.rating')]),
             'income.numeric' => __('messages.validation.numeric', ['attribute' => __('messages.attributes.income')]),
             'id_expiry.date' => __('messages.validation.date', ['attribute' => __('messages.attributes.id_expiry')]),
+            'commercial_registration_expiry.date' => __('messages.validation.date', ['attribute' => __('messages.attributes.commercial_registration_expiry')]),
         ];
     }
 }
