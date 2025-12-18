@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Endpoints - Public (No Authentication) - Tenant Invitation Documentation</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <h1>📋 Tenant Invitation Feature</h1>
+        <p>Complete Documentation - Tenant Self-Registration via Invitation</p>
+    </header>
+    
+    <div class="container">
+        <aside class="sidebar">
+            <h2>Navigation</h2>
+            <nav>
+                <ul>
+                    <li><a href="index.html" data-route="">📖 Overview</a></li>
+                    <li><a href="#" data-route="overview">📋 Feature Overview</a></li>
+                    <li><a href="#" data-route="database">🗄️ Database Schema</a></li>
+                    <li><a href="#" data-route="api-owner">🔐 API - Owner</a></li>
+                    <li><a href="#" data-route="api-public">🌐 API - Public</a></li>
+                    <li><a href="#" data-route="workflow-owner">👤 Owner Workflow</a></li>
+                    <li><a href="#" data-route="workflow-tenant">🏠 Tenant Workflow</a></li>
+                    <li><a href="#" data-route="invitation-types">🔄 Invitation Types</a></li>
+                    <li><a href="#" data-route="mail-config">📧 Mail Configuration</a></li>
+                    <li><a href="#" data-route="permissions">🔒 Permissions & Security</a></li>
+                    <li><a href="#" data-route="registration">👥 User Registration</a></li>
+                    <li><a href="#" data-route="testing">🧪 Testing Guide</a></li>
+                    <li><a href="#" data-route="troubleshooting">🔧 Troubleshooting</a></li>
+                </ul>
+            </nav>
+        </aside>
+        
+        <main class="main-content">
+            <h1>API Endpoints - Public (No Authentication)</h1>
+
+<h2>Overview</h2>
+
+<p>Public API endpoints for tenants to validate and accept invitations. These endpoints do not require authentication.</p>
+
+<strong>Base URL:</strong> <code>/api/v1/public/tenant-invitations</code>
+
+<strong>Authentication:</strong> None required
+
+<p>---</p>
+
+<h2>Endpoints</h2>
+
+<h3>1. Validate Invitation Token</h3>
+
+<strong>GET</strong> <code>/api/v1/public/tenant-invitations/{token}/validate</code>
+
+<p>Validate an invitation token and return invitation details. Used by frontend to check if token is valid before showing registration form.</p>
+
+<h4>URL Parameters</h4>
+
+<ul>
+<li><code>token</code>: Invitation token (64 characters)</li>
+</ul>
+
+<h4>Response (200 OK)</h4>
+
+<p>``<code>json { "success": true, "data": { "valid": true, "invitation": { "email": "tenant@example.com", "name": "Ahmed Ali", "ownership": { "name": "ABC Real Estate" }, "expires_at": "2025-12-22 10:00:00" } } }</p>
+</code>`<code>
+
+<h4>Error Responses</h4>
+
+<strong>404 Not Found - Invalid Token</strong>
+
+</code>`<code>json
+<p>{ "success": false, "message": "Invalid invitation token" }</p>
+</code>`<code>
+
+<strong>400 Bad Request - Expired</strong>
+
+</code>`<code>json
+<p>{ "success": false, "message": "Invitation has expired" }</p>
+</code>`<code>
+
+<strong>400 Bad Request - Already Accepted (Single-use)</strong>
+
+</code>`<code>json
+<p>{ "success": false, "message": "Invitation has already been accepted" }</p>
+</code>`<code>
+
+<strong>400 Bad Request - Cancelled</strong>
+
+</code>`<code>json
+<p>{ "success": false, "message": "Invitation has been cancelled" }</p>
+</code>`<code>
+
+<p>---</p>
+
+<h3>2. Accept Invitation & Register</h3>
+
+<strong>POST</strong> </code>/api/v1/public/tenant-invitations/{token}/accept<code>
+
+<p>Accept an invitation and complete tenant registration. Creates user account, tenant profile, assigns role, and links to ownership.</p>
+
+<h4>URL Parameters</h4>
+
+<ul>
+<li></code>token<code>: Invitation token (64 characters)</li>
+</ul>
+
+<h4>Request Body</h4>
+
+</code>`<code>json
+<p>{ "first_name": "Ahmed", "last_name": "Ali", "email": "tenant@example.com", "phone": "+966502234567", "password": "SecurePassword123!", "password_confirmation": "SecurePassword123!", "national_id": "1234567880", "id_type": "national_id", "id_expiry": "2030-12-31", "emergency_name": "Mohammed Ali", "emergency_phone": "+966507654321", "emergency_relation": "brother", "employment": "employed", "employer": "ABC Company", "income": 15000.00, "notes": "New tenant registration" }</p>
+</code>`<code>
+
+<h4>Validation Rules</h4>
+
+<p>| Field | Rules | Description | |-------|-------|-------------| | </code>first_name<code> | Required, string, max 100 | First name | | </code>last_name<code> | Required, string, max 100 | Last name | | </code>email<code> | Required, email, max 255 | Email address (must match invitation email for single-use) | | </code>phone<code> | Optional, Saudi phone format, max 20 | Phone number | | </code>password<code> | Required, string, min 8, confirmed | Password | | </code>password_confirmation<code> | Required, string | Password confirmation | | </code>national_id<code> | Optional, string, max 50 | National ID number | | </code>id_type<code> | Optional, enum: </code>national_id<code>, </code>iqama<code>, </code>passport<code>, </code>commercial_registration<code> | ID type | | </code>id_expiry<code> | Optional, date | ID expiration date | | </code>emergency_name<code> | Optional, string, max 100 | Emergency contact name | | </code>emergency_phone<code> | Optional, Saudi phone format, max 20 | Emergency contact phone | | </code>emergency_relation<code> | Optional, string, max 50 | Relationship to emergency contact | | </code>employment<code> | Optional, enum: </code>employed<code>, </code>self_employed<code>, </code>unemployed<code>, </code>retired<code>, </code>student<code> | Employment status | | </code>employer<code> | Optional, string, max 255 | Employer name | | </code>income<code> | Optional, numeric, min 0, max 9999999999.99 | Monthly income | | </code>notes<code> | Optional, string | Additional notes |</p>
+
+<h4>Response (201 Created)</h4>
+
+</code>`<code>json
+<p>{ "success": true, "message": "Registration completed successfully", "data": { "user": { "uuid": "user-uuid", "email": "tenant@example.com", "first": "Ahmed", "last": "Ali", "type": "tenant", "email_verified_at": null }, "tenant": { "id": 1, "national_id": "1234567880", "id_type": "national_id", "ownership": { "uuid": "ownership-uuid", "name": "ABC Real Estate" }, "user": { "uuid": "user-uuid", "email": "tenant@example.com" } }, "invitation": { "uuid": "invitation-uuid", "status": "accepted" }, "access_token": "sanctum-access-token", "redirect_to": "/dashboard" } }</p>
+</code>`<code>
+
+<h4>What Happens During Acceptance</h4>
+
+<ol>
+<li><strong>Token Validation</strong></li>
+</ol>
+<ul>
+<li>Validates token exists</li>
+<li>Checks expiration</li>
+<li>Checks status (not cancelled, not already accepted for single-use)</li>
+</ul>
+
+<ol>
+<li><strong>Email Validation</strong> (Single-use only)</li>
+</ol>
+<ul>
+<li>If invitation has email, registration email must match</li>
+</ul>
+
+<ol>
+<li><strong>User Account</strong></li>
+</ol>
+<ul>
+<li>Creates new user OR uses existing user</li>
+<li>Sets </code>type<code> to </code>'tenant'<code></li>
+<li>Assigns </code>'Tenant'<code> role</li>
+<li>Handles email verification (if enabled)</li>
+</ul>
+
+<ol>
+<li><strong>Tenant Profile</strong></li>
+</ol>
+<ul>
+<li>Creates tenant record</li>
+<li>Links to ownership</li>
+<li>Links to invitation (</code>invitation_id<code>)</li>
+</ul>
+
+<ol>
+<li><strong>Ownership Mapping</strong></li>
+</ol>
+<ul>
+<li>Creates </code>UserOwnershipMapping<code> record</li>
+<li>Sets as default if first ownership</li>
+</ul>
+
+<ol>
+<li><strong>Invitation Update</strong></li>
+</ol>
+<ul>
+<li><strong>Single-use:</strong> Marks as </code>accepted<code>, sets </code>accepted_by<code>, sets </code>tenant_id<code></li>
+<li><strong>Multi-use:</strong> Updates </code>updated_at<code> timestamp, keeps </code>pending<code> status</li>
+</ul>
+
+<ol>
+<li><strong>Tokens</strong></li>
+</ol>
+<ul>
+<li>Generates Sanctum access token</li>
+<li>Returns token for immediate login</li>
+</ul>
+
+<h4>Error Responses</h4>
+
+<strong>400 Bad Request - Validation Error</strong>
+
+</code>`<code>json
+<p>{ "success": false, "message": "Validation failed", "errors": { "email": ["The email field is required."], "password": ["The password must be at least 8 characters."] } }</p>
+</code>`<code>
+
+<strong>400 Bad Request - Email Mismatch</strong>
+
+</code>`<code>json
+<p>{ "success": false, "message": "Email does not match invitation." }</p>
+</code>`<code>
+
+<strong>400 Bad Request - Tenant Already Exists</strong>
+
+</code>`<code>json
+<p>{ "success": false, "message": "Tenant already exists for this ownership." }</p>
+</code>`<code>
+
+<strong>400 Bad Request - Invalid Token</strong>
+
+</code>`<code>json
+<p>{ "success": false, "message": "Invalid invitation token." }</p>
+</code>`<code>
+
+<strong>400 Bad Request - Expired</strong>
+
+</code>`<code>json
+<p>{ "success": false, "message": "Invitation has expired." }</p>
+</code>`<code>
+
+<strong>400 Bad Request - Already Accepted</strong>
+
+</code>`<code>json
+<p>{ "success": false, "message": "Invitation has already been accepted." }</p>
+</code>`<code>
+
+<strong>400 Bad Request - Cancelled</strong>
+
+</code>`<code>json
+<p>{ "success": false, "message": "Invitation has been cancelled." }</p>
+</code>`<code>
+
+<p>---</p>
+
+<h2>Request Examples</h2>
+
+<h3>cURL Examples</h3>
+
+<h4>Validate Token</h4>
+
+</code>`<code>bash
+<p>curl -X GET "https://api.example.com/api/v1/public/tenant-invitations/abc123.../validate"</p>
+</code>`<code>
+
+<h4>Accept Invitation</h4>
+
+</code>`<code>bash
+<p>curl -X POST "https://api.example.com/api/v1/public/tenant-invitations/abc123.../accept" \ -H "Content-Type: application/json" \ -d '{ "first_name": "Ahmed", "last_name": "Ali", "email": "tenant@example.com", "phone": "+966502234567", "password": "SecurePassword123!", "password_confirmation": "SecurePassword123!", "national_id": "1234567880", "id_type": "national_id", "id_expiry": "2030-12-31", "emergency_name": "Mohammed Ali", "emergency_phone": "+966507654321", "emergency_relation": "brother", "employment": "employed", "employer": "ABC Company", "income": 15000.00 }'</p>
+</code>`<code>
+
+<p>---</p>
+
+<h2>Frontend Integration</h2>
+
+<h3>Step 1: Validate Token on Page Load</h3>
+
+</code>`<code>javascript
+<p>// Get token from URL const urlParams = new URLSearchParams(window.location.search); const token = urlParams.get('token');</p>
+
+<p>// Validate token fetch(</code>/api/v1/public/tenant-invitations/${token}/validate<code>) .then(response => response.json()) .then(data => { if (data.success) { // Show registration form // Pre-fill email/name if available prefillForm(data.data.invitation); } else { // Show error message showError(data.message); } });</p>
+</code>`<code>
+
+<h3>Step 2: Submit Registration</h3>
+
+</code>`<code>javascript
+<p>// Submit registration form fetch(</code>/api/v1/public/tenant-invitations/${token}/accept<code>, { method: 'POST', headers: { 'Content-Type': 'application/json', }, body: JSON.stringify(formData) }) .then(response => response.json()) .then(data => { if (data.success) { // Save access token localStorage.setItem('access_token', data.data.access_token);</p>
+
+<p>// Redirect to dashboard window.location.href = data.data.redirect_to; } else { // Show validation errors showErrors(data.errors); } });</p>
+</code>`<code>
+
+<p>---</p>
+
+<h2>Related Files</h2>
+
+<ul>
+<li><strong>Controller:</strong> </code>app/Http/Controllers/Api/V1/Tenant/PublicTenantInvitationController.php<code></li>
+<li><strong>Request:</strong> </code>app/Http/Requests/V1/Tenant/AcceptTenantInvitationRequest.php<code></li>
+<li><strong>Service:</strong> </code>app/Services/V1/Tenant/TenantInvitationService.php`</li>
+</ul>
+        </main>
+    </div>
+    
+    <button class="print-btn" id="printBtn" title="Print Documentation">
+        🖨️ Print
+    </button>
+    
+    <script src="app.js"></script>
+</body>
+</html>

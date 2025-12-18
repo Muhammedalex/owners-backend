@@ -35,11 +35,19 @@ class UnitController extends Controller
             return $this->errorResponse('messages.errors.ownership_required', 400);
         }
 
-        $perPage = $request->input('per_page', 15);
+        $perPage = (int) $request->input('per_page', 15);
         $filters = array_merge(
             ['ownership_id' => $ownershipId], // MANDATORY
             $request->only(['search', 'type', 'status', 'building_id', 'floor_id', 'active'])
         );
+
+        if ($perPage === -1) {
+            $units = $this->unitService->all($filters);
+
+            return $this->successResponse(
+                UnitResource::collection($units)
+            );
+        }
 
         $units = $this->unitService->paginate($perPage, $filters);
 

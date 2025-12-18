@@ -8,6 +8,7 @@ use App\Traits\V1\Document\HasDocuments;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Unit extends Model
@@ -161,5 +162,35 @@ class Unit extends Model
     public function deactivate(): void
     {
         $this->update(['active' => false]);
+    }
+
+    /**
+     * Get the contracts for this unit (many-to-many via contract_units).
+     */
+    public function contracts(): BelongsToMany
+    {
+        return $this->belongsToMany(\App\Models\V1\Contract\Contract::class, 'contract_units', 'unit_id', 'contract_id')
+            ->withPivot('rent_amount', 'notes')
+            ->withTimestamps();
+    }
+
+    /**
+     * Get active contract for this unit.
+     */
+    public function activeContract(): ?\App\Models\V1\Contract\Contract
+    {
+        return $this->contracts()
+            ->where('status', 'active')
+            ->where('start', '<=', now())
+            ->where('end', '>=', now())
+            ->first();
+    }
+
+    /**
+     * Check if unit is available (status + no active contract).
+     */
+    public function isAvailable(): bool
+    {
+        return $this->status === 'available' && $this->activeContract() === null;
     }
 }

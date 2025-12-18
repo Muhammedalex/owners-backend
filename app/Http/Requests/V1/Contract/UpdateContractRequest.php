@@ -36,6 +36,17 @@ class UpdateContractRequest extends FormRequest
                     return $query->where('ownership_id', $ownershipId);
                 }),
             ],
+            'unit_ids' => [
+                'sometimes',
+                'array',
+                'min:1',
+            ],
+            'unit_ids.*' => [
+                'integer',
+                Rule::exists('units', 'id')->where(function ($query) use ($ownershipId) {
+                    return $query->where('ownership_id', $ownershipId);
+                }),
+            ],
             'tenant_id' => [
                 'sometimes',
                 'integer',

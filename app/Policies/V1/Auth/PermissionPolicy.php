@@ -18,6 +18,9 @@ class PermissionPolicy
      */
     public function viewAny(User $user): bool
     {
+        if ($user->isSuperAdmin()) {
+            return true;
+        }
         return $user->can('auth.permissions.view');
     }
 
@@ -26,6 +29,9 @@ class PermissionPolicy
      */
     public function view(User $user, Permission $permission): bool
     {
+        if ($user->isSuperAdmin()) {
+            return true;
+        }
         return $user->can('auth.permissions.view');
     }
 

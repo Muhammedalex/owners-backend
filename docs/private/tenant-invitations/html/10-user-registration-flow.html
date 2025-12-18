@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Registration Flow - Tenant Invitation Documentation</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <h1>📋 Tenant Invitation Feature</h1>
+        <p>Complete Documentation - Tenant Self-Registration via Invitation</p>
+    </header>
+    
+    <div class="container">
+        <aside class="sidebar">
+            <h2>Navigation</h2>
+            <nav>
+                <ul>
+                    <li><a href="index.html" data-route="">📖 Overview</a></li>
+                    <li><a href="#" data-route="overview">📋 Feature Overview</a></li>
+                    <li><a href="#" data-route="database">🗄️ Database Schema</a></li>
+                    <li><a href="#" data-route="api-owner">🔐 API - Owner</a></li>
+                    <li><a href="#" data-route="api-public">🌐 API - Public</a></li>
+                    <li><a href="#" data-route="workflow-owner">👤 Owner Workflow</a></li>
+                    <li><a href="#" data-route="workflow-tenant">🏠 Tenant Workflow</a></li>
+                    <li><a href="#" data-route="invitation-types">🔄 Invitation Types</a></li>
+                    <li><a href="#" data-route="mail-config">📧 Mail Configuration</a></li>
+                    <li><a href="#" data-route="permissions">🔒 Permissions & Security</a></li>
+                    <li><a href="#" data-route="registration">👥 User Registration</a></li>
+                    <li><a href="#" data-route="testing">🧪 Testing Guide</a></li>
+                    <li><a href="#" data-route="troubleshooting">🔧 Troubleshooting</a></li>
+                </ul>
+            </nav>
+        </aside>
+        
+        <main class="main-content">
+            <h1>User Registration Flow</h1>
+
+<h2>Overview</h2>
+
+<p>This document describes the complete flow of user creation, role assignment, and ownership mapping when a tenant accepts an invitation.</p>
+
+<p>---</p>
+
+<h2>Registration Flow Diagram</h2>
+
+<p>``<code> Tenant Accepts Invitation ↓ Validate Token & Expiration ↓ Check if User Exists ├─→ User Exists → Update User Type & Role └─→ User Doesn't Exist → Create New User ↓ Set User Type: 'tenant' ↓ Assign Role: 'Tenant' ↓ Create Tenant Profile ↓ Link User to Ownership (UserOwnershipMapping) ↓ Update Invitation Status ↓ Generate Auth Tokens ↓ Return Success Response</p>
+</code>`<code>
+
+<p>---</p>
+
+<h2>Step-by-Step Process</h2>
+
+<h3>Step 1: Token Validation</h3>
+
+<strong>Location:</strong> </code>TenantInvitationService::acceptInvitation()<code>
+
+<strong>Checks:</strong>
+<ul>
+<li>Token exists in database</li>
+<li>Invitation not expired</li>
+<li>Invitation not cancelled</li>
+<li>Invitation not already accepted (single-use only)</li>
+</ul>
+
+<strong>Code:</strong>
+</code>`<code>php
+<p>$invitation = $this->invitationRepository->findByToken($token);</p>
+
+<p>if (!$invitation) { throw new \Exception('Invalid invitation token.'); }</p>
+
+<p>if ($invitation->isExpired()) { throw new \Exception('Invitation has expired.'); }</p>
+
+<p>if ($invitation->isCancelled()) { throw new \Exception('Invitation has been cancelled.'); }</p>
+
+<p>// For single-use: check if already accepted if (($invitation->email || $invitation->phone) && $invitation->isAccepted()) { throw new \Exception('Invitation has already been accepted.'); }</p>
+</code>`<code>
+
+<p>---</p>
+
+<h3>Step 2: Email Validation (Single-use)</h3>
+
+<strong>Location:</strong> </code>TenantInvitationService::acceptInvitation()<code>
+
+<strong>Check:</strong>
+<ul>
+<li>Registration email must match invitation email (if invitation has email)</li>
+</ul>
+
+<strong>Code:</strong>
+</code>`<code>php
+<p>if ($invitation->email && $invitation->email !== $registrationData['email']) { throw new \Exception('Email does not match invitation.'); }</p>
+</code>`<code>
+
+<strong>Note:</strong> Multi-use invitations skip this check (no email to match).
+
+<p>---</p>
+
+<h3>Step 3: User Account Handling</h3>
+
+<strong>Location:</strong> </code>TenantInvitationService::acceptInvitation()<code>
+
+<h4>Scenario A: New User</h4>
+
+<strong>Process:</strong>
+<ol>
+<li>Call </code>AuthService::register()<code></li>
+<li>Create user account</li>
+<li>Set </code>type<code> to </code>'tenant'<code></li>
+<li>Handle email verification (if enabled)</li>
+</ol>
+
+<strong>Code:</strong>
+</code>`<code>php
+<p>$user = \App\Models\V1\Auth\User::where('email', $registrationData['email'])->first();</p>
+
+<p>if (!$user) { // Create new user with tenant type $registerResult = $this->authService->register([ 'email' => $registrationData['email'], 'phone' => $registrationData['phone'] ?? null, 'first' => $registrationData['first_name'], 'last' => $registrationData['last_name'], 'password' => $registrationData['password'], 'password_confirmation' => $registrationData['password_confirmation'], 'type' => 'tenant', // Set user type 'device_name' => 'web', ]); $user = $registerResult['user'];</p>
+
+<p>// Assign Tenant role $tenantRole = Role::where('name', 'Tenant')->first(); if ($tenantRole) { $user->assignRole($tenantRole); } }</p>
+</code>`<code>
+
+<strong>User Created With:</strong>
+<ul>
+<li></code>type<code> = </code>'tenant'<code></li>
+<li></code>email<code> = Registration email</li>
+<li></code>phone<code> = Registration phone (if provided)</li>
+<li></code>first<code> = First name</li>
+<li></code>last<code> = Last name</li>
+<li></code>password<code> = Hashed password</li>
+<li></code>email_verified_at<code> = Set based on config</li>
+</ul>
+
+<p>---</p>
+
+<h4>Scenario B: Existing User</h4>
+
+<strong>Process:</strong>
+<ol>
+<li>Find existing user by email</li>
+<li>Check if tenant already exists for this ownership</li>
+<li>Update user type if needed</li>
+<li>Assign role if needed</li>
+</ol>
+
+<strong>Code:</strong>
+</code>`<code>php
+<p>else { // Check if tenant already exists for this ownership $existingTenant = $this->tenantRepository->findByUserAndOwnership( $user->id, $invitation->ownership_id );</p>
+
+<p>if ($existingTenant) { throw new \Exception('Tenant already exists for this ownership.'); }</p>
+
+<p>// If user exists but doesn't have tenant type/role, update it if ($user->type !== 'tenant') { $user->update(['type' => 'tenant']); }</p>
+
+<p>// Ensure user has Tenant role if (!$user->hasRole('Tenant')) { $tenantRole = Role::where('name', 'Tenant')->first(); if ($tenantRole) { $user->assignRole($tenantRole); } } }</p>
+</code>`<code>
+
+<strong>Checks:</strong>
+<ul>
+<li>Tenant doesn't already exist for this ownership</li>
+<li>User type is </code>'tenant'<code></li>
+<li>User has </code>'Tenant'<code> role</li>
+</ul>
+
+<p>---</p>
+
+<h3>Step 4: Tenant Profile Creation</h3>
+
+<strong>Location:</strong> </code>TenantInvitationService::acceptInvitation()<code>
+
+<strong>Process:</strong>
+<ol>
+<li>Create tenant record</li>
+<li>Link to user</li>
+<li>Link to ownership</li>
+<li>Link to invitation (</code>invitation_id<code>)</li>
+<li>Store tenant-specific data</li>
+</ol>
+
+<strong>Code:</strong>
+</code>`<code>php
+<p>$tenant = $this->tenantRepository->create([ 'user_id' => $user->id, 'ownership_id' => $invitation->ownership_id, 'invitation_id' => $invitation->id, // Track which invitation created this tenant 'national_id' => $registrationData['national_id'] ?? null, 'id_type' => $registrationData['id_type'] ?? 'national_id', 'id_expiry' => $registrationData['id_expiry'] ?? null, 'emergency_name' => $registrationData['emergency_name'] ?? null, 'emergency_phone' => $registrationData['emergency_phone'] ?? null, 'emergency_relation' => $registrationData['emergency_relation'] ?? null, 'employment' => $registrationData['employment'] ?? null, 'employer' => $registrationData['employer'] ?? null, 'income' => $registrationData['income'] ?? null, 'rating' => $registrationData['rating'] ?? 'good', 'notes' => $registrationData['notes'] ?? null, ]);</p>
+</code>`<code>
+
+<strong>Tenant Created With:</strong>
+<ul>
+<li></code>user_id<code> - Links to user account</li>
+<li></code>ownership_id<code> - Links to ownership</li>
+<li></code>invitation_id<code> - Links to invitation (for tracking)</li>
+<li>All tenant-specific data from registration form</li>
+</ul>
+
+<p>---</p>
+
+<h3>Step 5: Ownership Mapping</h3>
+
+<strong>Location:</strong> </code>TenantInvitationService::acceptInvitation()<code>
+
+<strong>Process:</strong>
+<ol>
+<li>Check if mapping already exists</li>
+<li>Create mapping if doesn't exist</li>
+<li>Set as default if first ownership</li>
+</ol>
+
+<strong>Code:</strong>
+</code>`<code>php
+<p>// Link user to ownership (if not already linked) try { $existingMapping = $this->mappingService->findByUserAndOwnership( $user->id, $invitation->ownership_id );</p>
+
+<p>if (!$existingMapping) { // Check if this is user's first ownership mapping (set as default) $userMappings = $this->mappingService->getByUser($user->id); $isDefault = $userMappings->isEmpty();</p>
+
+<p>$this->mappingService->create([ 'user_id' => $user->id, 'ownership_id' => $invitation->ownership_id, 'default' => $isDefault, ]); } } catch (\Exception $e) { // Log but don't fail registration Log::warning("Failed to create ownership mapping: " . $e->getMessage()); }</p>
+</code>`<code>
+
+<strong>Mapping Created:</strong>
+<ul>
+<li></code>user_id<code> - User ID</li>
+<li></code>ownership_id<code> - Ownership ID</li>
+<li></code>default<code> - </code>true<code> if first ownership, </code>false<code> otherwise</li>
+<li></code>created_at<code> - Timestamp</li>
+</ul>
+
+<strong>Benefits:</strong>
+<ul>
+<li>User can access ownership-scoped data</li>
+<li>Ownership scope middleware recognizes user</li>
+<li>User can switch between ownerships (if multiple)</li>
+</ul>
+
+<p>---</p>
+
+<h3>Step 6: Invitation Status Update</h3>
+
+<strong>Location:</strong> </code>TenantInvitationService::acceptInvitation()<code>
+
+<h4>Single-use Invitations (With Email/Phone)</h4>
+
+<strong>Process:</strong>
+<ol>
+<li>Mark invitation as </code>accepted<code></li>
+<li>Set </code>accepted_by<code> to user ID</li>
+<li>Set </code>tenant_id<code> to created tenant ID</li>
+<li>Set </code>accepted_at<code> timestamp</li>
+</ol>
+
+<strong>Code:</strong>
+</code>`<code>php
+<p>if ($invitation->email || $invitation->phone) { // Single-use invitation: mark as accepted $invitation->accept($user->id); $invitation->update(['tenant_id' => $tenant->id]); }</p>
+</code>`<code>
+
+<strong>Result:</strong>
+<ul>
+<li>Status: </code>accepted<code></li>
+<li></code>accepted_by<code>: User ID</li>
+<li></code>tenant_id<code>: Tenant ID</li>
+<li></code>accepted_at<code>: Timestamp</li>
+<li>Token no longer valid</li>
+</ul>
+
+<p>---</p>
+
+<h4>Multi-use Invitations (Without Email/Phone)</h4>
+
+<strong>Process:</strong>
+<ol>
+<li>Keep status as </code>pending<code></li>
+<li>Don't set </code>accepted_by<code></li>
+<li>Don't set </code>tenant_id<code></li>
+<li>Update </code>updated_at<code> timestamp</li>
+<li>Link tenant via </code>invitation_id<code></li>
+</ol>
+
+<strong>Code:</strong>
+</code>`<code>php
+<p>else { // Multi-use invitation: keep pending, don't set accepted_by or tenant_id // Owner must manually close it when done // Just update timestamp to track last acceptance $invitation->touch(); // Update updated_at timestamp }</p>
+</code>`<code>
+
+<strong>Result:</strong>
+<ul>
+<li>Status: </code>pending<code> (unchanged)</li>
+<li></code>accepted_by<code>: </code>NULL<code></li>
+<li></code>tenant_id<code>: </code>NULL<code></li>
+<li></code>updated_at<code>: Updated timestamp</li>
+<li>Token still valid (can be used again)</li>
+<li>Tenant linked via </code>invitation_id<code></li>
+</ul>
+
+<p>---</p>
+
+<h3>Step 7: Token Generation</h3>
+
+<strong>Location:</strong> </code>TenantInvitationService::acceptInvitation()<code>
+
+<strong>Process:</strong>
+<ol>
+<li>Generate Sanctum access token</li>
+<li>Generate refresh token</li>
+<li>Return tokens for immediate login</li>
+</ol>
+
+<strong>Code:</strong>
+</code>`<code>php
+<p>// Generate tokens for user $tokens = $user->generateTokens('web');</p>
+</code>`<code>
+
+<strong>Tokens Generated:</strong>
+<ul>
+<li></code>access_token<code> - Short-lived (default: 60 minutes)</li>
+<li></code>refresh_token<code> - Long-lived (default: 30 days)</li>
+<li></code>token_type<code> - </code>Bearer<code></li>
+<li></code>expires_in<code> - Expiration time</li>
+</ul>
+
+<p>---</p>
+
+<h3>Step 8: Response</h3>
+
+<strong>Location:</strong> </code>TenantInvitationService::acceptInvitation()<code>
+
+<strong>Return Data:</strong>
+</code>`<code>php
+<p>return [ 'user' => $user, 'tenant' => $tenant, 'invitation' => $invitation->fresh(['ownership']), 'tokens' => $tokens, ];</p>
+</code>`<code>
+
+<strong>Response Structure:</strong>
+</code>`<code>json
+<p>{ "success": true, "message": "Registration completed successfully", "data": { "user": { "uuid": "...", "email": "...", "type": "tenant", ... }, "tenant": { "id": 1, "national_id": "...", "ownership": {...}, ... }, "invitation": { "uuid": "...", "status": "accepted", ... }, "access_token": "...", "redirect_to": "/dashboard" } }</p>
+</code>`<code>
+
+<p>---</p>
+
+<h2>Data Created/Updated</h2>
+
+<h3>New Records Created</h3>
+
+<ol>
+<li><strong>User Account</strong> (if new user)</li>
+</ol>
+<ul>
+<li></code>users<code> table</li>
+<li>Type: </code>tenant<code></li>
+<li>Email verified (based on config)</li>
+</ul>
+
+<ol>
+<li><strong>Tenant Profile</strong></li>
+</ol>
+<ul>
+<li></code>tenants<code> table</li>
+<li>Linked to user, ownership, and invitation</li>
+</ul>
+
+<ol>
+<li><strong>Ownership Mapping</strong></li>
+</ol>
+<ul>
+<li></code>user_ownership_mapping<code> table</li>
+<li>Links user to ownership</li>
+<li>Set as default if first ownership</li>
+</ul>
+
+<ol>
+<li><strong>Role Assignment</strong></li>
+</ol>
+<ul>
+<li></code>model_has_roles<code> table (Spatie)</li>
+<li>Assigns </code>Tenant<code> role</li>
+</ul>
+
+<ol>
+<li><strong>Access Token</strong></li>
+</ol>
+<ul>
+<li></code>personal_access_tokens<code> table (Sanctum)</li>
+<li>For immediate login</li>
+</ul>
+
+<h3>Records Updated</h3>
+
+<ol>
+<li><strong>User Account</strong> (if existing user)</li>
+</ol>
+<ul>
+<li></code>type<code> set to </code>tenant<code></li>
+<li>Role assigned if not already</li>
+</ul>
+
+<ol>
+<li><strong>Invitation</strong> (single-use)</li>
+</ol>
+<ul>
+<li></code>status<code> → </code>accepted<code></li>
+<li></code>accepted_by<code> → User ID</li>
+<li></code>tenant_id<code> → Tenant ID</li>
+<li></code>accepted_at<code> → Timestamp</li>
+</ul>
+
+<ol>
+<li><strong>Invitation</strong> (multi-use)</li>
+</ol>
+<ul>
+<li></code>updated_at<code> → Updated timestamp</li>
+<li>Status remains </code>pending<code></li>
+</ul>
+
+<p>---</p>
+
+<h2>Email Verification</h2>
+
+<h3>Configuration</h3>
+
+<strong>Config:</strong> </code>config/auth.php<code>
+</code>`<code>php
+<p>'verification' => [ 'enabled' => env('AUTH_EMAIL_VERIFICATION_ENABLED', false), 'expire' => env('AUTH_VERIFICATION_EXPIRE', 60), // minutes ],</p>
+</code>`<code>
+
+<h3>Behavior</h3>
+
+<strong>If Enabled:</strong>
+<ul>
+<li>Email verification notification sent</li>
+<li>User must verify email before full access</li>
+<li></code>email_verified_at<code> set after verification</li>
+</ul>
+
+<strong>If Disabled:</strong>
+<ul>
+<li>Email automatically marked as verified</li>
+<li></code>email_verified_at<code> set immediately</li>
+<li>No verification email sent</li>
+</ul>
+
+<strong>Code:</strong>
+</code>`<code>php
+<p>// In AuthService::register() if (config('auth.verification.enabled')) { $user->sendEmailVerificationNotification(); } else { $user->markEmailAsVerified(); }</p>
+</code>`<code>
+
+<p>---</p>
+
+<h2>Role Assignment</h2>
+
+<h3>Role Lookup</h3>
+
+<strong>Role Name:</strong> </code>Tenant<code>
+
+<strong>Lookup:</strong>
+</code>`<code>php
+<p>$tenantRole = Role::where('name', 'Tenant')->first();</p>
+</code>`<code>
+
+<strong>Assignment:</strong>
+</code>`<code>php
+<p>if ($tenantRole) { $user->assignRole($tenantRole); }</p>
+</code>`<code>
+
+<h3>Role Permissions</h3>
+
+<p>The </code>Tenant<code> role should have permissions for:</p>
+<ul>
+<li>Viewing own tenant data</li>
+<li>Updating own profile</li>
+<li>Viewing own contracts</li>
+<li>Viewing own invoices</li>
+<li>Making payments</li>
+</ul>
+
+<p>---</p>
+
+<h2>Ownership Mapping Logic</h2>
+
+<h3>Default Ownership</h3>
+
+<strong>Rule:</strong> First ownership is set as default
+
+<strong>Logic:</strong>
+</code>`<code>php
+<p>$userMappings = $this->mappingService->getByUser($user->id); $isDefault = $userMappings->isEmpty();</p>
+</code>`<code>
+
+<strong>If First Ownership:</strong>
+<ul>
+<li></code>default<code> = </code>true<code></li>
+<li>User's default ownership for scope</li>
+</ul>
+
+<strong>If Not First:</strong>
+<ul>
+<li></code>default<code> = </code>false<code></li>
+<li>Previous default remains default</li>
+</ul>
+
+<p>---</p>
+
+<h2>Transaction Safety</h2>
+
+<h3>Database Transaction</h3>
+
+<strong>All operations wrapped in transaction:</strong>
+</code>`<code>php
+<p>return DB::transaction(function () use ($token, $registrationData) { // All operations here // If any fails, all rolled back });</p>
+</code>`<code>
+
+<strong>Benefits:</strong>
+<ul>
+<li>Atomicity: All or nothing</li>
+<li>Data consistency</li>
+<li>Prevents partial registrations</li>
+</ul>
+
+<p>---</p>
+
+<h2>Error Handling</h2>
+
+<h3>Validation Errors</h3>
+
+<strong>Handled By:</strong>
+<ul>
+<li></code>AcceptTenantInvitationRequest<code> - Form validation</li>
+<li></code>TenantInvitationService<code> - Business logic validation</li>
+</ul>
+
+<strong>Common Errors:</strong>
+<ul>
+<li>Email mismatch (single-use)</li>
+<li>Tenant already exists</li>
+<li>Invalid token</li>
+<li>Expired invitation</li>
+<li>Already accepted (single-use)</li>
+</ul>
+
+<h3>Exception Handling</h3>
+
+<strong>In Controller:</strong>
+</code>`<code>php
+<p>try { $result = $this->invitationService->acceptInvitation($token, $request->validated()); return successResponse(...); } catch (\Exception $e) { return errorResponse($e->getMessage(), 400); }</p>
+</code>`<code>
+
+<p>---</p>
+
+<h2>Related Files</h2>
+
+<ul>
+<li><strong>Service:</strong> </code>app/Services/V1/Tenant/TenantInvitationService.php<code></li>
+<li><strong>Auth Service:</strong> </code>app/Services/V1/Auth/AuthService.php<code></li>
+<li><strong>Mapping Service:</strong> </code>app/Services/V1/Ownership/UserOwnershipMappingService.php<code></li>
+<li><strong>Controller:</strong> </code>app/Http/Controllers/Api/V1/Tenant/PublicTenantInvitationController.php`</li>
+</ul>
+
+<p>---</p>
+
+<h2>Related Documentation</h2>
+
+<ul>
+<li><strong><a href="./06-workflow-tenant.md">Workflow - Tenant</a></strong></li>
+<li><strong><a href="./07-invitation-types.md">Invitation Types</a></strong></li>
+<li><strong><a href="./02-database-schema.md">Database Schema</a></strong></li>
+</ul>
+        </main>
+    </div>
+    
+    <button class="print-btn" id="printBtn" title="Print Documentation">
+        🖨️ Print
+    </button>
+    
+    <script src="app.js"></script>
+</body>
+</html>

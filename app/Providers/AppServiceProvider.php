@@ -43,6 +43,7 @@ use App\Repositories\V1\Media\MediaFileRepository;
 use App\Repositories\V1\Document\Interfaces\DocumentRepositoryInterface;
 use App\Repositories\V1\Document\DocumentRepository;
 use App\Models\V1\Tenant\Tenant;
+use App\Models\V1\Tenant\TenantInvitation;
 use App\Models\V1\Contract\Contract;
 use App\Models\V1\Invoice\Invoice;
 use App\Models\V1\Payment\Payment;
@@ -50,6 +51,7 @@ use App\Models\V1\Setting\SystemSetting;
 use App\Models\V1\Media\MediaFile;
 use App\Models\V1\Document\Document;
 use App\Policies\V1\Tenant\TenantPolicy;
+use App\Policies\V1\Tenant\TenantInvitationPolicy;
 use App\Policies\V1\Contract\ContractPolicy;
 use App\Policies\V1\Invoice\InvoicePolicy;
 use App\Policies\V1\Payment\PaymentPolicy;
@@ -133,6 +135,11 @@ class AppServiceProvider extends ServiceProvider
             TenantRepository::class
         );
 
+        $this->app->bind(
+            \App\Repositories\V1\Tenant\Interfaces\TenantInvitationRepositoryInterface::class,
+            \App\Repositories\V1\Tenant\TenantInvitationRepository::class
+        );
+
         // V1 Contract Module
         $this->app->bind(
             ContractRepositoryInterface::class,
@@ -192,6 +199,7 @@ class AppServiceProvider extends ServiceProvider
 
         // Register Policies
         Gate::policy(Tenant::class, TenantPolicy::class);
+        Gate::policy(TenantInvitation::class, TenantInvitationPolicy::class);
         Gate::policy(Contract::class, ContractPolicy::class);
         Gate::policy(Invoice::class, InvoicePolicy::class);
         Gate::policy(Payment::class, PaymentPolicy::class);

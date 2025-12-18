@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Permissions & Security - Tenant Invitation Documentation</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <h1>📋 Tenant Invitation Feature</h1>
+        <p>Complete Documentation - Tenant Self-Registration via Invitation</p>
+    </header>
+    
+    <div class="container">
+        <aside class="sidebar">
+            <h2>Navigation</h2>
+            <nav>
+                <ul>
+                    <li><a href="index.html" data-route="">📖 Overview</a></li>
+                    <li><a href="#" data-route="overview">📋 Feature Overview</a></li>
+                    <li><a href="#" data-route="database">🗄️ Database Schema</a></li>
+                    <li><a href="#" data-route="api-owner">🔐 API - Owner</a></li>
+                    <li><a href="#" data-route="api-public">🌐 API - Public</a></li>
+                    <li><a href="#" data-route="workflow-owner">👤 Owner Workflow</a></li>
+                    <li><a href="#" data-route="workflow-tenant">🏠 Tenant Workflow</a></li>
+                    <li><a href="#" data-route="invitation-types">🔄 Invitation Types</a></li>
+                    <li><a href="#" data-route="mail-config">📧 Mail Configuration</a></li>
+                    <li><a href="#" data-route="permissions">🔒 Permissions & Security</a></li>
+                    <li><a href="#" data-route="registration">👥 User Registration</a></li>
+                    <li><a href="#" data-route="testing">🧪 Testing Guide</a></li>
+                    <li><a href="#" data-route="troubleshooting">🔧 Troubleshooting</a></li>
+                </ul>
+            </nav>
+        </aside>
+        
+        <main class="main-content">
+            <h1>Permissions & Security</h1>
+
+<h2>Overview</h2>
+
+<p>This document describes the permissions, policies, and security measures for the Tenant Invitation feature.</p>
+
+<p>---</p>
+
+<h2>Permissions</h2>
+
+<h3>Permission List</h3>
+
+<p>| Permission | Description | Scope | |------------|-------------|-------| | <code>tenants.invitations.view</code> | View invitations | Ownership-scoped | | <code>tenants.invitations.create</code> | Create invitations | Ownership-scoped | | <code>tenants.invitations.update</code> | Update invitations | Ownership-scoped | | <code>tenants.invitations.delete</code> | Delete invitations | Ownership-scoped | | <code>tenants.invitations.cancel</code> | Cancel invitations | Ownership-scoped | | <code>tenants.invitations.resend</code> | Resend invitation emails | Ownership-scoped | | <code>tenants.invitations.close_without_contact</code> | Close multi-use invitations | Ownership-scoped |</p>
+
+<h3>Permission Usage</h3>
+
+<h4>View Invitations</h4>
+<ul>
+<li><strong>Permission:</strong> <code>tenants.invitations.view</code></li>
+<li><strong>Used In:</strong> <code>TenantInvitationController::index()</code>, <code>show()</code></li>
+<li><strong>Policy Method:</strong> <code>viewAny()</code>, <code>view()</code></li>
+</ul>
+
+<h4>Create Invitations</h4>
+<ul>
+<li><strong>Permission:</strong> <code>tenants.invitations.create</code></li>
+<li><strong>Used In:</strong> <code>TenantInvitationController::store()</code>, <code>storeBulk()</code>, <code>generateLink()</code></li>
+<li><strong>Policy Method:</strong> <code>create()</code></li>
+</ul>
+
+<h4>Cancel Invitations</h4>
+<ul>
+<li><strong>Permission:</strong> <code>tenants.invitations.cancel</code> (for single-use)</li>
+<li><strong>Permission:</strong> <code>tenants.invitations.close_without_contact</code> (for multi-use)</li>
+<li><strong>Used In:</strong> <code>TenantInvitationController::cancel()</code></li>
+<li><strong>Policy Method:</strong> <code>cancel()</code>, <code>closeWithoutContact()</code></li>
+</ul>
+
+<h4>Resend Invitations</h4>
+<ul>
+<li><strong>Permission:</strong> <code>tenants.invitations.resend</code></li>
+<li><strong>Used In:</strong> <code>TenantInvitationController::resend()</code></li>
+<li><strong>Policy Method:</strong> <code>resend()</code></li>
+</ul>
+
+<p>---</p>
+
+<h2>Policy: TenantInvitationPolicy</h2>
+
+<strong>Location:</strong> <code>app/Policies/V1/Tenant/TenantInvitationPolicy.php</code>
+
+<h3>Policy Methods</h3>
+
+<h4>1. viewAny()</h4>
+
+<strong>Purpose:</strong> Check if user can view invitations list
+
+<strong>Logic:</strong>
+<ul>
+<li>Super Admin: Requires <code>tenants.invitations.view</code> permission</li>
+<li>Regular User: Requires <code>tenants.invitations.view</code> AND has ownership mappings</li>
+</ul>
+
+<p>``<code>php public function viewAny(User $user): bool { if ($user->isSuperAdmin()) { return $user->can('tenants.invitations.view'); } return $user->can('tenants.invitations.view') && $user->ownershipMappings()->exists(); }</p>
+</code>`<code>
+
+<h4>2. view()</h4>
+
+<strong>Purpose:</strong> Check if user can view specific invitation
+
+<strong>Logic:</strong>
+<ul>
+<li>Super Admin: Requires </code>tenants.invitations.view<code> permission</li>
+<li>Regular User: Requires </code>tenants.invitations.view<code> AND has access to invitation's ownership</li>
+</ul>
+
+</code>`<code>php
+<p>public function view(User $user, TenantInvitation $invitation): bool { if ($user->isSuperAdmin()) { return $user->can('tenants.invitations.view'); } return $user->can('tenants.invitations.view') && $user->hasOwnership($invitation->ownership_id); }</p>
+</code>`<code>
+
+<h4>3. create()</h4>
+
+<strong>Purpose:</strong> Check if user can create invitations
+
+<strong>Logic:</strong>
+<ul>
+<li>Super Admin: Requires </code>tenants.invitations.create<code> permission</li>
+<li>Regular User: Requires </code>tenants.invitations.create<code> AND has ownership mappings</li>
+</ul>
+
+</code>`<code>php
+<p>public function create(User $user): bool { if ($user->isSuperAdmin()) { return $user->can('tenants.invitations.create'); } return $user->can('tenants.invitations.create') && $user->ownershipMappings()->exists(); }</p>
+</code>`<code>
+
+<h4>4. cancel()</h4>
+
+<strong>Purpose:</strong> Check if user can cancel single-use invitations
+
+<strong>Logic:</strong>
+<ul>
+<li>Super Admin: Requires </code>tenants.invitations.cancel<code> permission</li>
+<li>Regular User: Requires </code>tenants.invitations.cancel<code> AND has access to invitation's ownership</li>
+</ul>
+
+</code>`<code>php
+<p>public function cancel(User $user, TenantInvitation $invitation): bool { if ($user->isSuperAdmin()) { return $user->can('tenants.invitations.cancel'); } return $user->can('tenants.invitations.cancel') && $user->hasOwnership($invitation->ownership_id); }</p>
+</code>`<code>
+
+<h4>5. closeWithoutContact()</h4>
+
+<strong>Purpose:</strong> Check if user can close multi-use invitations (without email/phone)
+
+<strong>Logic:</strong>
+<ul>
+<li>Only works for invitations without email AND phone</li>
+<li>Super Admin: Requires </code>tenants.invitations.close_without_contact<code> permission</li>
+<li>Regular User: Requires </code>tenants.invitations.close_without_contact<code> AND has access to invitation's ownership</li>
+</ul>
+
+</code>`<code>php
+<p>public function closeWithoutContact(User $user, TenantInvitation $invitation): bool { // Only allow if invitation has no email and no phone if ($invitation->email || $invitation->phone) { return false; }</p>
+
+<p>if ($user->isSuperAdmin()) { return $user->can('tenants.invitations.close_without_contact'); } return $user->can('tenants.invitations.close_without_contact') && $user->hasOwnership($invitation->ownership_id); }</p>
+</code>`<code>
+
+<h4>6. resend()</h4>
+
+<strong>Purpose:</strong> Check if user can resend invitation emails
+
+<strong>Logic:</strong>
+<ul>
+<li>Super Admin: Requires </code>tenants.invitations.resend<code> permission</li>
+<li>Regular User: Requires </code>tenants.invitations.resend<code> AND has access to invitation's ownership</li>
+</ul>
+
+</code>`<code>php
+<p>public function resend(User $user, TenantInvitation $invitation): bool { if ($user->isSuperAdmin()) { return $user->can('tenants.invitations.resend'); } return $user->can('tenants.invitations.resend') && $user->hasOwnership($invitation->ownership_id); }</p>
+</code>`<code>
+
+<p>---</p>
+
+<h2>Security Measures</h2>
+
+<h3>1. Token Security</h3>
+
+<strong>Token Generation:</strong>
+</code>`<code>php
+<p>do { $token = Str::random(64); } while ($this->invitationRepository->findByToken($token) !== null);</p>
+</code>`<code>
+
+<strong>Characteristics:</strong>
+<ul>
+<li>64-character random string</li>
+<li>Cryptographically secure (Laravel's </code>Str::random()<code>)</li>
+<li>Unique per invitation</li>
+<li>Stored in database (not hashed, but unique constraint prevents duplicates)</li>
+</ul>
+
+<strong>Security Considerations:</strong>
+<ul>
+<li>Tokens are long enough to prevent brute force</li>
+<li>Unique constraint prevents token collisions</li>
+<li>Tokens expire after set time</li>
+<li>Tokens become invalid after acceptance (single-use)</li>
+</ul>
+
+<p>---</p>
+
+<h3>2. Expiration Management</h3>
+
+<strong>Default Expiration:</strong> 7 days
+
+<strong>Configurable:</strong> 1-30 days
+
+<strong>Automatic Expiration:</strong>
+<ul>
+<li>System checks expiration on every token validation</li>
+<li>Expired invitations cannot be accepted</li>
+<li>Status can be marked as </code>expired<code> (future scheduled job)</li>
+</ul>
+
+<strong>Security Benefits:</strong>
+<ul>
+<li>Limits window of opportunity for token misuse</li>
+<li>Reduces risk of long-lived tokens being compromised</li>
+<li>Forces timely registration</li>
+</ul>
+
+<p>---</p>
+
+<h3>3. Email Validation</h3>
+
+<strong>Single-use Invitations:</strong>
+<ul>
+<li>Registration email must match invitation email</li>
+<li>Prevents unauthorized users from accepting invitations</li>
+<li>Validated in </code>TenantInvitationService::acceptInvitation()<code></li>
+</ul>
+
+</code>`<code>php
+<p>if ($invitation->email && $invitation->email !== $registrationData['email']) { throw new \Exception('Email does not match invitation.'); }</p>
+</code>`<code>
+
+<strong>Multi-use Invitations:</strong>
+<ul>
+<li>No email validation (no email to match)</li>
+<li>Anyone with link can register</li>
+</ul>
+
+<p>---</p>
+
+<h3>4. Ownership Scoping</h3>
+
+<strong>All Owner Endpoints:</strong>
+<ul>
+<li>Require </code>ownership_uuid<code> cookie</li>
+<li>Middleware validates ownership access</li>
+<li>Users can only access invitations for their ownerships</li>
+</ul>
+
+<strong>Public Endpoints:</strong>
+<ul>
+<li>No authentication required</li>
+<li>Token validation ensures ownership scope</li>
+<li>Token links to specific ownership</li>
+</ul>
+
+<p>---</p>
+
+<h3>5. Rate Limiting</h3>
+
+<strong>Laravel Built-in:</strong>
+<ul>
+<li>API rate limiting via middleware</li>
+<li>Prevents abuse of endpoints</li>
+<li>Configurable per route</li>
+</ul>
+
+<strong>Recommendations:</strong>
+<ul>
+<li>Limit invitation creation: 10 per minute per user</li>
+<li>Limit registration attempts: 5 per minute per IP</li>
+<li>Limit token validation: 20 per minute per IP</li>
+</ul>
+
+<p>---</p>
+
+<h3>6. CSRF Protection</h3>
+
+<strong>Public Endpoints:</strong>
+<ul>
+<li>Token-based validation (no session)</li>
+<li>No CSRF token required</li>
+<li>Token itself acts as authorization</li>
+</ul>
+
+<strong>Owner Endpoints:</strong>
+<ul>
+<li>Protected by Sanctum authentication</li>
+<li>CSRF protection via Laravel middleware</li>
+</ul>
+
+<p>---</p>
+
+<h3>7. Input Validation</h3>
+
+<strong>Request Validation:</strong>
+<ul>
+<li>All inputs validated via FormRequest classes</li>
+<li>Email format validation</li>
+<li>Phone format validation (Saudi)</li>
+<li>Password strength requirements</li>
+<li>SQL injection prevention (Eloquent ORM)</li>
+</ul>
+
+<strong>Validation Classes:</strong>
+<ul>
+<li></code>StoreTenantInvitationRequest<code></li>
+<li></code>StoreBulkTenantInvitationRequest<code></li>
+<li></code>AcceptTenantInvitationRequest<code></li>
+</ul>
+
+<p>---</p>
+
+<h2>Authorization Flow</h2>
+
+<h3>Owner Endpoints Flow</h3>
+
+</code>`<code>
+<p>Request → Authentication Check (Sanctum) ↓ Ownership Scope Check (Middleware) ↓ Policy Check (TenantInvitationPolicy) ↓ Permission Check (Spatie) ↓ Controller Action</p>
+</code>`<code>
+
+<h3>Public Endpoints Flow</h3>
+
+</code>`<code>
+<p>Request → Token Validation ↓ Invitation Lookup ↓ Status Check (expired, cancelled, accepted) ↓ Controller Action</p>
+</code>`<code>
+
+<p>---</p>
+
+<h2>Role-Based Access</h2>
+
+<h3>Super Admin</h3>
+
+<strong>Access:</strong>
+<ul>
+<li>Can view all invitations (all ownerships)</li>
+<li>Can create invitations for any ownership</li>
+<li>Can manage all invitations</li>
+<li>Bypasses ownership scope restrictions</li>
+</ul>
+
+<strong>Permissions Required:</strong>
+<ul>
+<li>All invitation permissions</li>
+</ul>
+
+<h3>Owner</h3>
+
+<strong>Access:</strong>
+<ul>
+<li>Can view invitations for their ownerships</li>
+<li>Can create invitations for their ownerships</li>
+<li>Can manage invitations for their ownerships</li>
+<li>Restricted to assigned ownerships</li>
+</ul>
+
+<strong>Permissions Required:</strong>
+<ul>
+<li></code>tenants.invitations.view<code></li>
+<li></code>tenants.invitations.create<code></li>
+<li></code>tenants.invitations.cancel<code></li>
+<li></code>tenants.invitations.resend<code></li>
+<li></code>tenants.invitations.close_without_contact<code> (for multi-use)</li>
+</ul>
+
+<h3>Manager/Staff</h3>
+
+<strong>Access:</strong>
+<ul>
+<li>Depends on assigned permissions</li>
+<li>Same ownership scope restrictions as Owner</li>
+</ul>
+
+<strong>Permissions Required:</strong>
+<ul>
+<li>Assigned by Super Admin/Owner</li>
+</ul>
+
+<p>---</p>
+
+<h2>Security Best Practices</h2>
+
+<h3>For Owners</h3>
+
+<ol>
+<li><strong>Token Sharing:</strong></li>
+</ol>
+<ul>
+<li>Don't share invitation links publicly (single-use)</li>
+<li>Use multi-use invitations for public sharing</li>
+<li>Monitor invitation acceptance</li>
+</ul>
+
+<ol>
+<li><strong>Expiration:</strong></li>
+</ol>
+<ul>
+<li>Use appropriate expiration times</li>
+<li>Shorter for sensitive invitations</li>
+<li>Longer for public invitations</li>
+</ul>
+
+<ol>
+<li><strong>Email Security:</strong></li>
+</ol>
+<ul>
+<li>Verify email addresses before sending</li>
+<li>Use secure email providers</li>
+<li>Monitor email delivery</li>
+</ul>
+
+<h3>For Tenants</h3>
+
+<ol>
+<li><strong>Link Security:</strong></li>
+</ol>
+<ul>
+<li>Don't share invitation links</li>
+<li>Use link only once (single-use)</li>
+<li>Report suspicious links</li>
+</ul>
+
+<ol>
+<li><strong>Password Security:</strong></li>
+</ol>
+<ul>
+<li>Use strong passwords</li>
+<li>Don't reuse passwords</li>
+<li>Enable 2FA if available</li>
+</ul>
+
+<p>---</p>
+
+<h2>Audit Trail</h2>
+
+<h3>Tracked Information</h3>
+
+<strong>Invitation Creation:</strong>
+<ul>
+<li></code>invited_by<code> - User who created invitation</li>
+<li></code>created_at<code> - Creation timestamp</li>
+<li></code>ownership_id<code> - Ownership scope</li>
+</ul>
+
+<strong>Invitation Acceptance:</strong>
+<ul>
+<li></code>accepted_by<code> - User who accepted (single-use)</li>
+<li></code>accepted_at<code> - Acceptance timestamp</li>
+<li></code>tenant_id<code> - Created tenant (single-use)</li>
+</ul>
+
+<strong>Multi-use Tracking:</strong>
+<ul>
+<li></code>tenants<code> relationship - All tenants who joined</li>
+<li></code>updated_at<code> - Last acceptance timestamp</li>
+</ul>
+
+<p>---</p>
+
+<h2>Related Files</h2>
+
+<ul>
+<li><strong>Policy:</strong> </code>app/Policies/V1/Tenant/TenantInvitationPolicy.php<code></li>
+<li><strong>Controller:</strong> </code>app/Http/Controllers/Api/V1/Tenant/TenantInvitationController.php<code></li>
+<li><strong>Service:</strong> </code>app/Services/V1/Tenant/TenantInvitationService.php<code></li>
+<li><strong>Permissions:</strong> </code>database/seeders/V1/Auth/PermissionSeeder.php`</li>
+</ul>
+
+<p>---</p>
+
+<h2>Related Documentation</h2>
+
+<ul>
+<li><strong><a href="./01-overview.md">Overview</a></strong></li>
+<li><strong><a href="./03-api-endpoints-owner.md">API Endpoints - Owner</a></strong></li>
+<li><strong><a href="./07-invitation-types.md">Invitation Types</a></strong></li>
+</ul>
+        </main>
+    </div>
+    
+    <button class="print-btn" id="printBtn" title="Print Documentation">
+        🖨️ Print
+    </button>
+    
+    <script src="app.js"></script>
+</body>
+</html>

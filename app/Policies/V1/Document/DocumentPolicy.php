@@ -12,6 +12,11 @@ class DocumentPolicy
      */
     public function viewAny(User $user): bool
     {
+        // Super Admin can view all documents
+        if ($user->isSuperAdmin()) {
+            return true;
+        }
+
         return $user->can('documents.view') && $user->ownershipMappings()->exists();
     }
 
@@ -38,6 +43,11 @@ class DocumentPolicy
      */
     public function create(User $user): bool
     {
+        // Super Admin can create documents
+        if ($user->isSuperAdmin()) {
+            return true;
+        }
+
         return $user->can('documents.create') && $user->ownershipMappings()->exists();
     }
 

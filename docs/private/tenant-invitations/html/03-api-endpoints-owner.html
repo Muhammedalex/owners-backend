@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Endpoints - Owner (Authenticated) - Tenant Invitation Documentation</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <h1>📋 Tenant Invitation Feature</h1>
+        <p>Complete Documentation - Tenant Self-Registration via Invitation</p>
+    </header>
+    
+    <div class="container">
+        <aside class="sidebar">
+            <h2>Navigation</h2>
+            <nav>
+                <ul>
+                    <li><a href="index.html" data-route="">📖 Overview</a></li>
+                    <li><a href="#" data-route="overview">📋 Feature Overview</a></li>
+                    <li><a href="#" data-route="database">🗄️ Database Schema</a></li>
+                    <li><a href="#" data-route="api-owner">🔐 API - Owner</a></li>
+                    <li><a href="#" data-route="api-public">🌐 API - Public</a></li>
+                    <li><a href="#" data-route="workflow-owner">👤 Owner Workflow</a></li>
+                    <li><a href="#" data-route="workflow-tenant">🏠 Tenant Workflow</a></li>
+                    <li><a href="#" data-route="invitation-types">🔄 Invitation Types</a></li>
+                    <li><a href="#" data-route="mail-config">📧 Mail Configuration</a></li>
+                    <li><a href="#" data-route="permissions">🔒 Permissions & Security</a></li>
+                    <li><a href="#" data-route="registration">👥 User Registration</a></li>
+                    <li><a href="#" data-route="testing">🧪 Testing Guide</a></li>
+                    <li><a href="#" data-route="troubleshooting">🔧 Troubleshooting</a></li>
+                </ul>
+            </nav>
+        </aside>
+        
+        <main class="main-content">
+            <h1>API Endpoints - Owner (Authenticated)</h1>
+
+<h2>Overview</h2>
+
+<p>Owner-facing API endpoints for managing tenant invitations. All endpoints require authentication and ownership scope.</p>
+
+<strong>Base URL:</strong> <code>/api/v1/tenants/invitations</code>
+
+<strong>Authentication:</strong> Bearer Token (Sanctum)  
+<strong>Ownership Scope:</strong> Required (via <code>ownership_uuid</code> cookie)
+
+<p>---</p>
+
+<h2>Endpoints</h2>
+
+<h3>1. List Invitations</h3>
+
+<strong>GET</strong> <code>/api/v1/tenants/invitations</code>
+
+<p>List all invitations for the current ownership.</p>
+
+<h4>Headers</h4>
+
+<p>``<code> Authorization: Bearer {access_token} Cookie: ownership_uuid={ownership_uuid}</p>
+</code>`<code>
+
+<h4>Query Parameters</h4>
+
+<p>| Parameter | Type | Required | Description | |-----------|------|----------|-------------| | </code>per_page<code> | integer | No | Items per page (default: 15) | | </code>page<code> | integer | No | Page number | | </code>search<code> | string | No | Search by email, name, or token | | </code>status<code> | string | No | Filter by status: </code>pending<code>, </code>accepted<code>, </code>expired<code>, </code>cancelled<code> | | </code>pending<code> | boolean | No | Show only pending invitations | | </code>expired<code> | boolean | No | Show only expired invitations | | </code>accepted<code> | boolean | No | Show only accepted invitations |</p>
+
+<h4>Response (200 OK)</h4>
+
+</code>`<code>json
+<p>{ "success": true, "data": [ { "uuid": "550e8400-e29b-41d4-a716-446655440000", "email": "tenant@example.com", "phone": null, "name": "Ahmed Ali", "status": "pending", "expires_at": "2025-12-22 10:00:00", "accepted_at": null, "notes": null, "invitation_url": "https://app.example.com/register/tenant?token=abc123...", "is_expired": false, "is_pending": true, "is_accepted": false, "is_cancelled": false, "ownership": { "uuid": "ownership-uuid", "name": "ABC Real Estate" }, "invited_by": { "uuid": "user-uuid", "name": "John Doe", "email": "owner@example.com" }, "accepted_by": null, "tenant": null, "tenants_count": null, "tenants": null, "created_at": "2025-12-15 10:00:00", "updated_at": "2025-12-15 10:00:00" } ], "meta": { "current_page": 1, "last_page": 5, "per_page": 15, "total": 75 } }</p>
+</code>`<code>
+
+<h4>Permissions Required</h4>
+
+<ul>
+<li></code>tenants.invitations.view<code></li>
+</ul>
+
+<p>---</p>
+
+<h3>2. Create Single Invitation</h3>
+
+<strong>POST</strong> </code>/api/v1/tenants/invitations<code>
+
+<p>Create a single invitation and send email (if email provided).</p>
+
+<h4>Headers</h4>
+
+</code>`<code>
+<p>Authorization: Bearer {access_token} Cookie: ownership_uuid={ownership_uuid} Content-Type: application/json</p>
+</code>`<code>
+
+<h4>Request Body</h4>
+
+</code>`<code>json
+<p>{ "email": "tenant@example.com", "phone": null, "name": "Ahmed Ali", "expires_in_days": 7, "notes": "Invitation for new office tenant" }</p>
+</code>`<code>
+
+<h4>Validation Rules</h4>
+
+<ul>
+<li></code>email<code>: Required if </code>phone<code> is not provided, nullable, email format, max 255 chars</li>
+<li></code>phone<code>: Required if </code>email<code> is not provided, nullable, Saudi phone format, max 20 chars</li>
+<li></code>name<code>: Optional, string, max 255 chars</li>
+<li></code>expires_in_days<code>: Optional, integer, min 1, max 30 (default: 7)</li>
+<li></code>notes<code>: Optional, string</li>
+</ul>
+
+<strong>Note:</strong> Either </code>email<code> OR </code>phone<code> must be provided (or both can be null for multi-use invitation).
+
+<h4>Response (201 Created)</h4>
+
+</code>`<code>json
+<p>{ "success": true, "message": "Invitation sent successfully", "data": { "uuid": "550e8400-e29b-41d4-a716-446655440000", "email": "tenant@example.com", "phone": null, "name": "Ahmed Ali", "status": "pending", "expires_at": "2025-12-22 10:00:00", "invitation_url": "https://app.example.com/register/tenant?token=abc123...", "is_expired": false, "is_pending": true, "ownership": { "uuid": "ownership-uuid", "name": "ABC Real Estate" }, "invited_by": { "uuid": "user-uuid", "name": "John Doe", "email": "owner@example.com" } } }</p>
+</code>`<code>
+
+<h4>Permissions Required</h4>
+
+<ul>
+<li></code>tenants.invitations.create<code></li>
+</ul>
+
+<p>---</p>
+
+<h3>3. Create Bulk Invitations</h3>
+
+<strong>POST</strong> </code>/api/v1/tenants/invitations/bulk<code>
+
+<p>Create multiple invitations at once.</p>
+
+<h4>Headers</h4>
+
+</code>`<code>
+<p>Authorization: Bearer {access_token} Cookie: ownership_uuid={ownership_uuid} Content-Type: application/json</p>
+</code>`<code>
+
+<h4>Request Body</h4>
+
+</code>`<code>json
+<p>{ "invitations": [ { "email": "tenant1@example.com", "name": "Tenant One" }, { "email": "tenant2@example.com", "name": "Tenant Two" }, { "phone": "+966501234567", "name": "Tenant Three" } ], "expires_in_days": 7, "notes": "Bulk invitation for new building" }</p>
+</code>`<code>
+
+<h4>Validation Rules</h4>
+
+<ul>
+<li></code>invitations<code>: Required, array, min 1, max 100 items</li>
+<li></code>invitations.*.email<code>: Required if </code>phone<code> not provided, nullable, email format</li>
+<li></code>invitations.*.phone<code>: Required if </code>email<code> not provided, nullable, Saudi phone format</li>
+<li></code>invitations.*.name<code>: Optional, string, max 255 chars</li>
+<li></code>expires_in_days<code>: Optional, integer, min 1, max 30 (default: 7)</li>
+<li></code>notes<code>: Optional, string</li>
+</ul>
+
+<h4>Response (201 Created)</h4>
+
+</code>`<code>json
+<p>{ "success": true, "message": "Invitations sent successfully", "data": [ { "uuid": "uuid-1", "email": "tenant1@example.com", "status": "pending", ... }, { "uuid": "uuid-2", "email": "tenant2@example.com", "status": "pending", ... } ] }</p>
+</code>`<code>
+
+<h4>Permissions Required</h4>
+
+<ul>
+<li></code>tenants.invitations.create<code></li>
+</ul>
+
+<p>---</p>
+
+<h3>4. Generate Link (No Email)</h3>
+
+<strong>POST</strong> </code>/api/v1/tenants/invitations/generate-link<code>
+
+<p>Generate an invitation link without sending email. Useful for multi-use invitations or manual sharing.</p>
+
+<h4>Headers</h4>
+
+</code>`<code>
+<p>Authorization: Bearer {access_token} Cookie: ownership_uuid={ownership_uuid} Content-Type: application/json</p>
+</code>`<code>
+
+<h4>Request Body</h4>
+
+</code>`<code>json
+<p>{ "email": null, "phone": null, "name": null, "expires_in_days": 30, "notes": "Public invitation link for website" }</p>
+</code>`<code>
+
+<h4>Validation Rules</h4>
+
+<ul>
+<li></code>email<code>: Optional, email format, max 255 chars</li>
+<li></code>phone<code>: Optional, Saudi phone format, max 20 chars</li>
+<li></code>name<code>: Optional, string, max 255 chars</li>
+<li></code>expires_in_days<code>: Optional, integer, min 1, max 30 (default: 7)</li>
+<li></code>notes<code>: Optional, string</li>
+</ul>
+
+<strong>Note:</strong> If both </code>email<code> and </code>phone<code> are null, creates a multi-use invitation.
+
+<h4>Response (201 Created)</h4>
+
+</code>`<code>json
+<p>{ "success": true, "message": "Invitation link generated successfully", "data": { "uuid": "550e8400-e29b-41d4-a716-446655440000", "email": null, "phone": null, "name": null, "status": "pending", "expires_at": "2026-01-15 10:00:00", "invitation_url": "https://app.example.com/register/tenant?token=xyz789...", "is_expired": false, "is_pending": true } }</p>
+</code>`<code>
+
+<h4>Permissions Required</h4>
+
+<ul>
+<li></code>tenants.invitations.create<code></li>
+</ul>
+
+<p>---</p>
+
+<h3>5. Show Invitation</h3>
+
+<strong>GET</strong> </code>/api/v1/tenants/invitations/{uuid}<code>
+
+<p>Get details of a specific invitation.</p>
+
+<h4>Headers</h4>
+
+</code>`<code>
+<p>Authorization: Bearer {access_token} Cookie: ownership_uuid={ownership_uuid}</p>
+</code>`<code>
+
+<h4>URL Parameters</h4>
+
+<ul>
+<li></code>uuid<code>: Invitation UUID</li>
+</ul>
+
+<h4>Response (200 OK)</h4>
+
+</code>`<code>json
+<p>{ "success": true, "data": { "uuid": "550e8400-e29b-41d4-a716-446655440000", "email": "tenant@example.com", "status": "accepted", "expires_at": "2025-12-22 10:00:00", "accepted_at": "2025-12-15 11:00:00", "invitation_url": "https://app.example.com/register/tenant?token=abc123...", "ownership": { "uuid": "ownership-uuid", "name": "ABC Real Estate" }, "invited_by": { "uuid": "user-uuid", "name": "John Doe", "email": "owner@example.com" }, "accepted_by": { "uuid": "tenant-user-uuid", "name": "Ahmed Ali", "email": "tenant@example.com" }, "tenant": { "id": 1, "national_id": "1234567890" }, "tenants_count": null, "tenants": null, "created_at": "2025-12-15 10:00:00", "updated_at": "2025-12-15 11:00:00" } }</p>
+</code>`<code>
+
+<strong>For Multi-use Invitations:</strong>
+
+</code>`<code>json
+<p>{ "success": true, "data": { "uuid": "550e8400-e29b-41d4-a716-446655440000", "email": null, "phone": null, "status": "pending", "tenants_count": 3, "tenants": [ { "id": 1, "user": { "name": "Ahmed Ali", "email": "ahmed@example.com" }, "national_id": "1234567890", "created_at": "2025-12-15 11:00:00" }, { "id": 2, "user": { "name": "Mohammed Ali", "email": "mohammed@example.com" }, "national_id": "0987654321", "created_at": "2025-12-15 12:00:00" } ] } }</p>
+</code>`<code>
+
+<h4>Permissions Required</h4>
+
+<ul>
+<li></code>tenants.invitations.view<code></li>
+</ul>
+
+<p>---</p>
+
+<h3>6. Resend Invitation</h3>
+
+<strong>POST</strong> </code>/api/v1/tenants/invitations/{uuid}/resend<code>
+
+<p>Resend invitation email (only if invitation has email).</p>
+
+<h4>Headers</h4>
+
+</code>`<code>
+<p>Authorization: Bearer {access_token} Cookie: ownership_uuid={ownership_uuid}</p>
+</code>`<code>
+
+<h4>URL Parameters</h4>
+
+<ul>
+<li></code>uuid<code>: Invitation UUID</li>
+</ul>
+
+<h4>Response (200 OK)</h4>
+
+</code>`<code>json
+<p>{ "success": true, "message": "Invitation resent successfully", "data": { "uuid": "550e8400-e29b-41d4-a716-446655440000", "email": "tenant@example.com", "status": "pending", ... } }</p>
+</code>`<code>
+
+<h4>Error Response (400 Bad Request)</h4>
+
+</code>`<code>json
+<p>{ "success": false, "message": "Failed to resend invitation", "error": "Invitation does not have an email address" }</p>
+</code>`<code>
+
+<h4>Permissions Required</h4>
+
+<ul>
+<li></code>tenants.invitations.resend<code></li>
+</ul>
+
+<p>---</p>
+
+<h3>7. Cancel Invitation</h3>
+
+<strong>POST</strong> </code>/api/v1/tenants/invitations/{uuid}/cancel<code>
+
+<p>Cancel a pending invitation.</p>
+
+<h4>Headers</h4>
+
+</code>`<code>
+<p>Authorization: Bearer {access_token} Cookie: ownership_uuid={ownership_uuid}</p>
+</code>`<code>
+
+<h4>URL Parameters</h4>
+
+<ul>
+<li></code>uuid<code>: Invitation UUID</li>
+</ul>
+
+<h4>Response (200 OK)</h4>
+
+</code>`<code>json
+<p>{ "success": true, "message": "Invitation cancelled successfully", "data": { "uuid": "550e8400-e29b-41d4-a716-446655440000", "status": "cancelled", ... } }</p>
+</code>`<code>
+
+<h4>Permissions Required</h4>
+
+<ul>
+<li><strong>For invitations with email/phone:</strong> </code>tenants.invitations.cancel<code></li>
+<li><strong>For invitations without email/phone:</strong> </code>tenants.invitations.close_without_contact<code></li>
+</ul>
+
+<p>---</p>
+
+<h2>Error Responses</h2>
+
+<h3>400 Bad Request</h3>
+
+</code>`<code>json
+<p>{ "success": false, "message": "Validation failed", "errors": { "email": ["The email field is required when phone is not present."] } }</p>
+</code>`<code>
+
+<h3>401 Unauthorized</h3>
+
+</code>`<code>json
+<p>{ "success": false, "message": "Unauthenticated" }</p>
+</code>`<code>
+
+<h3>403 Forbidden</h3>
+
+</code>`<code>json
+<p>{ "success": false, "message": "This action is unauthorized" }</p>
+</code>`<code>
+
+<h3>404 Not Found</h3>
+
+</code>`<code>json
+<p>{ "success": false, "message": "Invitation not found" }</p>
+</code>`<code>
+
+<p>---</p>
+
+<h2>Request Examples</h2>
+
+<h3>cURL Examples</h3>
+
+<h4>Create Invitation</h4>
+
+</code>`<code>bash
+<p>curl -X POST https://api.example.com/api/v1/tenants/invitations \ -H "Authorization: Bearer {token}" \ -H "Cookie: ownership_uuid={uuid}" \ -H "Content-Type: application/json" \ -d '{ "email": "tenant@example.com", "name": "Ahmed Ali", "expires_in_days": 7 }'</p>
+</code>`<code>
+
+<h4>List Invitations</h4>
+
+</code>`<code>bash
+<p>curl -X GET "https://api.example.com/api/v1/tenants/invitations?status=pending&per_page=20" \ -H "Authorization: Bearer {token}" \ -H "Cookie: ownership_uuid={uuid}"</p>
+</code>`<code>
+
+<h4>Resend Invitation</h4>
+
+</code>`<code>bash
+<p>curl -X POST https://api.example.com/api/v1/tenants/invitations/{uuid}/resend \ -H "Authorization: Bearer {token}" \ -H "Cookie: ownership_uuid={uuid}"</p>
+</code>`<code>
+
+<p>---</p>
+
+<h2>Related Files</h2>
+
+<ul>
+<li><strong>Controller:</strong> </code>app/Http/Controllers/Api/V1/Tenant/TenantInvitationController.php<code></li>
+<li><strong>Request (Single):</strong> </code>app/Http/Requests/V1/Tenant/StoreTenantInvitationRequest.php<code></li>
+<li><strong>Request (Bulk):</strong> </code>app/Http/Requests/V1/Tenant/StoreBulkTenantInvitationRequest.php<code></li>
+<li><strong>Resource:</strong> </code>app/Http/Resources/V1/Tenant/TenantInvitationResource.php<code></li>
+<li><strong>Policy:</strong> </code>app/Policies/V1/Tenant/TenantInvitationPolicy.php`</li>
+</ul>
+        </main>
+    </div>
+    
+    <button class="print-btn" id="printBtn" title="Print Documentation">
+        🖨️ Print
+    </button>
+    
+    <script src="app.js"></script>
+</body>
+</html>

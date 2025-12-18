@@ -23,8 +23,19 @@ class RoleController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $perPage = $request->input('per_page', 15);
+        $this->authorize('viewAny', Role::class);
+
+        $perPage = (int) $request->input('per_page', 15);
         $filters = $request->only(['search', 'guard_name']);
+
+        if ($perPage === -1) {
+            $roles = $this->roleService->all($filters);
+
+            return response()->json([
+                'success' => true,
+                'data' => RoleResource::collection($roles),
+            ]);
+        }
 
         $roles = $this->roleService->paginate($perPage, $filters);
 
@@ -45,6 +56,8 @@ class RoleController extends Controller
      */
     public function store(StoreRoleRequest $request): JsonResponse
     {
+        $this->authorize('create', Role::class);
+
         $role = $this->roleService->create($request->validated());
 
         return response()->json([
@@ -59,6 +72,8 @@ class RoleController extends Controller
      */
     public function show(Role $role): JsonResponse
     {
+        $this->authorize('view', $role);
+
         $role = $this->roleService->find($role->id);
 
         if (!$role) {
@@ -79,6 +94,8 @@ class RoleController extends Controller
      */
     public function update(UpdateRoleRequest $request, Role $role): JsonResponse
     {
+        $this->authorize('update', $role);
+
         $role = $this->roleService->update($role, $request->validated());
 
         return response()->json([
@@ -93,6 +110,8 @@ class RoleController extends Controller
      */
     public function destroy(Role $role): JsonResponse
     {
+        $this->authorize('delete', $role);
+
         $this->roleService->delete($role);
 
         return response()->json([
@@ -106,6 +125,8 @@ class RoleController extends Controller
      */
     public function syncPermissions(SyncRolePermissionsRequest $request, Role $role): JsonResponse
     {
+        $this->authorize('assignPermissions', $role);
+
         $role = $this->roleService->syncPermissions($role, $request->validated()['permissions']);
 
         return response()->json([
@@ -120,6 +141,8 @@ class RoleController extends Controller
      */
     public function givePermission(Request $request, Role $role): JsonResponse
     {
+        $this->authorize('assignPermissions', $role);
+
         $request->validate([
             'permission_id' => ['required', 'integer', 'exists:permissions,id'],
         ]);
@@ -138,6 +161,8 @@ class RoleController extends Controller
      */
     public function revokePermission(Request $request, Role $role): JsonResponse
     {
+        $this->authorize('assignPermissions', $role);
+
         $request->validate([
             'permission_id' => ['required', 'integer', 'exists:permissions,id'],
         ]);

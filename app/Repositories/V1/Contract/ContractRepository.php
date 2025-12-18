@@ -63,7 +63,7 @@ class ContractRepository implements ContractRepositoryInterface
             $query->whereIn('ownership_id', $filters['ownership_ids']);
         }
 
-        return $query->with(['unit', 'tenant.user', 'ownership', 'createdBy', 'approvedBy', 'parent', 'children'])
+        return $query->with(['units', 'tenant.user', 'ownership', 'createdBy', 'approvedBy', 'parent', 'children'])
             ->latest()
             ->paginate($perPage);
     }
@@ -122,7 +122,7 @@ class ContractRepository implements ContractRepositoryInterface
             $query->whereIn('ownership_id', $filters['ownership_ids']);
         }
 
-        return $query->with(['unit', 'tenant.user', 'ownership', 'createdBy', 'approvedBy', 'parent', 'children'])
+        return $query->with(['units', 'tenant.user', 'ownership', 'createdBy', 'approvedBy', 'parent', 'children'])
             ->latest()
             ->get();
     }
@@ -142,7 +142,7 @@ class ContractRepository implements ContractRepositoryInterface
     public function findByUuid(string $uuid): ?Contract
     {
         return Contract::where('uuid', $uuid)
-            ->with(['unit', 'tenant.user', 'ownership', 'createdBy', 'approvedBy', 'parent', 'children', 'terms'])
+            ->with(['unit', 'units', 'tenant.user', 'ownership', 'createdBy', 'approvedBy', 'parent', 'children', 'terms'])
             ->first();
     }
 
@@ -152,7 +152,7 @@ class ContractRepository implements ContractRepositoryInterface
     public function findByNumber(string $number): ?Contract
     {
         return Contract::where('number', $number)
-            ->with(['unit', 'tenant.user', 'ownership', 'createdBy', 'approvedBy', 'parent', 'children', 'terms'])
+            ->with(['unit', 'units', 'tenant.user', 'ownership', 'createdBy', 'approvedBy', 'parent', 'children', 'terms'])
             ->first();
     }
 
@@ -161,11 +161,17 @@ class ContractRepository implements ContractRepositoryInterface
      */
     public function findActiveContractForUnit(int $unitId): ?Contract
     {
-        return Contract::where('unit_id', $unitId)
-            ->where('status', 'active')
+        // Support both legacy unit_id and new pivot table
+        return Contract::where('status', 'active')
             ->where('start', '<=', now())
             ->where('end', '>=', now())
-            ->with(['unit', 'tenant.user', 'ownership', 'createdBy', 'approvedBy'])
+            ->where(function ($q) use ($unitId) {
+                $q->where('unit_id', $unitId) // legacy
+                  ->orWhereHas('units', function ($uq) use ($unitId) {
+                      $uq->where('units.id', $unitId);
+                  });
+            })
+            ->with(['unit', 'units', 'tenant.user', 'ownership', 'createdBy', 'approvedBy'])
             ->first();
     }
 

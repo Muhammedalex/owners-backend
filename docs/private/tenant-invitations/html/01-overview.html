@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tenant Invitation Feature - Overview - Tenant Invitation Documentation</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <h1>📋 Tenant Invitation Feature</h1>
+        <p>Complete Documentation - Tenant Self-Registration via Invitation</p>
+    </header>
+    
+    <div class="container">
+        <aside class="sidebar">
+            <h2>Navigation</h2>
+            <nav>
+                <ul>
+                    <li><a href="index.html" data-route="">📖 Overview</a></li>
+                    <li><a href="#" data-route="overview">📋 Feature Overview</a></li>
+                    <li><a href="#" data-route="database">🗄️ Database Schema</a></li>
+                    <li><a href="#" data-route="api-owner">🔐 API - Owner</a></li>
+                    <li><a href="#" data-route="api-public">🌐 API - Public</a></li>
+                    <li><a href="#" data-route="workflow-owner">👤 Owner Workflow</a></li>
+                    <li><a href="#" data-route="workflow-tenant">🏠 Tenant Workflow</a></li>
+                    <li><a href="#" data-route="invitation-types">🔄 Invitation Types</a></li>
+                    <li><a href="#" data-route="mail-config">📧 Mail Configuration</a></li>
+                    <li><a href="#" data-route="permissions">🔒 Permissions & Security</a></li>
+                    <li><a href="#" data-route="registration">👥 User Registration</a></li>
+                    <li><a href="#" data-route="testing">🧪 Testing Guide</a></li>
+                    <li><a href="#" data-route="troubleshooting">🔧 Troubleshooting</a></li>
+                </ul>
+            </nav>
+        </aside>
+        
+        <main class="main-content">
+            <h1>Tenant Invitation Feature - Overview</h1>
+
+<h2>Feature Description</h2>
+
+<p>The Tenant Self-Registration via Invitation feature allows property owners to send secure invitation links to potential tenants. Tenants can then register themselves independently by clicking the invitation link and completing a registration form. This eliminates the need for manual tenant creation and streamlines the onboarding process.</p>
+
+<p>---</p>
+
+<h2>Business Requirements</h2>
+
+<h3>User Stories</h3>
+
+<ol>
+<li><strong>As an Owner</strong>, I want to send invitation links to potential tenants so they can register themselves.</li>
+<li><strong>As a Tenant</strong>, I want to receive an invitation link via email and complete my registration independently.</li>
+<li><strong>As a System</strong>, I want to ensure invitation links are secure, time-limited, and ownership-scoped.</li>
+</ol>
+
+<h3>Key Requirements</h3>
+
+<ul>
+<li><span class="badge badge-success">✅</span> Owner can generate invitation links for tenants</li>
+<li><span class="badge badge-success">✅</span> Invitation links can be sent via email or generated as shareable links</li>
+<li><span class="badge badge-success">✅</span> Links are secure (token-based, time-limited)</li>
+<li><span class="badge badge-success">✅</span> Tenant completes registration form independently</li>
+<li><span class="badge badge-success">✅</span> Automatic user account creation upon registration</li>
+<li><span class="badge badge-success">✅</span> Automatic tenant profile creation linked to ownership</li>
+<li><span class="badge badge-success">✅</span> Automatic user type assignment (tenant)</li>
+<li><span class="badge badge-success">✅</span> Automatic role assignment (Tenant role)</li>
+<li><span class="badge badge-success">✅</span> Automatic ownership mapping</li>
+<li><span class="badge badge-success">✅</span> Invitation tracking and status management</li>
+<li><span class="badge badge-success">✅</span> Support for single-use and multi-use invitations</li>
+<li><span class="badge badge-success">✅</span> Ownership-specific email configuration</li>
+</ul>
+
+<p>---</p>
+
+<h2>Key Concepts</h2>
+
+<h3>Invitation Types</h3>
+
+<h4>1. Single-use Invitations (With Email/Phone)</h4>
+<ul>
+<li><strong>Characteristics:</strong> Has <code>email</code> or <code>phone</code> field set</li>
+<li><strong>Behavior:</strong> Can only be accepted once</li>
+<li><strong>Status:</strong> Changes to <code>accepted</code> after first use</li>
+<li><strong>Use Case:</strong> Inviting a specific person via email/SMS</li>
+</ul>
+
+<h4>2. Multi-use Invitations (Without Email/Phone)</h4>
+<ul>
+<li><strong>Characteristics:</strong> Both <code>email</code> and <code>phone</code> are <code>null</code></li>
+<li><strong>Behavior:</strong> Can be accepted by multiple tenants</li>
+<li><strong>Status:</strong> Remains <code>pending</code> until manually closed by owner</li>
+<li><strong>Use Case:</strong> Public invitation link shared on website/social media</li>
+</ul>
+
+<h3>Invitation Statuses</h3>
+
+<ul>
+<li><strong><code>pending</code></strong> - Invitation is active and can be accepted</li>
+<li><strong><code>accepted</code></strong> - Invitation has been used (single-use only)</li>
+<li><strong><code>expired</code></strong> - Invitation has passed its expiration date</li>
+<li><strong><code>cancelled</code></strong> - Invitation was cancelled by owner</li>
+</ul>
+
+<h3>Invitation Lifecycle</h3>
+
+<p>``<code> Created → Pending → Accepted/Expired/Cancelled</p>
+</code>`<code>
+
+<p>---</p>
+
+<h2>Architecture Overview</h2>
+
+<h3>Components</h3>
+
+<ol>
+<li><strong>Models</strong></li>
+</ol>
+<ul>
+<li></code>TenantInvitation<code> - Stores invitation data</li>
+<li></code>Tenant<code> - Links to invitation via </code>invitation_id<code></li>
+</ul>
+
+<ol>
+<li><strong>Services</strong></li>
+</ol>
+<ul>
+<li></code>TenantInvitationService<code> - Business logic for invitations</li>
+<li></code>OwnershipMailService<code> - Handles ownership-specific mail configuration</li>
+<li></code>AuthService<code> - User registration</li>
+<li></code>UserOwnershipMappingService<code> - Links users to ownerships</li>
+</ul>
+
+<ol>
+<li><strong>Controllers</strong></li>
+</ol>
+<ul>
+<li></code>TenantInvitationController<code> - Owner-facing endpoints (authenticated)</li>
+<li></code>PublicTenantInvitationController<code> - Public endpoints (no auth)</li>
+</ul>
+
+<ol>
+<li><strong>Policies</strong></li>
+</ol>
+<ul>
+<li></code>TenantInvitationPolicy<code> - Authorization rules</li>
+</ul>
+
+<ol>
+<li><strong>Mail</strong></li>
+</ol>
+<ul>
+<li></code>TenantInvitationMail<code> - Email template for invitations</li>
+</ul>
+
+<p>---</p>
+
+<h2>Data Flow</h2>
+
+<h3>Creating an Invitation</h3>
+
+</code>`<code>
+<p>Owner → API Request → TenantInvitationController ↓ TenantInvitationService.create() ↓ Generate Token (64 chars) ↓ Create TenantInvitation Record ↓ Send Email (if email provided) → OwnershipMailService ↓ Return Invitation Data</p>
+</code>`<code>
+
+<h3>Accepting an Invitation</h3>
+
+</code>`<code>
+<p>Tenant → Public API → PublicTenantInvitationController ↓ TenantInvitationService.acceptInvitation() ↓ Validate Token & Expiration ↓ Create/Update User Account ↓ Set User Type: 'tenant' ↓ Assign Role: 'Tenant' ↓ Create Tenant Profile ↓ Link User to Ownership (UserOwnershipMapping) ↓ Update Invitation Status ↓ Generate Auth Tokens ↓ Return Success Response</p>
+</code>`<code>
+
+<p>---</p>
+
+<h2>Security Features</h2>
+
+<ol>
+<li><strong>Token Security</strong></li>
+</ol>
+<ul>
+<li>64-character random tokens</li>
+<li>Unique per invitation</li>
+<li>Stored in database (not hashed, but unique)</li>
+</ul>
+
+<ol>
+<li><strong>Expiration</strong></li>
+</ol>
+<ul>
+<li>Default: 7 days</li>
+<li>Configurable: 1-30 days</li>
+<li>Automatic expiration check</li>
+</ul>
+
+<ol>
+<li><strong>Email Validation</strong></li>
+</ol>
+<ul>
+<li>Email must match invitation email (for single-use)</li>
+<li>Prevents unauthorized registrations</li>
+</ul>
+
+<ol>
+<li><strong>Ownership Scoping</strong></li>
+</ol>
+<ul>
+<li>All invitations are ownership-scoped</li>
+<li>Users can only access invitations for their ownerships</li>
+<li>Public endpoints validate token ownership</li>
+</ul>
+
+<ol>
+<li><strong>Rate Limiting</strong></li>
+</ol>
+<ul>
+<li>Laravel's built-in rate limiting</li>
+<li>Prevents abuse</li>
+</ul>
+
+<p>---</p>
+
+<h2>Integration Points</h2>
+
+<h3>With Other Modules</h3>
+
+<ol>
+<li><strong>Auth Module</strong></li>
+</ol>
+<ul>
+<li>User creation</li>
+<li>Email verification (optional)</li>
+<li>Token generation</li>
+</ul>
+
+<ol>
+<li><strong>Ownership Module</strong></li>
+</ol>
+<ul>
+<li>Ownership scoping</li>
+<li>User-ownership mapping</li>
+</ul>
+
+<ol>
+<li><strong>Settings Module</strong></li>
+</ol>
+<ul>
+<li>Mail configuration per ownership</li>
+<li>Notification settings</li>
+</ul>
+
+<ol>
+<li><strong>Tenant Module</strong></li>
+</ol>
+<ul>
+<li>Tenant profile creation</li>
+<li>Tenant data management</li>
+</ul>
+
+<p>---</p>
+
+<h2>Configuration</h2>
+
+<h3>Environment Variables</h3>
+
+</code>`<code>env
+<h1>Frontend URL for invitation links</h1>
+<p>FRONTEND_URL=https://app.example.com</p>
+
+<h1>Email verification (optional)</h1>
+<p>AUTH_EMAIL_VERIFICATION_ENABLED=false</p>
+
+<h1>Mail configuration (system default)</h1>
+<p>MAIL_MAILER=log MAIL_HOST=127.0.0.1 MAIL_PORT=2525</p>
+</code>`<code>
+
+<h3>Ownership Settings</h3>
+
+<p>Mail settings can be configured per ownership via </code>system_settings<code> table:</p>
+<ul>
+<li></code>smtp_host<code></li>
+<li></code>smtp_port<code></li>
+<li></code>smtp_username<code></li>
+<li></code>smtp_password<code></li>
+<li></code>smtp_encryption<code></li>
+<li></code>email_from_address<code></li>
+<li></code>email_from_name<code></li>
+</ul>
+
+<p>---</p>
+
+<h2>Future Enhancements</h2>
+
+<ol>
+<li><strong>SMS Invitations</strong> - Send invitations via SMS</li>
+<li><strong>QR Code Generation</strong> - Generate QR codes for invitation links</li>
+<li><strong>Custom Email Templates</strong> - Per-ownership email templates</li>
+<li><strong>Invitation Analytics</strong> - Track acceptance rates</li>
+<li><strong>Bulk Import</strong> - Import invitations from CSV/Excel</li>
+<li><strong>Scheduled Invitations</strong> - Schedule invitations for future dates</li>
+</ol>
+
+<p>---</p>
+
+<h2>Related Files</h2>
+
+<ul>
+<li><strong>Migration:</strong> </code>database/migrations/2025_12_15_070612_create_tenant_invitations_table.php<code></li>
+<li><strong>Model:</strong> </code>app/Models/V1/Tenant/TenantInvitation.php<code></li>
+<li><strong>Service:</strong> </code>app/Services/V1/Tenant/TenantInvitationService.php<code></li>
+<li><strong>Controller (Owner):</strong> </code>app/Http/Controllers/Api/V1/Tenant/TenantInvitationController.php<code></li>
+<li><strong>Controller (Public):</strong> </code>app/Http/Controllers/Api/V1/Tenant/PublicTenantInvitationController.php<code></li>
+<li><strong>Policy:</strong> </code>app/Policies/V1/Tenant/TenantInvitationPolicy.php<code></li>
+<li><strong>Mail:</strong> </code>app/Mail/V1/Tenant/TenantInvitationMail.php`</li>
+</ul>
+        </main>
+    </div>
+    
+    <button class="print-btn" id="printBtn" title="Print Documentation">
+        🖨️ Print
+    </button>
+    
+    <script src="app.js"></script>
+</body>
+</html>

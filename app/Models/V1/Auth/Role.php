@@ -27,10 +27,13 @@ class Role extends SpatieRole
     }
 
     /**
-     * The "booted" method of the model.
+     * Apply global scopes.
+     * نستخدم سكوب واحد لإخفاء System Roles عن الجميع
+     * ما عدا عندما يكون المستخدم الحالي Super Admin أو Owner
      */
     protected static function booted(): void
     {
+        
         static::addGlobalScope(new ExcludeSystemRolesScope());
     }
 

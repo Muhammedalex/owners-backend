@@ -2,9 +2,12 @@
 
 namespace App\Http\Resources\V1\Auth;
 
+use App\Models\Scopes\ExcludeSystemRolesScope;
+use App\Models\V1\Auth\User;
 use App\Services\V1\Auth\PermissionService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Spatie\Permission\Models\Permission;
 
 class UserResource extends JsonResource
 {
@@ -16,9 +19,19 @@ class UserResource extends JsonResource
     public function toArray(Request $request): array
     {
         $permissionService = app(PermissionService::class);
-        // Get permission names only (not full objects)
-        $permissions = $this->getAllPermissions()->map(fn($permission) => $permission->name)->filter()->values();
-        $uiPermissions = $permissionService->transformToUIPermissions($permissions);
+
+        // Super Admin: تجاوز السكوب دائماً وإرجاع كل الصلاحيات
+        if ($this->resource instanceof User && $this->resource->isSuperAdmin()) {
+            $permissionNames = Permission::pluck('name');
+        } else {
+            // Get permission names only (not full objects)
+            $permissionNames = $this->getAllPermissions()
+                ->map(fn($permission) => $permission->name)
+                ->filter()
+                ->values();
+        }
+
+        $uiPermissions = $permissionService->transformToUIPermissions($permissionNames);
 
         return [
             'id' => $this->id,
@@ -37,8 +50,20 @@ class UserResource extends JsonResource
             'last_login_at' => $this->last_login_at?->toIso8601String(),
             'timezone' => $this->timezone,
             'locale' => $this->locale,
-            'roles' => $this->whenLoaded('roles', function () {
-                return $this->roles->pluck('name');
+
+            // للأدوار: لو المستخدم Super Admin نتجاوز الـ global scope
+            'roles' => $this->when(true, function () {
+                if ($this->resource instanceof User && $this->resource->isSuperAdmin()) {
+                    return $this->roles()
+                        ->withoutGlobalScope(ExcludeSystemRolesScope::class)
+                        ->pluck('name');
+                }
+
+                if ($this->relationLoaded('roles')) {
+                    return $this->roles->pluck('name');
+                }
+
+                return $this->roles()->pluck('name');
             }),
             'ownerships' => $this->whenLoaded('ownerships', function () {
                 return $this->ownerships->map(function ($ownership) {

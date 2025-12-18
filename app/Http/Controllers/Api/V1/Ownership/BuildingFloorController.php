@@ -34,11 +34,20 @@ class BuildingFloorController extends Controller
             ], 400);
         }
 
-        $perPage = $request->input('per_page', 15);
+        $perPage = (int) $request->input('per_page', 15);
         $filters = array_merge(
             ['ownership_id' => $ownershipId], // MANDATORY
             $request->only(['building_id', 'search', 'active'])
         );
+
+        if ($perPage === -1) {
+            $floors = $this->buildingFloorService->all($filters);
+
+            return response()->json([
+                'success' => true,
+                'data' => BuildingFloorResource::collection($floors),
+            ]);
+        }
 
         $floors = $this->buildingFloorService->paginate($perPage, $filters);
 

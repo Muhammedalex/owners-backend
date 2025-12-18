@@ -31,9 +31,13 @@ class AuthController extends Controller
             $result = $this->authService->register($request->validated());
             $cookie = $this->authService->createRefreshTokenCookie($result['tokens']['refresh_token']);
 
+            $message = config('auth.verification.enabled', false)
+                ? 'Registration successful. Please verify your email.'
+                : 'Registration successful.';
+
             return response()->json([
                 'success' => true,
-                'message' => 'Registration successful. Please verify your email.',
+                'message' => $message,
                 'data' => [
                     'user' => new UserResource($result['user']->load('ownerships')),
                     'tokens' => [

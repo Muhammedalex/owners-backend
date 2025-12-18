@@ -5,6 +5,7 @@ namespace App\Models\V1\Auth;
 use App\Models\V1\Ownership\Ownership;
 use App\Models\V1\Ownership\OwnershipBoardMember;
 use App\Models\V1\Ownership\UserOwnershipMapping;
+use App\Notifications\V1\Auth\VerifyEmail;
 use App\Traits\V1\Auth\GeneratesTokens;
 use App\Traits\V1\Auth\HasUuid;
 use App\Traits\V1\Auth\LogsActivity;
@@ -271,6 +272,19 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->ownershipMappings()
             ->pluck('ownership_id')
             ->toArray();
+    }
+
+    /**
+     * Send the email verification notification.
+     *
+     * @return void
+     */
+    public function sendEmailVerificationNotification()
+    {
+        // Only send if email verification is enabled
+        if (config('auth.verification.enabled', false)) {
+            $this->notify(new VerifyEmail);
+        }
     }
 }
 

@@ -19,7 +19,7 @@ trait GeneratesTokens
         $accessToken = $this->createToken(
             $deviceName ?? 'default',
             ['*'],
-            now()->addMinutes(config('sanctum.expiration', 60))
+            now()->addMinutes((int) config('sanctum.expiration', 60))
         );
 
         // Generate refresh token
@@ -44,7 +44,7 @@ trait GeneratesTokens
         // Use forceFill to ensure fields are saved even if not in fillable
         $accessToken->forceFill([
             'refresh_token' => $hashedRefreshToken,
-            'refresh_token_expires_at' => now()->addDays(config('sanctum.refresh_expiration', 30)),
+            'refresh_token_expires_at' => now()->addDays((int) config('sanctum.refresh_expiration', 30)),
             'device_name' => $accessToken->name,
             'ip_address' => request()->ip(),
             'user_agent' => request()->userAgent(),

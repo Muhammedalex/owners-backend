@@ -400,7 +400,7 @@ class BumahrizCenterSeeder extends Seeder
                         'price_monthly' => round($monthly, 2),
                         'price_quarterly' => round($quarterly, 2),
                         'price_yearly' => round($yearly, 2),
-                        'status' => $u <= 2 ? 'rented' : 'available', // First 2 shops are rented
+                        'status' => 'available', // First 2 shops are rented
                         'active' => true,
                     ]);
 

@@ -34,11 +34,20 @@ class PortfolioController extends Controller
             ], 400);
         }
 
-        $perPage = $request->input('per_page', 15);
+        $perPage = (int) $request->input('per_page', 15);
         $filters = array_merge(
             ['ownership_id' => $ownershipId], // MANDATORY
             $request->only(['search', 'type', 'parent_id', 'active'])
         );
+
+        if ($perPage === -1) {
+            $portfolios = $this->portfolioService->all($filters);
+
+            return response()->json([
+                'success' => true,
+                'data' => PortfolioResource::collection($portfolios),
+            ]);
+        }
 
         $portfolios = $this->portfolioService->paginate($perPage, $filters);
 

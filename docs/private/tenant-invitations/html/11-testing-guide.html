@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Testing Guide - Tenant Invitation Documentation</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <h1>📋 Tenant Invitation Feature</h1>
+        <p>Complete Documentation - Tenant Self-Registration via Invitation</p>
+    </header>
+    
+    <div class="container">
+        <aside class="sidebar">
+            <h2>Navigation</h2>
+            <nav>
+                <ul>
+                    <li><a href="index.html" data-route="">📖 Overview</a></li>
+                    <li><a href="#" data-route="overview">📋 Feature Overview</a></li>
+                    <li><a href="#" data-route="database">🗄️ Database Schema</a></li>
+                    <li><a href="#" data-route="api-owner">🔐 API - Owner</a></li>
+                    <li><a href="#" data-route="api-public">🌐 API - Public</a></li>
+                    <li><a href="#" data-route="workflow-owner">👤 Owner Workflow</a></li>
+                    <li><a href="#" data-route="workflow-tenant">🏠 Tenant Workflow</a></li>
+                    <li><a href="#" data-route="invitation-types">🔄 Invitation Types</a></li>
+                    <li><a href="#" data-route="mail-config">📧 Mail Configuration</a></li>
+                    <li><a href="#" data-route="permissions">🔒 Permissions & Security</a></li>
+                    <li><a href="#" data-route="registration">👥 User Registration</a></li>
+                    <li><a href="#" data-route="testing">🧪 Testing Guide</a></li>
+                    <li><a href="#" data-route="troubleshooting">🔧 Troubleshooting</a></li>
+                </ul>
+            </nav>
+        </aside>
+        
+        <main class="main-content">
+            <h1>Testing Guide</h1>
+
+<h2>Overview</h2>
+
+<p>This guide provides comprehensive testing instructions for the Tenant Invitation feature, including unit tests, integration tests, and manual testing scenarios.</p>
+
+<p>---</p>
+
+<h2>Setup</h2>
+
+<h3>1. Run Migrations</h3>
+
+<p>``<code>bash php artisan migrate</p>
+</code>`<code>
+
+<h3>2. Run Seeders</h3>
+
+</code>`<code>bash
+<h1>Seed all data</h1>
+<p>php artisan db:seed</p>
+
+<h1>Or seed specific modules</h1>
+<p>php artisan db:seed --class=Database\\Seeders\\V1\\Auth\\AuthModuleSeeder php artisan db:seed --class=Database\\Seeders\\V1\\Ownership\\OwnershipModuleSeeder php artisan db:seed --class=Database\\Seeders\\V1\\Setting\\SystemSettingSeeder</p>
+</code>`<code>
+
+<h3>3. Configure Environment</h3>
+
+</code>`<code>env
+<h1>Email logging for testing</h1>
+<p>MAIL_MAILER=log MAIL_LOG_CHANNEL=emails</p>
+
+<h1>Email verification (optional)</h1>
+<p>AUTH_EMAIL_VERIFICATION_ENABLED=false</p>
+
+<h1>Frontend URL for invitation links</h1>
+<p>FRONTEND_URL=http://localhost:3000</p>
+</code>`<code>
+
+<p>---</p>
+
+<h2>Artisan Test Command</h2>
+
+<h3>Quick Testing Command</h3>
+
+<strong>Location:</strong> </code>app/Console/Commands/TestTenantInvitation.php<code>
+
+<h3>Usage</h3>
+
+<h4>Test Single Invitation</h4>
+</code>`<code>bash
+<p>php artisan test:tenant-invitation single --email=test@example.com --ownership=1</p>
+</code>`<code>
+
+<h4>Test Bulk Invitations</h4>
+</code>`<code>bash
+<p>php artisan test:tenant-invitation bulk --ownership=1 --count=3</p>
+</code>`<code>
+
+<h4>Test Link-only Invitation (Multi-use)</h4>
+</code>`<code>bash
+<p>php artisan test:tenant-invitation link --ownership=1</p>
+</code>`<code>
+
+<h3>Options</h3>
+
+<p>| Option | Description | Required | |--------|-------------|----------| | </code>--email<code> | Email address for invitation | For single | | </code>--ownership<code> | Ownership ID | Yes | | </code>--user<code> | User ID who creates invitation | No (default: 1) | | </code>--count<code> | Number of invitations for bulk | For bulk |</p>
+
+<h3>Output Example</h3>
+
+</code>`<code>
+<p><span class="badge badge-success">✅</span> Invitation created successfully!</p>
+
+<p>📧 Email: test@example.com 👤 Name: Test User 🔗 Token: abc123... 📅 Expires: 2025-12-22 10:00:00 🌐 URL: http://localhost:3000/register/tenant?token=abc123...</p>
+
+<p>📬 Check email log: storage/logs/emails.log</p>
+</code>`<code>
+
+<p>---</p>
+
+<h2>Manual Testing Scenarios</h2>
+
+<h3>Scenario 1: Single Invitation Flow</h3>
+
+<h4>1.1. Create Invitation</h4>
+
+<strong>Request:</strong>
+</code>`<code>bash
+<p>curl -X POST http://localhost:8000/api/v1/tenants/invitations \ -H "Authorization: Bearer {token}" \ -H "Cookie: ownership_uuid={uuid}" \ -H "Content-Type: application/json" \ -d '{ "email": "tenant@example.com", "name": "Ahmed Ali", "expires_in_days": 7 }'</p>
+</code>`<code>
+
+<strong>Expected:</strong>
+<ul>
+<li><span class="badge badge-success">✅</span> Status: 201 Created</li>
+<li><span class="badge badge-success">✅</span> Invitation created in database</li>
+<li><span class="badge badge-success">✅</span> Email logged to </code>storage/logs/emails.log<code></li>
+<li><span class="badge badge-success">✅</span> Token generated</li>
+</ul>
+
+<h4>1.2. Check Email Log</h4>
+
+</code>`<code>bash
+<p>tail -f storage/logs/emails.log</p>
+</code>`<code>
+
+<strong>Expected:</strong>
+<ul>
+<li><span class="badge badge-success">✅</span> Email subject: "You're invited to register as a tenant"</li>
+<li><span class="badge badge-success">✅</span> Invitation link present</li>
+<li><span class="badge badge-success">✅</span> Expiration date mentioned</li>
+</ul>
+
+<h4>1.3. Validate Token</h4>
+
+</code>`<code>bash
+<p>curl http://localhost:8000/api/v1/public/tenant-invitations/{token}/validate</p>
+</code>`<code>
+
+<strong>Expected:</strong>
+<ul>
+<li><span class="badge badge-success">✅</span> Status: 200 OK</li>
+<li><span class="badge badge-success">✅</span> </code>valid: true<code></li>
+<li><span class="badge badge-success">✅</span> Invitation details returned</li>
+</ul>
+
+<h4>1.4. Accept Invitation</h4>
+
+</code>`<code>bash
+<p>curl -X POST http://localhost:8000/api/v1/public/tenant-invitations/{token}/accept \ -H "Content-Type: application/json" \ -d '{ "first_name": "Ahmed", "last_name": "Ali", "email": "tenant@example.com", "phone": "+966502234567", "password": "SecurePassword123!", "password_confirmation": "SecurePassword123!", "national_id": "1234567880", "id_type": "national_id" }'</p>
+</code>`<code>
+
+<strong>Expected:</strong>
+<ul>
+<li><span class="badge badge-success">✅</span> Status: 201 Created</li>
+<li><span class="badge badge-success">✅</span> User created with type </code>tenant<code></li>
+<li><span class="badge badge-success">✅</span> Tenant profile created</li>
+<li><span class="badge badge-success">✅</span> Ownership mapping created</li>
+<li><span class="badge badge-success">✅</span> Invitation marked as </code>accepted<code></li>
+<li><span class="badge badge-success">✅</span> Access token returned</li>
+</ul>
+
+<h4>1.5. Verify Database</h4>
+
+</code>`<code>sql
+<p>-- Check user SELECT * FROM users WHERE email = 'tenant@example.com'; -- Expected: type = 'tenant'</p>
+
+<p>-- Check tenant SELECT * FROM tenants WHERE user_id = {user_id}; -- Expected: Record exists</p>
+
+<p>-- Check ownership mapping SELECT * FROM user_ownership_mapping WHERE user_id = {user_id}; -- Expected: Record exists</p>
+
+<p>-- Check invitation SELECT * FROM tenant_invitations WHERE token = '{token}'; -- Expected: status = 'accepted', accepted_by = {user_id}</p>
+</code>`<code>
+
+<p>---</p>
+
+<h3>Scenario 2: Multi-use Invitation Flow</h3>
+
+<h4>2.1. Generate Link (No Email)</h4>
+
+</code>`<code>bash
+<p>curl -X POST http://localhost:8000/api/v1/tenants/invitations/generate-link \ -H "Authorization: Bearer {token}" \ -H "Cookie: ownership_uuid={uuid}" \ -H "Content-Type: application/json" \ -d '{ "expires_in_days": 30 }'</p>
+</code>`<code>
+
+<strong>Expected:</strong>
+<ul>
+<li><span class="badge badge-success">✅</span> Status: 201 Created</li>
+<li><span class="badge badge-success">✅</span> Invitation created with no email/phone</li>
+<li><span class="badge badge-success">✅</span> No email sent</li>
+<li><span class="badge badge-success">✅</span> Link generated</li>
+</ul>
+
+<h4>2.2. First Tenant Accepts</h4>
+
+</code>`<code>bash
+<p>curl -X POST http://localhost:8000/api/v1/public/tenant-invitations/{token}/accept \ -H "Content-Type: application/json" \ -d '{ "first_name": "First", "last_name": "Tenant", "email": "tenant1@example.com", "password": "Password123!", "password_confirmation": "Password123!", "national_id": "1111111111" }'</p>
+</code>`<code>
+
+<strong>Expected:</strong>
+<ul>
+<li><span class="badge badge-success">✅</span> Tenant 1 created</li>
+<li><span class="badge badge-success">✅</span> Invitation status: </code>pending<code> (not changed)</li>
+<li><span class="badge badge-success">✅</span> Token still valid</li>
+</ul>
+
+<h4>2.3. Second Tenant Accepts (Same Link)</h4>
+
+</code>`<code>bash
+<p>curl -X POST http://localhost:8000/api/v1/public/tenant-invitations/{token}/accept \ -H "Content-Type: application/json" \ -d '{ "first_name": "Second", "last_name": "Tenant", "email": "tenant2@example.com", "password": "Password123!", "password_confirmation": "Password123!", "national_id": "2222222222" }'</p>
+</code>`<code>
+
+<strong>Expected:</strong>
+<ul>
+<li><span class="badge badge-success">✅</span> Tenant 2 created</li>
+<li><span class="badge badge-success">✅</span> Invitation status: </code>pending<code> (still not changed)</li>
+<li><span class="badge badge-success">✅</span> Token still valid</li>
+</ul>
+
+<h4>2.4. View Invitation (Check Tenants)</h4>
+
+</code>`<code>bash
+<p>curl http://localhost:8000/api/v1/tenants/invitations/{uuid} \ -H "Authorization: Bearer {token}" \ -H "Cookie: ownership_uuid={uuid}"</p>
+</code>`<code>
+
+<strong>Expected:</strong>
+<ul>
+<li><span class="badge badge-success">✅</span> </code>tenants_count: 2<code></li>
+<li><span class="badge badge-success">✅</span> </code>tenants<code> array with both tenants</li>
+<li><span class="badge badge-success">✅</span> Status: </code>pending<code></li>
+</ul>
+
+<h4>2.5. Close Invitation</h4>
+
+</code>`<code>bash
+<p>curl -X POST http://localhost:8000/api/v1/tenants/invitations/{uuid}/cancel \ -H "Authorization: Bearer {token}" \ -H "Cookie: ownership_uuid={uuid}"</p>
+</code>`<code>
+
+<strong>Expected:</strong>
+<ul>
+<li><span class="badge badge-success">✅</span> Status: </code>cancelled<code></li>
+<li><span class="badge badge-success">✅</span> Token no longer valid</li>
+</ul>
+
+<p>---</p>
+
+<h3>Scenario 3: Bulk Invitations</h3>
+
+<h4>3.1. Create Bulk Invitations</h4>
+
+</code>`<code>bash
+<p>curl -X POST http://localhost:8000/api/v1/tenants/invitations/bulk \ -H "Authorization: Bearer {token}" \ -H "Cookie: ownership_uuid={uuid}" \ -H "Content-Type: application/json" \ -d '{ "invitations": [ {"email": "tenant1@example.com", "name": "Tenant One"}, {"email": "tenant2@example.com", "name": "Tenant Two"}, {"email": "tenant3@example.com", "name": "Tenant Three"} ], "expires_in_days": 7 }'</p>
+</code>`<code>
+
+<strong>Expected:</strong>
+<ul>
+<li><span class="badge badge-success">✅</span> 3 invitations created</li>
+<li><span class="badge badge-success">✅</span> 3 emails sent</li>
+<li><span class="badge badge-success">✅</span> All with </code>pending<code> status</li>
+</ul>
+
+<p>---</p>
+
+<h3>Scenario 4: Error Cases</h3>
+
+<h4>4.1. Expired Invitation</h4>
+
+<strong>Test:</strong>
+<ol>
+<li>Create invitation with </code>expires_in_days: 0<code></li>
+<li>Wait 1 minute</li>
+<li>Try to accept</li>
+</ol>
+
+<strong>Expected:</strong>
+<ul>
+<li><span class="badge badge-warning">❌</span> Status: 400 Bad Request</li>
+<li><span class="badge badge-warning">❌</span> Message: "Invitation has expired"</li>
+</ul>
+
+<h4>4.2. Already Accepted (Single-use)</h4>
+
+<strong>Test:</strong>
+<ol>
+<li>Create single invitation</li>
+<li>Accept invitation</li>
+<li>Try to accept again</li>
+</ol>
+
+<strong>Expected:</strong>
+<ul>
+<li><span class="badge badge-warning">❌</span> Status: 400 Bad Request</li>
+<li><span class="badge badge-warning">❌</span> Message: "Invitation has already been accepted"</li>
+</ul>
+
+<h4>4.3. Email Mismatch</h4>
+
+<strong>Test:</strong>
+<ol>
+<li>Create invitation with </code>email: "test@example.com"<code></li>
+<li>Try to accept with different email</li>
+</ol>
+
+<strong>Expected:</strong>
+<ul>
+<li><span class="badge badge-warning">❌</span> Status: 400 Bad Request</li>
+<li><span class="badge badge-warning">❌</span> Message: "Email does not match invitation"</li>
+</ul>
+
+<h4>4.4. Tenant Already Exists</h4>
+
+<strong>Test:</strong>
+<ol>
+<li>Accept invitation (creates tenant)</li>
+<li>Create new invitation for same user/ownership</li>
+<li>Try to accept</li>
+</ol>
+
+<strong>Expected:</strong>
+<ul>
+<li><span class="badge badge-warning">❌</span> Status: 400 Bad Request</li>
+<li><span class="badge badge-warning">❌</span> Message: "Tenant already exists for this ownership"</li>
+</ul>
+
+<p>---</p>
+
+<h2>Postman Testing</h2>
+
+<h3>Import Collection</h3>
+
+<strong>Location:</strong> </code>docs/postman/Tenant_Invitations_API.postman_collection.json<code>
+
+<h3>Setup</h3>
+
+<ol>
+<li>Import collection into Postman</li>
+<li>Set environment variables:</li>
+</ol>
+<ul>
+<li></code>base_url<code>: </code>http://localhost:8000<code></li>
+<li></code>access_token<code>: (get from login)</li>
+<li></code>ownership_uuid<code>: (get from user)</li>
+</ul>
+
+<h3>Run Tests</h3>
+
+<ol>
+<li><strong>Login</strong> → Get access token</li>
+<li><strong>Create Invitation</strong> → Creates and sends invitation</li>
+<li><strong>List Invitations</strong> → View all invitations</li>
+<li><strong>Validate Token</strong> → Check token validity</li>
+<li><strong>Accept Invitation</strong> → Complete registration</li>
+<li><strong>View Invitation</strong> → Check acceptance status</li>
+</ol>
+
+<h3>Automated Tests</h3>
+
+<p>Each request includes test scripts:</p>
+<ul>
+<li>Status code validation</li>
+<li>Response structure validation</li>
+<li>Token extraction</li>
+<li>Data persistence checks</li>
+</ul>
+
+<p>---</p>
+
+<h2>Database Testing</h2>
+
+<h3>Verify Tables</h3>
+
+</code>`<code>sql
+<p>-- Check invitation SELECT * FROM tenant_invitations WHERE ownership_id = 1 ORDER BY created_at DESC LIMIT 10;</p>
+
+<p>-- Check tenants SELECT t.*, u.email, u.first, u.last FROM tenants t JOIN users u ON t.user_id = u.id WHERE t.ownership_id = 1 ORDER BY t.created_at DESC LIMIT 10;</p>
+
+<p>-- Check ownership mappings SELECT m.*, u.email, o.name FROM user_ownership_mapping m JOIN users u ON m.user_id = u.id JOIN ownerships o ON m.ownership_id = o.id WHERE m.ownership_id = 1 ORDER BY m.created_at DESC LIMIT 10;</p>
+
+<p>-- Check multi-use invitations with tenant count SELECT ti.id, ti.token, ti.status, ti.email, ti.phone, COUNT(t.id) as tenants_count FROM tenant_invitations ti LEFT JOIN tenants t ON t.invitation_id = ti.id WHERE ti.ownership_id = 1 AND ti.email IS NULL AND ti.phone IS NULL GROUP BY ti.id, ti.token, ti.status, ti.email, ti.phone;</p>
+</code>`<code>
+
+<p>---</p>
+
+<h2>Performance Testing</h2>
+
+<h3>Load Test: Create Invitations</h3>
+
+</code>`<code>bash
+<h1>Create 100 invitations</h1>
+<p>for i in {1..100}; do curl -X POST http://localhost:8000/api/v1/tenants/invitations \ -H "Authorization: Bearer {token}" \ -H "Cookie: ownership_uuid={uuid}" \ -H "Content-Type: application/json" \ -d "{\"email\": \"tenant$i@example.com\", \"name\": \"Tenant $i\"}" & done wait</p>
+</code>`<code>
+
+<h3>Load Test: Accept Invitations</h3>
+
+</code>`<code>bash
+<h1>Accept 100 invitations concurrently</h1>
+<h1>(requires 100 tokens from previous step)</h1>
+<p>for token in {token1..token100}; do curl -X POST http://localhost:8000/api/v1/public/tenant-invitations/$token/accept \ -H "Content-Type: application/json" \ -d "{...}" & done wait</p>
+</code>`<code>
+
+<p>---</p>
+
+<h2>Troubleshooting Tests</h2>
+
+<h3>Check Email Logs</h3>
+
+</code>`<code>bash
+<h1>Real-time monitoring</h1>
+<p>tail -f storage/logs/emails.log</p>
+
+<h1>Search for specific email</h1>
+<p>grep "tenant@example.com" storage/logs/emails.log</p>
+
+<h1>Count emails sent</h1>
+<p>grep -c "Subject:" storage/logs/emails.log</p>
+</code>`<code>
+
+<h3>Check Laravel Logs</h3>
+
+</code>`<code>bash
+<h1>Real-time monitoring</h1>
+<p>tail -f storage/logs/laravel.log</p>
+
+<h1>Search for errors</h1>
+<p>grep "ERROR" storage/logs/laravel.log</p>
+
+<h1>Search for invitation-related logs</h1>
+<p>grep "invitation" storage/logs/laravel.log</p>
+</code>`<code>
+
+<p>---</p>
+
+<h2>Cleanup</h2>
+
+<h3>Delete Test Data</h3>
+
+</code>`<code>sql
+<p>-- Delete test invitations DELETE FROM tenant_invitations WHERE email LIKE 'test%@example.com';</p>
+
+<p>-- Delete test tenants DELETE FROM tenants WHERE national_id LIKE 'TEST%';</p>
+
+<p>-- Delete test users DELETE FROM users WHERE email LIKE 'test%@example.com';</p>
+</code>`<code>
+
+<h3>Reset Database</h3>
+
+</code>`<code>bash
+<p>php artisan migrate:fresh --seed</p>
+</code>`<code>
+
+<p>---</p>
+
+<h2>Related Files</h2>
+
+<ul>
+<li><strong>Test Command:</strong> </code>app/Console/Commands/TestTenantInvitation.php<code></li>
+<li><strong>Postman Collection:</strong> </code>docs/postman/Tenant_Invitations_API.postman_collection.json<code></li>
+<li><strong>Email Template:</strong> </code>resources/views/emails/v1/tenant/invitation.blade.php`</li>
+</ul>
+
+<p>---</p>
+
+<h2>Related Documentation</h2>
+
+<ul>
+<li><strong><a href="./03-api-endpoints-owner.md">API Endpoints - Owner</a></strong></li>
+<li><strong><a href="./04-api-endpoints-public.md">API Endpoints - Public</a></strong></li>
+<li><strong><a href="./12-troubleshooting.md">Troubleshooting</a></strong></li>
+</ul>
+        </main>
+    </div>
+    
+    <button class="print-btn" id="printBtn" title="Print Documentation">
+        🖨️ Print
+    </button>
+    
+    <script src="app.js"></script>
+</body>
+</html>

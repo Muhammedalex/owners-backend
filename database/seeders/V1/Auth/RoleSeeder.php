@@ -43,9 +43,10 @@ class RoleSeeder extends Seeder
         );
 
         $ownerPermissions = [
-            // Own profile
+            // Own profile & manage user permissions inside ownership
             'auth.users.view.own',
             'auth.users.update.own',
+            'auth.permissions.manage',
 
             // Ownership management
             'ownerships.view',
@@ -81,6 +82,16 @@ class RoleSeeder extends Seeder
             'tenants.verify',
             'tenants.rating.update',
 
+            // Tenant Invitations (full access)
+            'tenants.invitations.view',
+            'tenants.invitations.create',
+            'tenants.invitations.update',
+            'tenants.invitations.delete',
+            'tenants.invitations.cancel',
+            'tenants.invitations.resend',
+            'tenants.invitations.close_without_contact',
+            'tenants.invitations.notifications',
+
             // Contract management (full access)
             'contracts.view',
             'contracts.create',
@@ -89,6 +100,7 @@ class RoleSeeder extends Seeder
             'contracts.approve',
             'contracts.sign',
             'contracts.terminate',
+            'contracts.notifications',
 
             // Invoice Module (full access)
             'invoices.view',
@@ -337,11 +349,19 @@ class RoleSeeder extends Seeder
             'tenants.delete',
             'tenants.rating.update',
 
+            // Tenant Invitations (view, manage, notifications - no create)
+            'tenants.invitations.view',
+            'tenants.invitations.cancel',
+            'tenants.invitations.resend',
+            'tenants.invitations.close_without_contact',
+            'tenants.invitations.notifications',
+
             // Contract (view, update, delete - no create)
             'contracts.view',
             'contracts.update',
             'contracts.delete',
             'contracts.terminate',
+            'contracts.notifications',
 
             // Invoice (view, update, delete - no create)
             'invoices.view',
@@ -523,6 +543,7 @@ class RoleSeeder extends Seeder
             'contracts.approve',
             'contracts.sign',
             'contracts.terminate',
+            'contracts.notifications',
 
             // Invoice (view and create - for generating invoices)
             'invoices.view',

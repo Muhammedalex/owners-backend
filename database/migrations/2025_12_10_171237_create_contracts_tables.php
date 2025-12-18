@@ -15,7 +15,7 @@ return new class extends Migration
         Schema::create('contracts', function (Blueprint $table) {
             $table->id();
             $table->char('uuid', 36)->unique();
-            $table->foreignId('unit_id')->constrained('units')->onDelete('cascade');
+            $table->foreignId('unit_id')->nullable()->constrained('units')->onDelete('cascade');
             $table->foreignId('tenant_id')->constrained('tenants')->onDelete('cascade');
             $table->foreignId('ownership_id')->constrained('ownerships')->onDelete('cascade');
             $table->string('number', 100)->unique();

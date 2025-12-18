@@ -12,6 +12,11 @@ class RolePolicy
      */
     public function viewAny(User $user): bool
     {
+        // Super Admin can view all roles
+        if ($user->isSuperAdmin()) {
+            return true;
+        }
+
         return $user->can('auth.roles.view');
     }
 
@@ -20,6 +25,11 @@ class RolePolicy
      */
     public function view(User $user, Role $role): bool
     {
+        // Super Admin can view all roles
+        if ($user->isSuperAdmin()) {
+            return true;
+        }
+
         return $user->can('auth.roles.view');
     }
 
@@ -28,6 +38,11 @@ class RolePolicy
      */
     public function create(User $user): bool
     {
+        // Super Admin can create roles
+        if ($user->isSuperAdmin()) {
+            return true;
+        }
+
         return $user->can('auth.roles.create');
     }
 
@@ -36,6 +51,11 @@ class RolePolicy
      */
     public function update(User $user, Role $role): bool
     {
+        // Super Admin can update all roles
+        if ($user->isSuperAdmin()) {
+            return true;
+        }
+
         return $user->can('auth.roles.update');
     }
 
@@ -44,6 +64,11 @@ class RolePolicy
      */
     public function delete(User $user, Role $role): bool
     {
+        // Super Admin can delete all roles
+        if ($user->isSuperAdmin()) {
+            return true;
+        }
+
         return $user->can('auth.roles.delete');
     }
 
@@ -52,6 +77,11 @@ class RolePolicy
      */
     public function assignPermissions(User $user, Role $role): bool
     {
+        // Super Admin can assign permissions to all roles
+        if ($user->isSuperAdmin()) {
+            return true;
+        }
+
         return $user->can('auth.roles.update');
     }
 }

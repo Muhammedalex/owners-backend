@@ -12,6 +12,11 @@ class MediaFilePolicy
      */
     public function viewAny(User $user): bool
     {
+        // Super Admin can view all media files
+        if ($user->isSuperAdmin()) {
+            return true;
+        }
+
         return $user->can('media.view') && $user->ownershipMappings()->exists();
     }
 
@@ -38,6 +43,11 @@ class MediaFilePolicy
      */
     public function create(User $user): bool
     {
+        // Super Admin can create media files
+        if ($user->isSuperAdmin()) {
+            return true;
+        }
+
         return $user->can('media.create') && $user->ownershipMappings()->exists();
     }
 

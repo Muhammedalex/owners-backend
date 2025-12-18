@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Workflow - Owner Side - Tenant Invitation Documentation</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <h1>📋 Tenant Invitation Feature</h1>
+        <p>Complete Documentation - Tenant Self-Registration via Invitation</p>
+    </header>
+    
+    <div class="container">
+        <aside class="sidebar">
+            <h2>Navigation</h2>
+            <nav>
+                <ul>
+                    <li><a href="index.html" data-route="">📖 Overview</a></li>
+                    <li><a href="#" data-route="overview">📋 Feature Overview</a></li>
+                    <li><a href="#" data-route="database">🗄️ Database Schema</a></li>
+                    <li><a href="#" data-route="api-owner">🔐 API - Owner</a></li>
+                    <li><a href="#" data-route="api-public">🌐 API - Public</a></li>
+                    <li><a href="#" data-route="workflow-owner">👤 Owner Workflow</a></li>
+                    <li><a href="#" data-route="workflow-tenant">🏠 Tenant Workflow</a></li>
+                    <li><a href="#" data-route="invitation-types">🔄 Invitation Types</a></li>
+                    <li><a href="#" data-route="mail-config">📧 Mail Configuration</a></li>
+                    <li><a href="#" data-route="permissions">🔒 Permissions & Security</a></li>
+                    <li><a href="#" data-route="registration">👥 User Registration</a></li>
+                    <li><a href="#" data-route="testing">🧪 Testing Guide</a></li>
+                    <li><a href="#" data-route="troubleshooting">🔧 Troubleshooting</a></li>
+                </ul>
+            </nav>
+        </aside>
+        
+        <main class="main-content">
+            <h1>Workflow - Owner Side</h1>
+
+<h2>Overview</h2>
+
+<p>This document describes the workflow for owners to create and manage tenant invitations.</p>
+
+<p>---</p>
+
+<h2>Creating Invitations</h2>
+
+<h3>Scenario 1: Single Invitation with Email</h3>
+
+<strong>Use Case:</strong> Inviting a specific person via email
+
+<h4>Steps</h4>
+
+<ol>
+<li><strong>Navigate to Tenants Page</strong></li>
+</ol>
+<ul>
+<li>Owner goes to Dashboard → Tenants</li>
+<li>Clicks "Invite Tenant" button</li>
+</ul>
+
+<ol>
+<li><strong>Fill Invitation Form</strong></li>
+</ol>
+<p>``<code> Email: tenant@example.com Name: Ahmed Ali (optional) Expiration: 7 days (default) Notes: New office tenant (optional)</p>
+   </code>`<code>
+
+<ol>
+<li><strong>Submit Form</strong></li>
+</ol>
+<ul>
+<li>System validates data</li>
+<li>Creates invitation record</li>
+<li>Generates secure token</li>
+<li>Sends email with invitation link</li>
+</ul>
+
+<ol>
+<li><strong>Confirmation</strong></li>
+</ol>
+<ul>
+<li>Owner sees success message</li>
+<li>Invitation appears in invitations list</li>
+<li>Status: </code>pending<code></li>
+</ul>
+
+<h4>Result</h4>
+
+<ul>
+<li>Email sent to </code>tenant@example.com<code></li>
+<li>Invitation link: </code>https://app.example.com/register/tenant?token=abc123...<code></li>
+<li>Invitation expires in 7 days</li>
+<li>Can only be accepted once</li>
+</ul>
+
+<p>---</p>
+
+<h3>Scenario 2: Single Invitation with Phone</h3>
+
+<strong>Use Case:</strong> Inviting via SMS (when SMS service is ready)
+
+<h4>Steps</h4>
+
+<ol>
+<li><strong>Fill Invitation Form</strong></li>
+</ol>
+   </code>`<code>
+<p>Phone: +966501234567 Name: Ahmed Ali (optional) Expiration: 7 days</p>
+   </code>`<code>
+
+<ol>
+<li><strong>Submit Form</strong></li>
+</ol>
+<ul>
+<li>System creates invitation</li>
+<li>SMS sent (future feature)</li>
+<li>Link generated for manual sharing</li>
+</ul>
+
+<h4>Result</h4>
+
+<ul>
+<li>Invitation created</li>
+<li>SMS sent (when implemented)</li>
+<li>Link available for sharing</li>
+</ul>
+
+<p>---</p>
+
+<h3>Scenario 3: Multi-use Invitation (No Email/Phone)</h3>
+
+<strong>Use Case:</strong> Public invitation link for website/social media
+
+<h4>Steps</h4>
+
+<ol>
+<li><strong>Fill Invitation Form</strong></li>
+</ol>
+   </code>`<code>
+<p>Email: (leave empty) Phone: (leave empty) Name: (optional) Expiration: 30 days (longer for public links) Notes: Public invitation for website</p>
+   </code>`<code>
+
+<ol>
+<li><strong>Submit Form</strong></li>
+</ol>
+<ul>
+<li>System creates invitation</li>
+<li><strong>No email sent</strong></li>
+<li>Link generated</li>
+</ul>
+
+<ol>
+<li><strong>Share Link</strong></li>
+</ol>
+<ul>
+<li>Owner copies invitation link</li>
+<li>Shares on website, social media, etc.</li>
+</ul>
+
+<h4>Result</h4>
+
+<ul>
+<li>Invitation link generated</li>
+<li>Multiple tenants can use same link</li>
+<li>Status remains </code>pending<code> until manually closed</li>
+<li>Owner can see all tenants who joined</li>
+</ul>
+
+<p>---</p>
+
+<h3>Scenario 4: Bulk Invitations</h3>
+
+<strong>Use Case:</strong> Inviting multiple tenants at once
+
+<h4>Steps</h4>
+
+<ol>
+<li><strong>Navigate to Bulk Invite</strong></li>
+</ol>
+<ul>
+<li>Owner goes to Tenants → Bulk Invite</li>
+</ul>
+
+<ol>
+<li><strong>Upload/Enter Multiple Emails</strong></li>
+</ol>
+   </code>`<code>
+<p>Invitations:</p>
+<ul>
+<li>tenant1@example.com, Name: One</li>
+<li>tenant2@example.com, Name: Two</li>
+<li>tenant3@example.com, Name: Three</li>
+</ul>
+
+<p>Expiration: 7 days Notes: Bulk invitation for new building</p>
+   </code>`<code>
+
+<ol>
+<li><strong>Submit</strong></li>
+</ol>
+<ul>
+<li>System creates all invitations</li>
+<li>Sends emails to all recipients</li>
+</ul>
+
+<h4>Result</h4>
+
+<ul>
+<li>Multiple invitations created</li>
+<li>Emails sent to all recipients</li>
+<li>All invitations tracked separately</li>
+</ul>
+
+<p>---</p>
+
+<h2>Managing Invitations</h2>
+
+<h3>Viewing Invitations List</h3>
+
+<strong>Location:</strong> Tenants → Invitations
+
+<strong>Filters Available:</strong>
+<ul>
+<li>Status: </code>pending<code>, </code>accepted<code>, </code>expired<code>, </code>cancelled<code></li>
+<li>Search: Email, name, or token</li>
+<li>Date range</li>
+</ul>
+
+<strong>Displayed Information:</strong>
+<ul>
+<li>Email/Phone</li>
+<li>Name</li>
+<li>Status</li>
+<li>Expiration date</li>
+<li>Created date</li>
+<li>Invited by</li>
+<li>Accepted by (if accepted)</li>
+<li>Tenant details (if accepted)</li>
+</ul>
+
+<p>---</p>
+
+<h3>Resending Invitation</h3>
+
+<strong>Use Case:</strong> Tenant didn't receive email or needs new link
+
+<h4>Steps</h4>
+
+<ol>
+<li><strong>Find Invitation</strong></li>
+</ol>
+<ul>
+<li>Go to Invitations list</li>
+<li>Find the invitation</li>
+</ul>
+
+<ol>
+<li><strong>Click "Resend"</strong></li>
+</ol>
+<ul>
+<li>System validates invitation has email</li>
+<li>Checks invitation is still valid</li>
+<li>Resends email with same token</li>
+</ul>
+
+<h4>Result</h4>
+
+<ul>
+<li>Email resent to same address</li>
+<li>Same token/link (still valid)</li>
+<li>Updated timestamp</li>
+</ul>
+
+<strong>Note:</strong> Only works for invitations with email addresses.
+
+<p>---</p>
+
+<h3>Cancelling Invitation</h3>
+
+<strong>Use Case:</strong> Owner wants to revoke an invitation
+
+<h4>Steps</h4>
+
+<ol>
+<li><strong>Find Invitation</strong></li>
+</ol>
+<ul>
+<li>Go to Invitations list</li>
+<li>Find pending invitation</li>
+</ul>
+
+<ol>
+<li><strong>Click "Cancel"</strong></li>
+</ol>
+<ul>
+<li>System validates permissions</li>
+<li>Marks invitation as </code>cancelled<code></li>
+</ul>
+
+<h4>Result</h4>
+
+<ul>
+<li>Invitation status: </code>cancelled<code></li>
+<li>Token no longer valid</li>
+<li>Cannot be accepted</li>
+</ul>
+
+<strong>Special Case - Multi-use Invitations:</strong>
+<ul>
+<li>Requires </code>tenants.invitations.close_without_contact<code> permission</li>
+<li>Closes invitation manually</li>
+<li>Prevents new tenants from joining</li>
+</ul>
+
+<p>---</p>
+
+<h3>Viewing Invitation Details</h3>
+
+<strong>Use Case:</strong> Owner wants to see full invitation details
+
+<h4>Information Displayed</h4>
+
+<strong>Single-use Invitation:</strong>
+<ul>
+<li>Basic info (email, name, status)</li>
+<li>Invitation link</li>
+<li>Expiration date</li>
+<li>Created/accepted dates</li>
+<li>Tenant who accepted</li>
+<li>User who accepted</li>
+</ul>
+
+<strong>Multi-use Invitation:</strong>
+<ul>
+<li>Basic info (no email/phone)</li>
+<li>Invitation link</li>
+<li>Expiration date</li>
+<li><strong>Tenants count</strong> (how many joined)</li>
+<li><strong>List of all tenants</strong> who joined</li>
+<li>Created date</li>
+</ul>
+
+<p>---</p>
+
+<h2>Best Practices</h2>
+
+<h3>1. Expiration Settings</h3>
+
+<ul>
+<li><strong>Single-use (Email):</strong> 7 days (default)</li>
+<li><strong>Multi-use (Public):</strong> 30 days (longer for public links)</li>
+<li><strong>Bulk invitations:</strong> 7 days (standard)</li>
+</ul>
+
+<h3>2. Email Invitations</h3>
+
+<ul>
+<li>Always include name if known</li>
+<li>Add notes for context</li>
+<li>Use appropriate expiration based on urgency</li>
+</ul>
+
+<h3>3. Multi-use Invitations</h3>
+
+<ul>
+<li>Use longer expiration (30 days)</li>
+<li>Monitor tenant count regularly</li>
+<li>Close when no longer needed</li>
+<li>Track where link was shared</li>
+</ul>
+
+<h3>4. Bulk Invitations</h3>
+
+<ul>
+<li>Verify email addresses before sending</li>
+<li>Use consistent expiration</li>
+<li>Add notes for tracking</li>
+</ul>
+
+<p>---</p>
+
+<h2>Common Workflows</h2>
+
+<h3>Workflow 1: New Building Launch</h3>
+
+</code>`<code>
+<ol>
+<li>Create multi-use invitation (30 days)</li>
+<li>Share link on website</li>
+<li>Monitor tenant registrations</li>
+<li>Close invitation when building full</li>
+</ol>
+</code>`<code>
+
+<h3>Workflow 2: Specific Tenant Onboarding</h3>
+
+</code>`<code>
+<ol>
+<li>Create single invitation with email</li>
+<li>Email sent automatically</li>
+<li>Wait for tenant to register</li>
+<li>Follow up if not registered within 3 days</li>
+<li>Resend if needed</li>
+</ol>
+</code>`<code>
+
+<h3>Workflow 3: Bulk Tenant Migration</h3>
+
+</code>`<code>
+<ol>
+<li>Prepare list of tenant emails</li>
+<li>Create bulk invitations</li>
+<li>All emails sent automatically</li>
+<li>Track acceptance rates</li>
+<li>Follow up with non-responders</li>
+</ol>
+</code>`<code>
+
+<p>---</p>
+
+<h2>Troubleshooting</h2>
+
+<h3>Issue: Email Not Received</h3>
+
+<strong>Solutions:</strong>
+<ol>
+<li>Check spam folder</li>
+<li>Verify email address is correct</li>
+<li>Use "Resend" button</li>
+<li>Check email logs (</code>storage/logs/emails.log<code>)</li>
+</ol>
+
+<h3>Issue: Invitation Expired</h3>
+
+<strong>Solutions:</strong>
+<ol>
+<li>Create new invitation</li>
+<li>Increase expiration for future invitations</li>
+</ol>
+
+<h3>Issue: Tenant Can't Register</h3>
+
+<strong>Solutions:</strong>
+<ol>
+<li>Verify invitation status is </code>pending`</li>
+<li>Check expiration date</li>
+<li>Verify token is correct</li>
+<li>Check if already accepted (single-use)</li>
+</ol>
+
+<p>---</p>
+
+<h2>Related Documentation</h2>
+
+<ul>
+<li><strong><a href="./03-api-endpoints-owner.md">API Endpoints - Owner</a></strong></li>
+<li><strong><a href="./07-invitation-types.md">Invitation Types</a></strong></li>
+<li><strong><a href="./08-mail-configuration.md">Mail Configuration</a></strong></li>
+</ul>
+        </main>
+    </div>
+    
+    <button class="print-btn" id="printBtn" title="Print Documentation">
+        🖨️ Print
+    </button>
+    
+    <script src="app.js"></script>
+</body>
+</html>

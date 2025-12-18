@@ -1,0 +1,1086 @@
+{
+	"info": {
+		"_postman_id": "tenant-invitations-api-v1",
+		"name": "Tenant Invitations API - V1",
+		"description": "Complete API collection for Tenant Self-Registration feature. This collection includes all endpoints for managing tenant invitations, allowing owners to invite tenants via email or generated links, and enabling tenants to self-register.\n\n**Feature Overview:**\n- Owners can send invitation emails to tenants\n- Owners can generate invitation links for manual sharing\n- Owners can send bulk invitations to multiple tenants\n- Tenants can self-register using invitation tokens\n- Invitation management (view, resend, cancel)\n\n**Token Storage Strategy:**\n- Access Token: Stored in environment variable (use in Authorization header)\n- Refresh Token: Stored in httpOnly cookie (automatically managed by Postman)\n- Ownership UUID: Stored in httpOnly cookie (automatically managed by Postman)\n\n**Important Notes:**\n- Cookies are automatically sent with requests in Postman\n- View cookies: Click 'Cookies' link below the URL bar\n- Refresh token and ownership_uuid are NOT in JSON responses (they're in httpOnly cookies)\n- Ensure cookies are enabled in Postman settings\n- All owner endpoints require `ownership.scope` middleware\n- Public endpoints (validate/accept) do NOT require authentication\n- Test endpoints are only available in non-production environments\n\n**Invitation Flow:**\n1. Owner creates invitation (email or link)\n2. Tenant receives email with registration link OR owner shares link manually\n3. Tenant clicks link → validates token\n4. Tenant completes registration form\n5. System creates user account + tenant profile\n6. Tenant receives access token for immediate login\n\n**Invitation Statuses:**\n- `pending`: Invitation sent, waiting for acceptance\n- `accepted`: Tenant completed registration\n- `cancelled`: Owner cancelled the invitation\n- `expired`: Invitation expired (default: 7 days)\n\n**Email Logging (Development):**\n- All emails are logged to: `storage/logs/emails.log`\n- No real emails sent in development mode\n- Check log file to view email content",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "tenant-invitations-api"
+	},
+	"item": [
+		{
+			"name": "Authentication",
+			"item": [
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    pm.environment.set('access_token', response.data.tokens.access_token);",
+									"    pm.environment.set('user_id', response.data.user.id);",
+									"    // Note: refresh_token is automatically stored in httpOnly cookie",
+									"    // Cookies are managed automatically by Postman",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"owner@example.com\",\n    \"password\": \"SecurePassword123!\",\n    \"device_name\": \"Postman\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/auth/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"login"
+							]
+						},
+						"description": "Authenticate as an owner to get access token for invitation management.\n\n**Login Methods:**\nYou can login using either email OR phone:\n- `email` + `password`\n- `phone` + `password`\n\n**Required Fields:**\n- `email` OR `phone`: User identifier\n- `password`: User password\n\n**Optional Fields:**\n- `device_name`: Device identifier for token management\n\n**Response:**\n- `access_token`: Stored in environment variable (use for Authorization header)\n- `refresh_token`: Automatically stored in httpOnly cookie (not in JSON response)\n- `ownership_uuid`: Automatically stored in httpOnly cookie if user has default ownership\n\n**Security Features:**\n- Rate limiting: 5 attempts per minute per identifier\n- Account lockout after failed attempts\n- Active account verification\n- Login attempt tracking"
+					},
+					"response": [
+						{
+							"name": "Success - Login",
+							"originalRequest": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"email\": \"owner@example.com\",\n    \"password\": \"SecurePassword123!\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{base_url}}/api/v1/auth/login",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"auth",
+										"login"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"success\": true,\n    \"message\": \"Login successful.\",\n    \"data\": {\n        \"user\": {\n            \"id\": 1,\n            \"uuid\": \"550e8400-e29b-41d4-a716-446655440000\",\n            \"email\": \"owner@example.com\",\n            \"name\": \"John Doe\",\n            \"active\": true,\n            \"email_verified_at\": \"2025-01-01T00:00:00.000000Z\"\n        },\n        \"tokens\": {\n            \"access_token\": \"1|xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\",\n            \"token_type\": \"Bearer\",\n            \"expires_in\": 3600\n        }\n    }\n}"
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "Owner Endpoints",
+			"description": "Endpoints for owners to manage tenant invitations. All endpoints require authentication and ownership scope.",
+			"item": [
+				{
+					"name": "List Invitations",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test(\"Response has success\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('success');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/tenants/invitations?page=1&per_page=15&status=pending&search=test@example.com",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"tenants",
+								"invitations"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number"
+								},
+								{
+									"key": "per_page",
+									"value": "15",
+									"description": "Items per page"
+								},
+								{
+									"key": "status",
+									"value": "pending",
+									"description": "Filter by status: pending, accepted, cancelled, expired"
+								},
+								{
+									"key": "search",
+									"value": "test@example.com",
+									"description": "Search by email or name"
+								}
+							]
+						},
+						"description": "Get paginated list of tenant invitations for the current ownership.\n\n**Query Parameters:**\n- `page` (optional): Page number (default: 1)\n- `per_page` (optional): Items per page (default: 15, max: 100)\n- `status` (optional): Filter by status (pending, accepted, cancelled, expired)\n- `search` (optional): Search by email or name\n\n**Response:**\nReturns paginated list of invitations with:\n- Invitation details (uuid, email, phone, name, token, status)\n- Expiration date\n- Created/updated timestamps\n- Relationships (ownership, invited_by, accepted_by, tenant) when loaded\n\n**Authentication:**\n- Requires: Bearer token\n- Requires: Ownership scope (via cookie)"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Single Invitation",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"pm.test(\"Response has invitation\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.data).to.have.property('invitation');",
+									"    pm.environment.set('invitation_uuid', jsonData.data.invitation.uuid);",
+									"    pm.environment.set('invitation_token', jsonData.data.invitation.token);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"tenant@example.com\",\n    \"name\": \"Ahmed Ali\",\n    \"phone\": \"+966501234567\",\n    \"expires_in_days\": 7,\n    \"notes\": \"Invitation for new office tenant\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/tenants/invitations",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"tenants",
+								"invitations"
+							]
+						},
+						"description": "Create a single tenant invitation and send email automatically.\n\n**Required Fields:**\n- `email` OR `phone`: At least one must be provided\n\n**Optional Fields:**\n- `name`: Name of the invited person\n- `phone`: Phone number (for future SMS support)\n- `expires_in_days`: Days until expiration (default: 7, max: 30)\n- `notes`: Internal notes about the invitation\n\n**What Happens:**\n1. Creates invitation record\n2. Generates unique secure token\n3. Sends invitation email with registration link\n4. Returns invitation details\n\n**Email Content:**\n- Subject: \"Invitation to join [Ownership Name] as a Tenant\"\n- Contains registration link with token\n- Expiration date mentioned\n- Check `storage/logs/emails.log` in development mode\n\n**Authentication:**\n- Requires: Bearer token\n- Requires: Ownership scope (via cookie)"
+					},
+					"response": [
+						{
+							"name": "Success - Invitation Created",
+							"originalRequest": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"email\": \"tenant@example.com\",\n    \"name\": \"Ahmed Ali\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{base_url}}/api/v1/tenants/invitations",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"tenants",
+										"invitations"
+									]
+								}
+							},
+							"status": "Created",
+							"code": 201,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"success\": true,\n    \"message\": \"Tenant invitation sent successfully.\",\n    \"data\": {\n        \"invitation\": {\n            \"uuid\": \"550e8400-e29b-41d4-a716-446655440000\",\n            \"email\": \"tenant@example.com\",\n            \"phone\": \"+966501234567\",\n            \"name\": \"Ahmed Ali\",\n            \"token\": \"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\",\n            \"status\": \"pending\",\n            \"expires_at\": \"2025-12-22T10:00:00.000000Z\",\n            \"created_at\": \"2025-12-15T10:00:00.000000Z\",\n            \"updated_at\": \"2025-12-15T10:00:00.000000Z\"\n        }\n    }\n}"
+						}
+					]
+				},
+				{
+					"name": "Create Bulk Invitations",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"pm.test(\"Response has invitations\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.data).to.have.property('invitations');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"invitations\": [\n        {\n            \"email\": \"tenant1@example.com\",\n            \"name\": \"Tenant One\"\n        },\n        {\n            \"email\": \"tenant2@example.com\",\n            \"name\": \"Tenant Two\",\n            \"phone\": \"+966501234568\"\n        },\n        {\n            \"email\": \"tenant3@example.com\",\n            \"name\": \"Tenant Three\",\n            \"notes\": \"VIP tenant\"\n        }\n    ],\n    \"expires_in_days\": 7,\n    \"notes\": \"Bulk invitation for new building\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/tenants/invitations/bulk",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"tenants",
+								"invitations",
+								"bulk"
+							]
+						},
+						"description": "Create multiple tenant invitations at once and send emails automatically.\n\n**Required Fields:**\n- `invitations`: Array of invitation objects (max: 100)\n  - Each invitation must have `email` OR `phone`\n  - Each invitation can have optional `name`, `phone`, `notes`\n\n**Optional Fields:**\n- `expires_in_days`: Days until expiration for all invitations (default: 7, max: 30)\n- `notes`: Common notes applied to all invitations\n\n**What Happens:**\n1. Creates multiple invitation records\n2. Generates unique secure token for each\n3. Sends invitation email to each recipient\n4. Returns array of created invitations\n\n**Limitations:**\n- Maximum 100 invitations per request\n- Each invitation must have unique email/phone\n- Duplicate emails/phones in same request will fail\n\n**Email Content:**\n- Each recipient receives personalized email\n- Check `storage/logs/emails.log` in development mode\n\n**Authentication:**\n- Requires: Bearer token\n- Requires: Ownership scope (via cookie)"
+					},
+					"response": [
+						{
+							"name": "Success - Bulk Invitations Created",
+							"originalRequest": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"invitations\": [\n        {\"email\": \"tenant1@example.com\", \"name\": \"One\"},\n        {\"email\": \"tenant2@example.com\", \"name\": \"Two\"}\n    ]\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{base_url}}/api/v1/tenants/invitations/bulk",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"tenants",
+										"invitations",
+										"bulk"
+									]
+								}
+							},
+							"status": "Created",
+							"code": 201,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"success\": true,\n    \"message\": \"Tenant invitations sent successfully.\",\n    \"data\": {\n        \"invitations\": [\n            {\n                \"uuid\": \"550e8400-e29b-41d4-a716-446655440001\",\n                \"email\": \"tenant1@example.com\",\n                \"name\": \"Tenant One\",\n                \"token\": \"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\",\n                \"status\": \"pending\"\n            },\n            {\n                \"uuid\": \"550e8400-e29b-41d4-a716-446655440002\",\n                \"email\": \"tenant2@example.com\",\n                \"name\": \"Tenant Two\",\n                \"token\": \"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\",\n                \"status\": \"pending\"\n            }\n        ]\n    }\n}"
+						}
+					]
+				},
+				{
+					"name": "Generate Link (No Email)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"pm.test(\"Response has invitation URL\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.data.invitation).to.have.property('invitation_url');",
+									"    pm.environment.set('invitation_token', jsonData.data.invitation.token);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"tenant@example.com\",\n    \"name\": \"Ahmed Ali\",\n    \"phone\": \"+966501234567\",\n    \"expires_in_days\": 7\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/tenants/invitations/generate-link",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"tenants",
+								"invitations",
+								"generate-link"
+							]
+						},
+						"description": "Generate an invitation link without sending email. Useful for manual sharing via SMS, WhatsApp, or other channels.\n\n**Required Fields:**\n- `email` OR `phone`: At least one must be provided\n\n**Optional Fields:**\n- `name`: Name of the invited person\n- `phone`: Phone number\n- `expires_in_days`: Days until expiration (default: 7, max: 30)\n\n**What Happens:**\n1. Creates invitation record\n2. Generates unique secure token\n3. Returns invitation URL (no email sent)\n\n**Use Cases:**\n- Share link via SMS (when SMS service is ready)\n- Share link via WhatsApp\n- Share link in person\n- Print QR code with link\n\n**Response:**\n- Returns full invitation URL\n- URL format: `{FRONTEND_URL}/register/tenant?token={token}`\n- Owner can copy and share manually\n\n**Authentication:**\n- Requires: Bearer token\n- Requires: Ownership scope (via cookie)"
+					},
+					"response": [
+						{
+							"name": "Success - Link Generated",
+							"originalRequest": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"email\": \"tenant@example.com\",\n    \"name\": \"Ahmed Ali\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{base_url}}/api/v1/tenants/invitations/generate-link",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"tenants",
+										"invitations",
+										"generate-link"
+									]
+								}
+							},
+							"status": "Created",
+							"code": 201,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"success\": true,\n    \"message\": \"Invitation link generated successfully.\",\n    \"data\": {\n        \"invitation\": {\n            \"uuid\": \"550e8400-e29b-41d4-a716-446655440000\",\n            \"email\": \"tenant@example.com\",\n            \"token\": \"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\",\n            \"status\": \"pending\",\n            \"invitation_url\": \"http://localhost:3000/register/tenant?token=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\",\n            \"expires_at\": \"2025-12-22T10:00:00.000000Z\"\n        }\n    }\n}"
+						}
+					]
+				},
+				{
+					"name": "Show Invitation",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/tenants/invitations/{{invitation_uuid}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"tenants",
+								"invitations",
+								"{{invitation_uuid}}"
+							]
+						},
+						"description": "Get details of a specific invitation by UUID.\n\n**Path Parameters:**\n- `invitation_uuid`: UUID of the invitation\n\n**Response:**\nReturns full invitation details including:\n- Invitation information\n- Status and expiration\n- Relationships (ownership, invited_by, accepted_by, tenant) when loaded\n- Invitation URL\n\n**Authentication:**\n- Requires: Bearer token\n- Requires: Ownership scope (via cookie)"
+					},
+					"response": []
+				},
+				{
+					"name": "Resend Invitation",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/tenants/invitations/{{invitation_uuid}}/resend",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"tenants",
+								"invitations",
+								"{{invitation_uuid}}",
+								"resend"
+							]
+						},
+						"description": "Resend invitation email to the recipient.\n\n**Path Parameters:**\n- `invitation_uuid`: UUID of the invitation to resend\n\n**What Happens:**\n1. Validates invitation exists and is pending\n2. Sends invitation email again\n3. Updates invitation timestamp\n\n**Use Cases:**\n- Tenant didn't receive email\n- Email went to spam\n- Need to remind tenant\n\n**Limitations:**\n- Only works for pending invitations\n- Cannot resend cancelled or expired invitations\n- Cannot resend already accepted invitations\n\n**Authentication:**\n- Requires: Bearer token\n- Requires: Ownership scope (via cookie)"
+					},
+					"response": []
+				},
+				{
+					"name": "Cancel Invitation",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/tenants/invitations/{{invitation_uuid}}/cancel",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"tenants",
+								"invitations",
+								"{{invitation_uuid}}",
+								"cancel"
+							]
+						},
+						"description": "Cancel a pending invitation. Cancelled invitations cannot be accepted.\n\n**Path Parameters:**\n- `invitation_uuid`: UUID of the invitation to cancel\n\n**What Happens:**\n1. Validates invitation exists and is pending\n2. Marks invitation as cancelled\n3. Token becomes invalid\n\n**Use Cases:**\n- Invited wrong person\n- Tenant no longer needed\n- Mistake in invitation\n\n**Limitations:**\n- Only works for pending invitations\n- Cannot cancel already accepted invitations\n- Cannot cancel already expired invitations\n\n**Authentication:**\n- Requires: Bearer token\n- Requires: Ownership scope (via cookie)"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Public Endpoints",
+			"description": "Public endpoints for tenants to validate and accept invitations. No authentication required.",
+			"item": [
+				{
+					"name": "Validate Token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test(\"Response has invitation\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.data).to.have.property('invitation');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/public/tenant-invitations/{{invitation_token}}/validate",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"public",
+								"tenant-invitations",
+								"{{invitation_token}}",
+								"validate"
+							]
+						},
+						"description": "Validate an invitation token. Used by frontend to check if token is valid before showing registration form.\n\n**Path Parameters:**\n- `token`: Invitation token (64 characters)\n\n**Response:**\nReturns invitation details if valid:\n- Invitation information\n- Ownership details\n- Expiration status\n- Acceptance status\n\n**Error Responses:**\n- `404`: Token not found\n- `400`: Token expired\n- `400`: Token already accepted\n- `400`: Token cancelled\n\n**Use Cases:**\n- Frontend validates token on page load\n- Show appropriate error messages\n- Display ownership information\n\n**No Authentication Required**"
+					},
+					"response": [
+						{
+							"name": "Success - Valid Token",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/v1/public/tenant-invitations/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/validate",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"public",
+										"tenant-invitations",
+										"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+										"validate"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"success\": true,\n    \"message\": \"Invitation token is valid.\",\n    \"data\": {\n        \"invitation\": {\n            \"uuid\": \"550e8400-e29b-41d4-a716-446655440000\",\n            \"email\": \"tenant@example.com\",\n            \"name\": \"Ahmed Ali\",\n            \"status\": \"pending\",\n            \"expires_at\": \"2025-12-22T10:00:00.000000Z\",\n            \"ownership\": {\n                \"uuid\": \"660e8400-e29b-41d4-a716-446655440000\",\n                \"name\": \"ABC Real Estate\"\n            }\n        }\n    }\n}"
+						},
+						{
+							"name": "Error - Expired Token",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/v1/public/tenant-invitations/expired_token/validate",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"public",
+										"tenant-invitations",
+										"expired_token",
+										"validate"
+									]
+								}
+							},
+							"status": "Bad Request",
+							"code": 400,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"success\": false,\n    \"message\": \"This invitation has expired.\",\n    \"errors\": {}\n}"
+						}
+					]
+				},
+				{
+					"name": "Accept Invitation",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"pm.test(\"Response has tokens\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.data).to.have.property('tokens');",
+									"    pm.environment.set('tenant_access_token', jsonData.data.tokens.access_token);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"first_name\": \"Ahmed\",\n    \"last_name\": \"Ali\",\n    \"email\": \"tenant@example.com\",\n    \"phone\": \"+966501234567\",\n    \"password\": \"SecurePassword123!\",\n    \"password_confirmation\": \"SecurePassword123!\",\n    \"national_id\": \"1234567890\",\n    \"id_type\": \"national_id\",\n    \"id_expiry\": \"2030-12-31\",\n    \"emergency_name\": \"Mohammed Ali\",\n    \"emergency_phone\": \"+966507654321\",\n    \"emergency_relation\": \"brother\",\n    \"employment\": \"employed\",\n    \"employer\": \"ABC Company\",\n    \"income\": 15000.00,\n    \"rating\": \"good\",\n    \"notes\": \"New tenant registration\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/public/tenant-invitations/{{invitation_token}}/accept",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"public",
+								"tenant-invitations",
+								"{{invitation_token}}",
+								"accept"
+							]
+						},
+						"description": "Accept an invitation and complete tenant registration. Creates user account and tenant profile.\n\n**Path Parameters:**\n- `token`: Invitation token (64 characters)\n\n**Required Fields:**\n- `first_name`: First name\n- `last_name`: Last name\n- `email`: Email address (must match invitation if invitation has email)\n- `password`: Password (min 8 characters)\n- `password_confirmation`: Must match password\n\n**Optional Fields:**\n- `phone`: Phone number (Saudi format)\n- `national_id`: National ID number\n- `id_type`: ID type (national_id, iqama, passport, commercial_registration)\n- `id_expiry`: ID expiration date\n- `emergency_name`: Emergency contact name\n- `emergency_phone`: Emergency contact phone\n- `emergency_relation`: Relationship to tenant\n- `employment`: Employment status (employed, self_employed, unemployed, retired, student)\n- `employer`: Employer name\n- `income`: Monthly income\n- `rating`: Tenant rating (excellent, good, fair, poor)\n- `notes`: Additional notes\n\n**What Happens:**\n1. Validates invitation token\n2. Validates email matches invitation (if invitation has email)\n3. Creates user account (if doesn't exist)\n4. Creates tenant profile linked to ownership\n5. Marks invitation as accepted\n6. Returns access token for immediate login\n\n**Response:**\n- User account details\n- Tenant profile details\n- Access token (for immediate login)\n- Refresh token (in httpOnly cookie)\n\n**Error Responses:**\n- `404`: Token not found\n- `400`: Token expired\n- `400`: Token already accepted\n- `400`: Token cancelled\n- `400`: Email mismatch\n- `422`: Validation errors\n\n**No Authentication Required**"
+					},
+					"response": [
+						{
+							"name": "Success - Registration Complete",
+							"originalRequest": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"first_name\": \"Ahmed\",\n    \"last_name\": \"Ali\",\n    \"email\": \"tenant@example.com\",\n    \"password\": \"SecurePassword123!\",\n    \"password_confirmation\": \"SecurePassword123!\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{base_url}}/api/v1/public/tenant-invitations/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/accept",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"public",
+										"tenant-invitations",
+										"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+										"accept"
+									]
+								}
+							},
+							"status": "Created",
+							"code": 201,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"success\": true,\n    \"message\": \"Tenant invitation accepted successfully. Your account is ready.\",\n    \"data\": {\n        \"user\": {\n            \"id\": 10,\n            \"uuid\": \"770e8400-e29b-41d4-a716-446655440000\",\n            \"email\": \"tenant@example.com\",\n            \"name\": \"Ahmed Ali\"\n        },\n        \"tenant\": {\n            \"id\": 5,\n            \"user_id\": 10,\n            \"ownership_id\": 1,\n            \"national_id\": \"1234567890\"\n        },\n        \"tokens\": {\n            \"access_token\": \"10|xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\",\n            \"token_type\": \"Bearer\",\n            \"expires_in\": 3600\n        }\n    }\n}"
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "Test Endpoints (Development Only)",
+			"description": "Test endpoints for development. Only available in non-production environments. No authentication required.",
+			"item": [
+				{
+					"name": "Test Create Invitation",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"pm.test(\"Response has invitation\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.data).to.have.property('invitation');",
+									"    pm.environment.set('test_invitation_token', jsonData.data.invitation.token);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"test@example.com\",\n    \"name\": \"Test Tenant\",\n    \"ownership_uuid\": null,\n    \"user_id\": null,\n    \"expires_in_days\": 7\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/test/tenant-invitations/create",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"test",
+								"tenant-invitations",
+								"create"
+							]
+						},
+						"description": "Test endpoint to create a single invitation without authentication. Uses first available ownership and user.\n\n**Optional Fields:**\n- `email`: Email address\n- `name`: Name of tenant\n- `ownership_uuid`: Specific ownership UUID (uses first if not provided)\n- `user_id`: Specific user ID (uses first if not provided)\n- `expires_in_days`: Days until expiration\n\n**Response:**\n- Returns invitation details\n- Includes log file path for email content\n\n**Note:** Only available in development/staging environments"
+					},
+					"response": []
+				},
+				{
+					"name": "Test Bulk Invitations",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"invitations\": [\n        {\"email\": \"test1@example.com\", \"name\": \"One\"},\n        {\"email\": \"test2@example.com\", \"name\": \"Two\"}\n    ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/test/tenant-invitations/bulk",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"test",
+								"tenant-invitations",
+								"bulk"
+							]
+						},
+						"description": "Test endpoint to create bulk invitations without authentication.\n\n**Required Fields:**\n- `invitations`: Array of invitation objects\n\n**Note:** Only available in development/staging environments"
+					},
+					"response": []
+				},
+				{
+					"name": "Test Generate Link",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"test@example.com\",\n    \"name\": \"Test Tenant\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/test/tenant-invitations/generate-link",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"test",
+								"tenant-invitations",
+								"generate-link"
+							]
+						},
+						"description": "Test endpoint to generate invitation link without authentication.\n\n**Note:** Only available in development/staging environments"
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8000",
+			"type": "string"
+		},
+		{
+			"key": "access_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "invitation_uuid",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "invitation_token",
+			"value": "",
+			"type": "string"
+		}
+	]
+}
+

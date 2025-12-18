@@ -25,8 +25,13 @@ class AuthService
     {
         $user = $this->userRepository->create($data);
 
-        // Send email verification notification
-        $user->sendEmailVerificationNotification();
+        // Send email verification notification if enabled
+        if (config('auth.verification.enabled', false)) {
+            $user->sendEmailVerificationNotification();
+        } else {
+            // Auto-verify email if verification is disabled
+            $user->markEmailAsVerified();
+        }
 
         // Generate tokens
         $tokens = $user->generateTokens($data['device_name'] ?? 'default');
@@ -209,6 +214,12 @@ class AuthService
      */
     public function resendEmailVerification(User $user): void
     {
+        if (!config('auth.verification.enabled', false)) {
+            throw ValidationException::withMessages([
+                'email' => ['Email verification is disabled.'],
+            ]);
+        }
+
         if ($user->hasVerifiedEmail()) {
             throw ValidationException::withMessages([
                 'email' => ['Email already verified.'],
@@ -223,7 +234,7 @@ class AuthService
      */
     public function createRefreshTokenCookie(string $refreshToken)
     {
-        $expiry = now()->addDays(config('sanctum.refresh_expiration', 30));
+        $expiry = now()->addDays((int) config('sanctum.refresh_expiration', 30));
         
         // Create cookie using Symfony Cookie class
         // Using 'none' for sameSite to allow cookies in all cross-site requests

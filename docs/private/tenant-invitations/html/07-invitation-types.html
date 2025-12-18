@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invitation Types - Single-use vs Multi-use - Tenant Invitation Documentation</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <h1>📋 Tenant Invitation Feature</h1>
+        <p>Complete Documentation - Tenant Self-Registration via Invitation</p>
+    </header>
+    
+    <div class="container">
+        <aside class="sidebar">
+            <h2>Navigation</h2>
+            <nav>
+                <ul>
+                    <li><a href="index.html" data-route="">📖 Overview</a></li>
+                    <li><a href="#" data-route="overview">📋 Feature Overview</a></li>
+                    <li><a href="#" data-route="database">🗄️ Database Schema</a></li>
+                    <li><a href="#" data-route="api-owner">🔐 API - Owner</a></li>
+                    <li><a href="#" data-route="api-public">🌐 API - Public</a></li>
+                    <li><a href="#" data-route="workflow-owner">👤 Owner Workflow</a></li>
+                    <li><a href="#" data-route="workflow-tenant">🏠 Tenant Workflow</a></li>
+                    <li><a href="#" data-route="invitation-types">🔄 Invitation Types</a></li>
+                    <li><a href="#" data-route="mail-config">📧 Mail Configuration</a></li>
+                    <li><a href="#" data-route="permissions">🔒 Permissions & Security</a></li>
+                    <li><a href="#" data-route="registration">👥 User Registration</a></li>
+                    <li><a href="#" data-route="testing">🧪 Testing Guide</a></li>
+                    <li><a href="#" data-route="troubleshooting">🔧 Troubleshooting</a></li>
+                </ul>
+            </nav>
+        </aside>
+        
+        <main class="main-content">
+            <h1>Invitation Types - Single-use vs Multi-use</h1>
+
+<h2>Overview</h2>
+
+<p>The Tenant Invitation system supports two types of invitations: <strong>Single-use</strong> and <strong>Multi-use</strong>. This document explains the differences, use cases, and implementation details.</p>
+
+<p>---</p>
+
+<h2>Single-use Invitations</h2>
+
+<h3>Characteristics</h3>
+
+<ul>
+<li><strong>Has Email OR Phone:</strong> At least one contact method is provided</li>
+<li><strong>One-time Use:</strong> Can only be accepted once</li>
+<li><strong>Status Change:</strong> Changes to <code>accepted</code> after first use</li>
+<li><strong>Email Sent:</strong> Email is automatically sent (if email provided)</li>
+</ul>
+
+<h3>Database Representation</h3>
+
+<p>``<code>sql -- Single-use invitation INSERT INTO tenant_invitations ( email, phone, token, status, ... ) VALUES ( 'tenant@example.com', NULL, 'token-abc...', 'pending', ... ); -- OR INSERT INTO tenant_invitations ( email, phone, token, status, ... ) VALUES ( NULL, '+966501234567', 'token-xyz...', 'pending', ... );</p>
+</code>`<code>
+
+<h3>Behavior</h3>
+
+<ol>
+<li><strong>Creation:</strong></li>
+</ol>
+<ul>
+<li>Owner provides email OR phone</li>
+<li>System creates invitation with </code>email<code> or </code>phone<code> set</li>
+<li>Email sent automatically (if email provided)</li>
+<li>Status: </code>pending<code></li>
+</ul>
+
+<ol>
+<li><strong>Acceptance:</strong></li>
+</ol>
+<ul>
+<li>Tenant clicks link and registers</li>
+<li>System validates email matches (if email provided)</li>
+<li>Creates user and tenant</li>
+<li><strong>Status changes to </code>accepted<code></strong></li>
+<li>Sets </code>accepted_by<code> (user ID)</li>
+<li>Sets </code>tenant_id<code> (first tenant created)</li>
+<li><strong>Cannot be used again</strong></li>
+</ul>
+
+<ol>
+<li><strong>After Acceptance:</strong></li>
+</ol>
+<ul>
+<li>Status: </code>accepted<code></li>
+<li>Token no longer valid</li>
+<li>Shows who accepted and when</li>
+<li>Shows tenant created</li>
+</ul>
+
+<h3>Use Cases</h3>
+
+<p><span class="badge badge-success">✅</span> <strong>Specific Person Invitation</strong></p>
+<ul>
+<li>Inviting a known person via email</li>
+<li>Personal invitation</li>
+<li>Track who accepted</li>
+</ul>
+
+<p><span class="badge badge-success">✅</span> <strong>SMS Invitation</strong> (Future)</p>
+<ul>
+<li>Inviting via phone number</li>
+<li>SMS sent with link</li>
+</ul>
+
+<p><span class="badge badge-success">✅</span> <strong>Controlled Access</strong></p>
+<ul>
+<li>One invitation = one tenant</li>
+<li>Prevents multiple registrations</li>
+</ul>
+
+<p>---</p>
+
+<h2>Multi-use Invitations</h2>
+
+<h3>Characteristics</h3>
+
+<ul>
+<li><strong>No Email AND No Phone:</strong> Both fields are </code>NULL<code></li>
+<li><strong>Multiple Uses:</strong> Can be accepted by multiple tenants</li>
+<li><strong>Status Remains:</strong> Stays </code>pending<code> until manually closed</li>
+<li><strong>No Email Sent:</strong> Link must be shared manually</li>
+</ul>
+
+<h3>Database Representation</h3>
+
+</code>`<code>sql
+<p>-- Multi-use invitation INSERT INTO tenant_invitations ( email, phone, token, status, ... ) VALUES ( NULL, NULL, 'token-public...', 'pending', ... );</p>
+</code>`<code>
+
+<h3>Behavior</h3>
+
+<ol>
+<li><strong>Creation:</strong></li>
+</ol>
+<ul>
+<li>Owner leaves email AND phone empty</li>
+<li>System creates invitation with both </code>NULL<code></li>
+<li><strong>No email sent</strong></li>
+<li>Link generated for manual sharing</li>
+<li>Status: </code>pending<code></li>
+</ul>
+
+<ol>
+<li><strong>Acceptance (Multiple Times):</strong></li>
+</ol>
+<ul>
+<li>First tenant clicks link and registers</li>
+<li>System creates user and tenant</li>
+<li>Links tenant to invitation (</code>invitation_id<code>)</li>
+<li><strong>Status remains </code>pending<code></strong></li>
+<li><strong>No </code>accepted_by<code> set</strong></li>
+<li><strong>No </code>tenant_id<code> set</strong></li>
+<li>Updates </code>updated_at<code> timestamp</li>
+</ul>
+
+<ul>
+<li>Second tenant clicks same link and registers</li>
+<li>System creates another user and tenant</li>
+<li>Links to same invitation</li>
+<li><strong>Status still </code>pending<code></strong></li>
+<li>Process repeats for each tenant</li>
+</ul>
+
+<ol>
+<li><strong>After Multiple Acceptances:</strong></li>
+</ol>
+<ul>
+<li>Status: </code>pending<code> (unchanged)</li>
+<li>Multiple tenants linked via </code>invitation_id<code></li>
+<li>Owner can see all tenants who joined</li>
+<li>Owner manually closes when done</li>
+</ul>
+
+<h3>Use Cases</h3>
+
+<p><span class="badge badge-success">✅</span> <strong>Public Invitation Link</strong></p>
+<ul>
+<li>Share on website</li>
+<li>Share on social media</li>
+<li>Share in public places</li>
+</ul>
+
+<p><span class="badge badge-success">✅</span> <strong>Open Registration</strong></p>
+<ul>
+<li>Allow anyone to register</li>
+<li>No need to know email/phone upfront</li>
+<li>Collect registrations over time</li>
+</ul>
+
+<p><span class="badge badge-success">✅</span> <strong>Bulk Onboarding</strong></p>
+<ul>
+<li>Multiple tenants from same source</li>
+<li>One link for all</li>
+<li>Track all registrations together</li>
+</ul>
+
+<p>---</p>
+
+<h2>Comparison Table</h2>
+
+<p>| Feature | Single-use | Multi-use | |---------|-----------|-----------| | <strong>Email/Phone</strong> | Required (one or both) | Both NULL | | <strong>Email Sent</strong> | Yes (if email provided) | No | | <strong>Max Uses</strong> | 1 | Unlimited | | <strong>Status After Use</strong> | </code>accepted<code> | </code>pending<code> | | <strong>Accepted By</strong> | Set (user ID) | Not set | | <strong>Tenant ID</strong> | Set (first tenant) | Not set | | <strong>Tenants Count</strong> | 1 (via </code>tenant_id<code>) | Multiple (via </code>invitation_id<code>) | | <strong>Can Close</strong> | Auto-closed after use | Manual close required | | <strong>Permission to Close</strong> | </code>tenants.invitations.cancel<code> | </code>tenants.invitations.close_without_contact<code> | | <strong>Use Case</strong> | Specific person | Public link |</p>
+
+<p>---</p>
+
+<h2>Implementation Details</h2>
+
+<h3>Code Logic</h3>
+
+<h4>Single-use Detection</h4>
+
+</code>`<code>php
+<p>// Check if single-use if ($invitation->email || $invitation->phone) { // Single-use invitation // Check if already accepted if ($invitation->isAccepted()) { throw new Exception('Already accepted'); } // Mark as accepted after use $invitation->accept($user->id); $invitation->update(['tenant_id' => $tenant->id]); } else { // Multi-use invitation // Don't check if accepted // Don't mark as accepted // Just link tenant to invitation $tenant->update(['invitation_id' => $invitation->id]); $invitation->touch(); // Update timestamp }</p>
+</code>`<code>
+
+<h4>Validation Logic</h4>
+
+</code>`<code>php
+<p>// In PublicTenantInvitationController::validateToken() if (($invitation->email || $invitation->phone) && $invitation->isAccepted()) { return error('Already accepted'); } // Multi-use invitations don't check isAccepted()</p>
+</code>`<code>
+
+<p>---</p>
+
+<h2>API Behavior</h2>
+
+<h3>Create Invitation</h3>
+
+<strong>Single-use:</strong>
+</code>`<code>json
+<p>POST /api/v1/tenants/invitations { "email": "tenant@example.com", "name": "Ahmed Ali" }</p>
+</code>`<code>
+<p>→ Email sent automatically</p>
+
+<strong>Multi-use:</strong>
+</code>`<code>json
+<p>POST /api/v1/tenants/invitations/generate-link { "email": null, "phone": null, "expires_in_days": 30 }</p>
+</code>`<code>
+<p>→ Link generated, no email sent</p>
+
+<h3>Accept Invitation</h3>
+
+<strong>Single-use:</strong>
+<ul>
+<li>First acceptance → Status: </code>accepted<code></li>
+<li>Second attempt → Error: "Already accepted"</li>
+</ul>
+
+<strong>Multi-use:</strong>
+<ul>
+<li>First acceptance → Status: </code>pending<code>, Tenant 1 created</li>
+<li>Second acceptance → Status: </code>pending<code>, Tenant 2 created</li>
+<li>Third acceptance → Status: </code>pending<code>, Tenant 3 created</li>
+<li>... (unlimited)</li>
+</ul>
+
+<h3>View Invitation</h3>
+
+<strong>Single-use Response:</strong>
+</code>`<code>json
+<p>{ "status": "accepted", "accepted_by": { "uuid": "...", "name": "..." }, "tenant": { "id": 1, "national_id": "..." }, "tenants_count": null, "tenants": null }</p>
+</code>`<code>
+
+<strong>Multi-use Response:</strong>
+</code>`<code>json
+<p>{ "status": "pending", "accepted_by": null, "tenant": null, "tenants_count": 3, "tenants": [ { "id": 1, "user": {...}, "national_id": "..." }, { "id": 2, "user": {...}, "national_id": "..." }, { "id": 3, "user": {...}, "national_id": "..." } ] }</p>
+</code>``
+
+<p>---</p>
+
+<h2>Best Practices</h2>
+
+<h3>When to Use Single-use</h3>
+
+<p><span class="badge badge-success">✅</span> Inviting specific known person ✅ Need to track individual acceptance ✅ Want automatic email delivery ✅ One invitation = one tenant requirement</p>
+
+<h3>When to Use Multi-use</h3>
+
+<p><span class="badge badge-success">✅</span> Public registration link ✅ Don't know email/phone upfront ✅ Multiple tenants from same source ✅ Open registration period ✅ Website/social media sharing</p>
+
+<p>---</p>
+
+<h2>Migration Path</h2>
+
+<h3>Converting Single-use to Multi-use</h3>
+
+<strong>Not Supported:</strong> Cannot convert single-use to multi-use after creation.
+
+<strong>Workaround:</strong>
+<ol>
+<li>Cancel single-use invitation</li>
+<li>Create new multi-use invitation</li>
+<li>Share new link</li>
+</ol>
+
+<h3>Converting Multi-use to Single-use</h3>
+
+<strong>Not Supported:</strong> Cannot convert multi-use to single-use after creation.
+
+<strong>Workaround:</strong>
+<ol>
+<li>Close multi-use invitation</li>
+<li>Create single-use invitations for remaining tenants</li>
+<li>Send individual emails</li>
+</ol>
+
+<p>---</p>
+
+<h2>Related Documentation</h2>
+
+<ul>
+<li><strong><a href="./02-database-schema.md">Database Schema</a></strong></li>
+<li><strong><a href="./05-workflow-owner.md">Workflow - Owner</a></strong></li>
+<li><strong><a href="./06-workflow-tenant.md">Workflow - Tenant</a></strong></li>
+<li><strong><a href="./09-permissions-security.md">Permissions & Security</a></strong></li>
+</ul>
+        </main>
+    </div>
+    
+    <button class="print-btn" id="printBtn" title="Print Documentation">
+        🖨️ Print
+    </button>
+    
+    <script src="app.js"></script>
+</body>
+</html>

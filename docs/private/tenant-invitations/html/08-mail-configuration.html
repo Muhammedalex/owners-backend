@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mail Configuration - Ownership-Specific SMTP - Tenant Invitation Documentation</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <h1>📋 Tenant Invitation Feature</h1>
+        <p>Complete Documentation - Tenant Self-Registration via Invitation</p>
+    </header>
+    
+    <div class="container">
+        <aside class="sidebar">
+            <h2>Navigation</h2>
+            <nav>
+                <ul>
+                    <li><a href="index.html" data-route="">📖 Overview</a></li>
+                    <li><a href="#" data-route="overview">📋 Feature Overview</a></li>
+                    <li><a href="#" data-route="database">🗄️ Database Schema</a></li>
+                    <li><a href="#" data-route="api-owner">🔐 API - Owner</a></li>
+                    <li><a href="#" data-route="api-public">🌐 API - Public</a></li>
+                    <li><a href="#" data-route="workflow-owner">👤 Owner Workflow</a></li>
+                    <li><a href="#" data-route="workflow-tenant">🏠 Tenant Workflow</a></li>
+                    <li><a href="#" data-route="invitation-types">🔄 Invitation Types</a></li>
+                    <li><a href="#" data-route="mail-config">📧 Mail Configuration</a></li>
+                    <li><a href="#" data-route="permissions">🔒 Permissions & Security</a></li>
+                    <li><a href="#" data-route="registration">👥 User Registration</a></li>
+                    <li><a href="#" data-route="testing">🧪 Testing Guide</a></li>
+                    <li><a href="#" data-route="troubleshooting">🔧 Troubleshooting</a></li>
+                </ul>
+            </nav>
+        </aside>
+        
+        <main class="main-content">
+            <h1>Mail Configuration - Ownership-Specific SMTP</h1>
+
+<h2>Overview</h2>
+
+<p>Each ownership can have its own SMTP mail configuration. When sending emails related to an ownership (like tenant invitations), the system automatically uses that ownership's mail settings if configured. Otherwise, it falls back to the system default mail configuration.</p>
+
+<strong>Important:</strong> System emails (like email verification) always use the system default mail configuration, not ownership-specific settings.
+
+<p>---</p>
+
+<h2>How It Works</h2>
+
+<h3>Mail Service: <code>OwnershipMailService</code></h3>
+
+<strong>Location:</strong> <code>app/Services/V1/Mail/OwnershipMailService.php</code>
+
+<strong>Responsibilities:</strong>
+<ul>
+<li>Retrieves ownership-specific mail settings</li>
+<li>Creates dynamic mailers per ownership</li>
+<li>Validates SMTP settings</li>
+<li>Sends emails using ownership-specific mailer</li>
+</ul>
+
+<h3>Flow</h3>
+
+<p>``<code> Send Email Request ↓ OwnershipMailService.getMailerForOwnership(ownershipId) ↓ Check if ownership has mail settings ↓ Has Settings? → Create dynamic mailer → Use ownership mailer ↓ No Settings? → Use system default mailer ↓ Send Email</p>
+</code>`<code>
+
+<p>---</p>
+
+<h2>Mail Settings Storage</h2>
+
+<h3>Database Table: </code>system_settings<code></h3>
+
+<p>Mail settings are stored in the </code>system_settings<code> table with:</p>
+<ul>
+<li></code>ownership_id<code>: The ownership ID (NOT NULL for ownership-specific)</li>
+<li></code>group<code>: </code>'notification'<code></li>
+<li></code>key<code>: One of the mail setting keys</li>
+<li></code>value<code>: The setting value</li>
+<li></code>value_type<code>: The type of value (</code>string<code>, </code>integer<code>, </code>boolean<code>, etc.)</li>
+</ul>
+
+<h3>Setting Keys</h3>
+
+<p>| Key | Description | Value Type | Required | Default | |-----|-------------|------------|----------|---------| | </code>smtp_host<code> | SMTP server hostname | string | Yes | - | | </code>smtp_port<code> | SMTP server port | integer | Yes | - | | </code>smtp_username<code> | SMTP username | string | Yes | - | | </code>smtp_password<code> | SMTP password | string | Yes | - | | </code>smtp_encryption<code> | Encryption type (</code>tls<code> or </code>ssl<code>) | string | No | </code>tls<code> | | </code>email_from_address<code> | From email address | string | No | System default | | </code>email_from_name<code> | From name | string | No | System default |</p>
+
+<p>---</p>
+
+<h2>Configuration Methods</h2>
+
+<h3>Method 1: Via API</h3>
+
+<strong>Endpoint:</strong> </code>POST /api/v1/settings<code>
+
+<strong>Request:</strong>
+</code>`<code>json
+<p>{ "settings": [ { "key": "smtp_host", "value": "smtp.example.com", "value_type": "string", "group": "notification" }, { "key": "smtp_port", "value": "587", "value_type": "integer", "group": "notification" }, { "key": "smtp_username", "value": "noreply@example.com", "value_type": "string", "group": "notification" }, { "key": "smtp_password", "value": "your-password", "value_type": "string", "group": "notification" }, { "key": "smtp_encryption", "value": "tls", "value_type": "string", "group": "notification" }, { "key": "email_from_address", "value": "noreply@example.com", "value_type": "string", "group": "notification" }, { "key": "email_from_name", "value": "ABC Real Estate", "value_type": "string", "group": "notification" } ] }</p>
+</code>`<code>
+
+<strong>Headers:</strong>
+</code>`<code>
+<p>Authorization: Bearer {token} Cookie: ownership_uuid={ownership_uuid}</p>
+</code>`<code>
+
+<p>---</p>
+
+<h3>Method 2: Via Database</h3>
+
+<strong>SQL:</strong>
+</code>`<code>sql
+<p>INSERT INTO system_settings (ownership_id, </code>key<code>, value, value_type, </code>group<code>, description) VALUES (1, 'smtp_host', 'smtp.example.com', 'string', 'notification', 'SMTP host'), (1, 'smtp_port', '587', 'integer', 'notification', 'SMTP port'), (1, 'smtp_username', 'noreply@example.com', 'string', 'notification', 'SMTP username'), (1, 'smtp_password', 'your-password', 'string', 'notification', 'SMTP password'), (1, 'smtp_encryption', 'tls', 'string', 'notification', 'SMTP encryption'), (1, 'email_from_address', 'noreply@example.com', 'string', 'notification', 'From email address'), (1, 'email_from_name', 'ABC Real Estate', 'string', 'notification', 'From name');</p>
+</code>`<code>
+
+<p>---</p>
+
+<h3>Method 3: Via Seeder</h3>
+
+<strong>Seeder:</strong> </code>database/seeders/V1/Setting/SystemSettingSeeder.php<code>
+
+<p>The seeder creates mail settings with </code>null<code> values by default. Owners must configure them via API or database.</p>
+
+<p>---</p>
+
+<h2>Dynamic Mailer Creation</h2>
+
+<h3>Process</h3>
+
+<ol>
+<li><strong>Check Settings</strong></li>
+</ol>
+   </code>`<code>php
+<p>$settings = $this->getOwnershipMailSettings($ownershipId);</p>
+   </code>`<code>
+
+<ol>
+<li><strong>Validate Settings</strong></li>
+</ol>
+   </code>`<code>php
+<p>if (!$this->hasValidSmtpSettings($settings)) { return config('mail.default'); // Use system default }</p>
+   </code>`<code>
+
+<ol>
+<li><strong>Create Mailer</strong></li>
+</ol>
+   </code>`<code>php
+<p>$mailerName = "ownership_{$ownershipId}"; $this->configureOwnershipMailer($mailerName, $settings);</p>
+   </code>`<code>
+
+<ol>
+<li><strong>Configure Mailer</strong></li>
+</ol>
+   </code>`<code>php
+<p>Config::set("mail.mailers.{$mailerName}", [ 'transport' => 'smtp', 'host' => $settings['smtp_host'], 'port' => (int) $settings['smtp_port'], 'username' => $settings['smtp_username'], 'password' => $settings['smtp_password'], 'encryption' => $settings['smtp_encryption'] ?? 'tls', ... ]);</p>
+   </code>`<code>
+
+<ol>
+<li><strong>Use Mailer</strong></li>
+</ol>
+   </code>`<code>php
+<p>Mail::mailer($mailerName)->to($email)->send($mailable);</p>
+   </code>`<code>
+
+<p>---</p>
+
+<h2>Email Types</h2>
+
+<h3>Ownership-Specific Emails</h3>
+
+<p>These emails use ownership-specific mail configuration if available:</p>
+
+<p><span class="badge badge-success">✅</span> <strong>Tenant Invitation Emails</strong></p>
+<ul>
+<li>Sent from </code>TenantInvitationService<code></li>
+<li>Uses </code>OwnershipMailService<code></li>
+<li>Falls back to system default if no ownership settings</li>
+</ul>
+
+<p><span class="badge badge-success">✅</span> <strong>Future: Invoice Reminder Emails</strong> ✅ <strong>Future: Payment Reminder Emails</strong> ✅ <strong>Future: Contract-Related Emails</strong></p>
+
+<h3>System Emails</h3>
+
+<p>These emails <strong>always</strong> use the system default mail configuration:</p>
+
+<p><span class="badge badge-success">✅</span> <strong>Email Verification Emails</strong></p>
+<ul>
+<li>Sent from </code>AuthService<code></li>
+<li>Uses system default mailer</li>
+<li>Not ownership-scoped</li>
+</ul>
+
+<p><span class="badge badge-success">✅</span> <strong>Password Reset Emails</strong> ✅ <strong>System Notifications</strong> ✅ <strong>Admin Notifications</strong></p>
+
+<p>---</p>
+
+<h2>Fallback Behavior</h2>
+
+<h3>Scenario 1: Ownership Has Custom Settings</h3>
+
+</code>`<code>
+<p>Ownership Settings Exist → Use Ownership Mailer → Send Email</p>
+</code>`<code>
+
+<h3>Scenario 2: Ownership Has No Settings</h3>
+
+</code>`<code>
+<p>No Ownership Settings → Use System Default Mailer → Send Email</p>
+</code>`<code>
+
+<h3>Scenario 3: Ownership Settings Invalid</h3>
+
+</code>`<code>
+<p>Invalid Settings (missing required fields) → Use System Default Mailer → Send Email</p>
+</code>`<code>
+
+<h3>Scenario 4: System Default Fails</h3>
+
+</code>`<code>
+<p>System Default Fails → Laravel Error Handling → Log Error</p>
+</code>`<code>
+
+<p>---</p>
+
+<h2>Validation</h2>
+
+<h3>Required Settings Check</h3>
+
+</code>`<code>php
+<p>private function hasValidSmtpSettings(array $settings): bool { $required = ['smtp_host', 'smtp_port', 'smtp_username', 'smtp_password'];</p>
+
+<p>foreach ($required as $key) { if (empty($settings[$key])) { return false; } }</p>
+
+<p>return true; }</p>
+</code>`<code>
+
+<strong>All four required settings must be present and non-empty.</strong>
+
+<p>---</p>
+
+<h2>Usage Examples</h2>
+
+<h3>In TenantInvitationService</h3>
+
+</code>`<code>php
+<p>private function sendInvitationEmail(TenantInvitation $invitation): void { // Use ownership-specific mailer if configured $this->mailService->sendForOwnership( $invitation->ownership_id, $invitation->email, new TenantInvitationMail($invitation) ); }</p>
+</code>`<code>
+
+<h3>Direct Usage</h3>
+
+</code>`<code>php
+<p>use App\Services\V1\Mail\OwnershipMailService;</p>
+
+<p>$mailService = app(OwnershipMailService::class);</p>
+
+<p>// Send email using ownership mailer $mailService->sendForOwnership( $ownershipId, 'tenant@example.com', new TenantInvitationMail($invitation) );</p>
+</code>`<code>
+
+<p>---</p>
+
+<h2>Testing</h2>
+
+<h3>Test Ownership Mail Configuration</h3>
+
+</code>`<code>php
+<p>use App\Services\V1\Mail\OwnershipMailService;</p>
+
+<p>$mailService = app(OwnershipMailService::class);</p>
+
+<p>// Test getting mailer $mailer = $mailService->getMailerForOwnership(1); echo "Mailer: {$mailer}"; // Output: "ownership_1" if configured, or "log"/"smtp" if not</p>
+
+<p>// Test sending email $mailService->sendForOwnership( 1, 'test@example.com', new TenantInvitationMail($invitation) );</p>
+</code>`<code>
+
+<h3>Check Email Logs</h3>
+
+</code>`<code>bash
+<h1>Check if email was sent with ownership-specific config</h1>
+<p>tail -f storage/logs/emails.log</p>
+</code>`<code>
+
+<p>---</p>
+
+<h2>Security Considerations</h2>
+
+<h3>Password Storage</h3>
+
+<ul>
+<li>SMTP passwords stored in </code>system_settings<code> table</li>
+<li>Consider encryption for sensitive passwords</li>
+<li>Use environment variables for system passwords</li>
+</ul>
+
+<h3>Access Control</h3>
+
+<ul>
+<li>Only users with </code>settings.notification.update<code> permission can modify mail settings</li>
+<li>Ownership-scoped: Users can only modify settings for their ownerships</li>
+</ul>
+
+<h3>Validation</h3>
+
+<ul>
+<li>Service validates required SMTP settings before using them</li>
+<li>Falls back to system default if settings invalid</li>
+</ul>
+
+<p>---</p>
+
+<h2>Troubleshooting</h2>
+
+<h3>Email Not Sending</h3>
+
+<strong>Check 1: Ownership Has Settings</strong>
+</code>`<code>sql
+<p>SELECT * FROM system_settings WHERE ownership_id = 1 AND </code>group<code> = 'notification' AND </code>key<code> LIKE 'smtp%';</p>
+</code>`<code>
+
+<strong>Check 2: Settings Are Valid</strong>
+<ul>
+<li>All required fields present</li>
+<li>Values are correct (host, port, username, password)</li>
+</ul>
+
+<strong>Check 3: Laravel Logs</strong>
+</code>`<code>bash
+<p>tail -f storage/logs/laravel.log</p>
+</code>`<code>
+
+<strong>Check 4: Email Logs</strong>
+</code>`<code>bash
+<p>tail -f storage/logs/emails.log</p>
+</code>`<code>
+
+<h3>Using Wrong Mailer</h3>
+
+<strong>Check 1: Ownership ID</strong>
+<ul>
+<li>Verify correct ownership ID passed</li>
+<li>Check ownership scope middleware</li>
+</ul>
+
+<strong>Check 2: Settings Existence</strong>
+<ul>
+<li>Check if ownership has custom settings</li>
+<li>If not, uses system default (expected behavior)</li>
+</ul>
+
+<strong>Check 3: Settings Validity</strong>
+<ul>
+<li>Verify all required fields present</li>
+<li>Check for null/empty values</li>
+</ul>
+
+<p>---</p>
+
+<h2>Related Files</h2>
+
+<ul>
+<li><strong>Service:</strong> </code>app/Services/V1/Mail/OwnershipMailService.php<code></li>
+<li><strong>Usage:</strong> </code>app/Services/V1/Tenant/TenantInvitationService.php<code></li>
+<li><strong>Seeder:</strong> </code>database/seeders/V1/Setting/SystemSettingSeeder.php<code></li>
+<li><strong>Config:</strong> </code>config/mail.php`</li>
+</ul>
+
+<p>---</p>
+
+<h2>Related Documentation</h2>
+
+<ul>
+<li><strong><a href="./01-overview.md">Overview</a></strong></li>
+<li><strong><a href="./05-workflow-owner.md">Workflow - Owner</a></strong></li>
+<li><strong><a href="./11-testing-guide.md">Testing Guide</a></strong></li>
+</ul>
+        </main>
+    </div>
+    
+    <button class="print-btn" id="printBtn" title="Print Documentation">
+        🖨️ Print
+    </button>
+    
+    <script src="app.js"></script>
+</body>
+</html>

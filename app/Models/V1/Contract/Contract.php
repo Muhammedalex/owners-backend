@@ -13,6 +13,7 @@ use App\Traits\V1\Document\HasDocuments;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Contract extends Model
@@ -70,11 +71,42 @@ class Contract extends Model
     }
 
     /**
-     * Get the unit associated with this contract.
+     * Get the unit associated with this contract (legacy single-unit relation).
+     *
+     * NOTE: For new features, prefer using units()/primaryUnit().
      */
     public function unit(): BelongsTo
     {
         return $this->belongsTo(Unit::class, 'unit_id');
+    }
+
+    /**
+     * Get the units for this contract (many-to-many via contract_units).
+     */
+    public function units(): BelongsToMany
+    {
+        return $this->belongsToMany(Unit::class, 'contract_units', 'contract_id', 'unit_id')
+            ->withPivot('rent_amount', 'notes')
+            ->withTimestamps();
+    }
+
+    /**
+     * Get the primary unit for this contract (for backward compatibility).
+     * Returns the first related unit (from pivot) or the legacy unit relation.
+     */
+    public function primaryUnit(): ?Unit
+    {
+        if ($this->relationLoaded('units') && $this->units->isNotEmpty()) {
+            return $this->units->first();
+        }
+
+        $unit = $this->units()->first();
+
+        if ($unit) {
+            return $unit;
+        }
+
+        return $this->unit; // fallback to legacy relation
     }
 
     /**
@@ -179,6 +211,22 @@ class Contract extends Model
     public function scopeForUnit($query, int $unitId)
     {
         return $query->where('unit_id', $unitId);
+    }
+
+    /**
+     * Check if contract has multiple units.
+     */
+    public function hasMultipleUnits(): bool
+    {
+        return $this->units()->count() > 1;
+    }
+
+    /**
+     * Get total units count.
+     */
+    public function getUnitsCountAttribute(): int
+    {
+        return $this->units()->count();
     }
 
     /**

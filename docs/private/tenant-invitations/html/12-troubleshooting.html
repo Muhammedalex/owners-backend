@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Troubleshooting Guide - Tenant Invitation Documentation</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <h1>📋 Tenant Invitation Feature</h1>
+        <p>Complete Documentation - Tenant Self-Registration via Invitation</p>
+    </header>
+    
+    <div class="container">
+        <aside class="sidebar">
+            <h2>Navigation</h2>
+            <nav>
+                <ul>
+                    <li><a href="index.html" data-route="">📖 Overview</a></li>
+                    <li><a href="#" data-route="overview">📋 Feature Overview</a></li>
+                    <li><a href="#" data-route="database">🗄️ Database Schema</a></li>
+                    <li><a href="#" data-route="api-owner">🔐 API - Owner</a></li>
+                    <li><a href="#" data-route="api-public">🌐 API - Public</a></li>
+                    <li><a href="#" data-route="workflow-owner">👤 Owner Workflow</a></li>
+                    <li><a href="#" data-route="workflow-tenant">🏠 Tenant Workflow</a></li>
+                    <li><a href="#" data-route="invitation-types">🔄 Invitation Types</a></li>
+                    <li><a href="#" data-route="mail-config">📧 Mail Configuration</a></li>
+                    <li><a href="#" data-route="permissions">🔒 Permissions & Security</a></li>
+                    <li><a href="#" data-route="registration">👥 User Registration</a></li>
+                    <li><a href="#" data-route="testing">🧪 Testing Guide</a></li>
+                    <li><a href="#" data-route="troubleshooting">🔧 Troubleshooting</a></li>
+                </ul>
+            </nav>
+        </aside>
+        
+        <main class="main-content">
+            <h1>Troubleshooting Guide</h1>
+
+<h2>Overview</h2>
+
+<p>This guide provides solutions to common issues and errors encountered with the Tenant Invitation feature.</p>
+
+<p>---</p>
+
+<h2>Email Issues</h2>
+
+<h3>Issue: Email Not Sent</h3>
+
+<strong>Symptoms:</strong>
+<ul>
+<li>Invitation created but no email received</li>
+<li>Email not in <code>storage/logs/emails.log</code></li>
+</ul>
+
+<strong>Possible Causes & Solutions:</strong>
+
+<h4>1. Mail Configuration</h4>
+
+<strong>Check:</strong>
+<p>``<code>bash</p>
+<h1>Check mail config</h1>
+<p>php artisan tinker >>> config('mail.default') >>> config('mail.mailers.log')</p>
+</code>`<code>
+
+<strong>Solution:</strong>
+</code>`<code>env
+<h1>In .env</h1>
+<p>MAIL_MAILER=log MAIL_LOG_CHANNEL=emails</p>
+</code>`<code>
+
+<h4>2. Mail Service Error</h4>
+
+<strong>Check Logs:</strong>
+</code>`<code>bash
+<p>tail -f storage/logs/laravel.log | grep -i mail</p>
+</code>`<code>
+
+<strong>Common Errors:</strong>
+<ul>
+<li></code>Connection refused<code> - SMTP server down</li>
+<li></code>Authentication failed<code> - Wrong credentials</li>
+<li></code>SSL certificate problem<code> - SSL/TLS issue</li>
+</ul>
+
+<strong>Solution:</strong>
+</code>`<code>bash
+<h1>Test mail service directly</h1>
+<p>php artisan tinker >>> use App\Mail\V1\Tenant\TenantInvitationMail; >>> use App\Models\V1\Tenant\TenantInvitation; >>> $invitation = TenantInvitation::first(); >>> Mail::to('test@example.com')->send(new TenantInvitationMail($invitation));</p>
+</code>`<code>
+
+<h4>3. Ownership Mail Settings Missing</h4>
+
+<strong>Check:</strong>
+</code>`<code>sql
+<p>SELECT * FROM system_settings WHERE ownership_id = 1 AND </code>group<code> = 'notification' AND </code>key<code> LIKE 'smtp%';</p>
+</code>`<code>
+
+<strong>Solution:</strong>
+<ul>
+<li>Ensure all required SMTP settings exist (host, port, username, password)</li>
+<li>Or set ownership settings to null to use system default</li>
+</ul>
+
+<p>---</p>
+
+<h3>Issue: Email Goes to Spam</h3>
+
+<strong>Symptoms:</strong>
+<ul>
+<li>Email delivered but in spam folder</li>
+<li>Email not visible in inbox</li>
+</ul>
+
+<strong>Solutions:</strong>
+
+<ol>
+<li><strong>SPF/DKIM Records:</strong></li>
+</ol>
+<ul>
+<li>Configure SPF/DKIM for sending domain</li>
+<li>Verify DNS records</li>
+</ul>
+
+<ol>
+<li><strong>From Address:</strong></li>
+</ol>
+<ul>
+<li>Use legitimate from address</li>
+<li>Match domain with SMTP server</li>
+</ul>
+
+<ol>
+<li><strong>Email Content:</strong></li>
+</ol>
+<ul>
+<li>Avoid spam trigger words</li>
+<li>Include unsubscribe link</li>
+<li>Use proper HTML structure</li>
+</ul>
+
+<p>---</p>
+
+<h2>Token Issues</h2>
+
+<h3>Issue: Invalid Token Error</h3>
+
+<strong>Symptoms:</strong>
+<ul>
+<li>Error: "Invalid invitation token"</li>
+<li>Token not found in database</li>
+</ul>
+
+<strong>Possible Causes & Solutions:</strong>
+
+<h4>1. Token Copied Incorrectly</h4>
+
+<strong>Check:</strong>
+<ul>
+<li>Verify token in URL matches invitation</li>
+<li>Check for extra spaces or characters</li>
+</ul>
+
+<h4>2. Token Expired</h4>
+
+<strong>Check:</strong>
+</code>`<code>sql
+<p>SELECT * FROM tenant_invitations WHERE token = '{token}' AND expires_at > NOW();</p>
+</code>`<code>
+
+<strong>Solution:</strong>
+<ul>
+<li>Create new invitation</li>
+<li>Use longer expiration for future invitations</li>
+</ul>
+
+<h4>3. Invitation Cancelled</h4>
+
+<strong>Check:</strong>
+</code>`<code>sql
+<p>SELECT status FROM tenant_invitations WHERE token = '{token}';</p>
+</code>`<code>
+
+<strong>Solution:</strong>
+<ul>
+<li>If cancelled, create new invitation</li>
+<li>Cannot reactivate cancelled invitations</li>
+</ul>
+
+<p>---</p>
+
+<h3>Issue: Token Already Used (Single-use)</h3>
+
+<strong>Symptoms:</strong>
+<ul>
+<li>Error: "Invitation has already been accepted"</li>
+<li>Status: </code>accepted<code> in database</li>
+</ul>
+
+<strong>Solution:</strong>
+<ul>
+<li>This is expected behavior for single-use invitations</li>
+<li>Create new invitation if needed</li>
+<li>Or use multi-use invitation for multiple tenants</li>
+</ul>
+
+<p>---</p>
+
+<h2>Registration Issues</h2>
+
+<h3>Issue: Email Mismatch Error</h3>
+
+<strong>Symptoms:</strong>
+<ul>
+<li>Error: "Email does not match invitation"</li>
+<li>Registration fails even with correct data</li>
+</ul>
+
+<strong>Cause:</strong>
+<ul>
+<li>Registration email doesn't match invitation email</li>
+</ul>
+
+<strong>Solution:</strong>
+</code>`<code>bash
+<h1>Check invitation email</h1>
+<p>curl http://localhost:8000/api/v1/public/tenant-invitations/{token}/validate</p>
+
+<h1>Use exact email from invitation</h1>
+</code>`<code>
+
+<p>---</p>
+
+<h3>Issue: Tenant Already Exists</h3>
+
+<strong>Symptoms:</strong>
+<ul>
+<li>Error: "Tenant already exists for this ownership"</li>
+<li>Cannot register again</li>
+</ul>
+
+<strong>Cause:</strong>
+<ul>
+<li>User already has tenant profile for this ownership</li>
+</ul>
+
+<strong>Solution:</strong>
+<ul>
+<li>User should login with existing account</li>
+<li>Cannot create duplicate tenant for same ownership</li>
+</ul>
+
+<strong>Check:</strong>
+</code>`<code>sql
+<p>SELECT t.*, u.email FROM tenants t JOIN users u ON t.user_id = u.id WHERE u.email = 'tenant@example.com' AND t.ownership_id = 1;</p>
+</code>`<code>
+
+<p>---</p>
+
+<h3>Issue: Password Validation Error</h3>
+
+<strong>Symptoms:</strong>
+<ul>
+<li>Error: "The password must be at least 8 characters"</li>
+<li>Validation fails</li>
+</ul>
+
+<strong>Requirements:</strong>
+<ul>
+<li>Minimum 8 characters</li>
+<li>Must be confirmed (password_confirmation must match)</li>
+</ul>
+
+<strong>Solution:</strong>
+</code>`<code>json
+<p>{ "password": "SecurePassword123!", "password_confirmation": "SecurePassword123!" }</p>
+</code>`<code>
+
+<p>---</p>
+
+<h2>Permission Issues</h2>
+
+<h3>Issue: Unauthorized Error (403)</h3>
+
+<strong>Symptoms:</strong>
+<ul>
+<li>Error: "This action is unauthorized"</li>
+<li>Status: 403 Forbidden</li>
+</ul>
+
+<strong>Possible Causes & Solutions:</strong>
+
+<h4>1. Missing Permission</h4>
+
+<strong>Check User Permissions:</strong>
+</code>`<code>sql
+<p>SELECT p.name FROM permissions p JOIN model_has_permissions mp ON p.id = mp.permission_id WHERE mp.model_id = {user_id} AND mp.model_type = 'App\\Models\\V1\\Auth\\User';</p>
+</code>`<code>
+
+<strong>Solution:</strong>
+<ul>
+<li>Assign required permission to user/role</li>
+<li>Required permissions: </code>tenants.invitations.view<code>, </code>tenants.invitations.create<code>, etc.</li>
+</ul>
+
+<h4>2. Wrong Ownership Scope</h4>
+
+<strong>Check:</strong>
+</code>`<code>sql
+<p>SELECT * FROM user_ownership_mapping WHERE user_id = {user_id} AND ownership_id = {ownership_id};</p>
+</code>`<code>
+
+<strong>Solution:</strong>
+<ul>
+<li>Ensure user has access to ownership</li>
+<li>Check </code>ownership_uuid<code> cookie is set correctly</li>
+</ul>
+
+<p>---</p>
+
+<h3>Issue: Cannot Close Multi-use Invitation</h3>
+
+<strong>Symptoms:</strong>
+<ul>
+<li>Error: "This action is unauthorized" when cancelling</li>
+<li>Invitation has no email/phone</li>
+</ul>
+
+<strong>Cause:</strong>
+<ul>
+<li>Missing </code>tenants.invitations.close_without_contact<code> permission</li>
+</ul>
+
+<strong>Solution:</strong>
+</code>`<code>php
+<p>// Assign special permission $user->givePermissionTo('tenants.invitations.close_without_contact');</p>
+</code>`<code>
+
+<p>---</p>
+
+<h2>Database Issues</h2>
+
+<h3>Issue: Foreign Key Constraint Error</h3>
+
+<strong>Symptoms:</strong>
+<ul>
+<li>Error: "FOREIGN KEY constraint failed"</li>
+<li>Cannot create invitation</li>
+</ul>
+
+<strong>Possible Causes & Solutions:</strong>
+
+<h4>1. Invalid Ownership ID</h4>
+
+<strong>Check:</strong>
+</code>`<code>sql
+<p>SELECT * FROM ownerships WHERE id = {ownership_id};</p>
+</code>`<code>
+
+<strong>Solution:</strong>
+<ul>
+<li>Use valid ownership ID</li>
+<li>Check ownership scope middleware</li>
+</ul>
+
+<h4>2. Invalid User ID</h4>
+
+<strong>Check:</strong>
+</code>`<code>sql
+<p>SELECT * FROM users WHERE id = {user_id};</p>
+</code>`<code>
+
+<strong>Solution:</strong>
+<ul>
+<li>Ensure invited_by user exists</li>
+<li>Use authenticated user ID</li>
+</ul>
+
+<p>---</p>
+
+<h3>Issue: Duplicate Invitation</h3>
+
+<strong>Symptoms:</strong>
+<ul>
+<li>Error: "Duplicate entry for key 'token'"</li>
+<li>Invitation creation fails</li>
+</ul>
+
+<strong>Cause:</strong>
+<ul>
+<li>Token collision (extremely rare)</li>
+</ul>
+
+<strong>Solution:</strong>
+<ul>
+<li>System will regenerate token automatically</li>
+<li>No action needed</li>
+</ul>
+
+<p>---</p>
+
+<h2>Configuration Issues</h2>
+
+<h3>Issue: Email Verification Enabled but Not Working</h3>
+
+<strong>Symptoms:</strong>
+<ul>
+<li>Email verification notification not sent</li>
+<li></code>email_verified_at<code> is null</li>
+</ul>
+
+<strong>Check Configuration:</strong>
+</code>`<code>bash
+<p>php artisan tinker >>> config('auth.verification.enabled')</p>
+</code>`<code>
+
+<strong>Solution:</strong>
+</code>`<code>env
+<h1>In .env</h1>
+<p>AUTH_EMAIL_VERIFICATION_ENABLED=true</p>
+
+<h1>Or disable if not needed</h1>
+<p>AUTH_EMAIL_VERIFICATION_ENABLED=false</p>
+</code>`<code>
+
+<p>---</p>
+
+<h3>Issue: Invitation URL Incorrect</h3>
+
+<strong>Symptoms:</strong>
+<ul>
+<li>Invitation link points to wrong domain</li>
+<li></code>localhost<code> in production</li>
+</ul>
+
+<strong>Check:</strong>
+</code>`<code>bash
+<p>php artisan tinker >>> env('FRONTEND_URL') >>> env('APP_URL')</p>
+</code>`<code>
+
+<strong>Solution:</strong>
+</code>`<code>env
+<h1>In .env</h1>
+<p>FRONTEND_URL=https://app.yourcompany.com APP_URL=https://api.yourcompany.com</p>
+</code>`<code>
+
+<p>---</p>
+
+<h2>Performance Issues</h2>
+
+<h3>Issue: Slow Invitation Creation</h3>
+
+<strong>Symptoms:</strong>
+<ul>
+<li>Invitation creation takes > 2 seconds</li>
+<li>Timeout errors</li>
+</ul>
+
+<strong>Possible Causes & Solutions:</strong>
+
+<h4>1. Email Sending Delay</h4>
+
+<strong>Solution:</strong>
+<ul>
+<li>Use queue for email sending</li>
+<li>Configure mail queue in </code>.env<code></li>
+</ul>
+
+</code>`<code>env
+<p>QUEUE_CONNECTION=redis</p>
+</code>`<code>
+
+</code>`<code>php
+<p>// In TenantInvitationService Mail::to($email)->queue(new TenantInvitationMail($invitation));</p>
+</code>`<code>
+
+<h4>2. Database Indexing</h4>
+
+<strong>Check Indexes:</strong>
+</code>`<code>sql
+<p>SHOW INDEX FROM tenant_invitations;</p>
+</code>`<code>
+
+<strong>Solution:</strong>
+<ul>
+<li>Ensure all indexes exist (token, email, ownership_id, status)</li>
+<li>Run migrations properly</li>
+</ul>
+
+<h4>3. SMTP Server Slow</h4>
+
+<strong>Solution:</strong>
+<ul>
+<li>Use faster SMTP provider</li>
+<li>Implement email queue</li>
+<li>Use async email sending</li>
+</ul>
+
+<p>---</p>
+
+<h2>Multi-use Invitation Issues</h2>
+
+<h3>Issue: Cannot Accept Multi-use Invitation</h3>
+
+<strong>Symptoms:</strong>
+<ul>
+<li>Error when multiple tenants try to accept</li>
+<li>Second tenant gets error</li>
+</ul>
+
+<strong>Check:</strong>
+</code>`<code>sql
+<p>SELECT email, phone, status FROM tenant_invitations WHERE token = '{token}';</p>
+</code>`<code>
+
+<strong>Solution:</strong>
+<ul>
+<li>Ensure both </code>email<code> AND </code>phone<code> are </code>NULL<code></li>
+<li>If either is set, it's single-use</li>
+</ul>
+
+<p>---</p>
+
+<h3>Issue: Cannot See Tenants Count</h3>
+
+<strong>Symptoms:</strong>
+<ul>
+<li></code>tenants_count<code> is null or 0</li>
+<li>Tenants not showing in response</li>
+</ul>
+
+<strong>Solution:</strong>
+<ul>
+<li>Load </code>tenants<code> relationship explicitly</li>
+</ul>
+
+</code>`<code>php
+<p>// In controller $invitation->load('tenants.user');</p>
+</code>`<code>
+
+</code>`<code>bash
+<h1>API request</h1>
+<p>GET /api/v1/tenants/invitations/{uuid}</p>
+</code>`<code>
+
+<p>---</p>
+
+<h2>Development Issues</h2>
+
+<h3>Issue: Email Log File Not Created</h3>
+
+<strong>Symptoms:</strong>
+<ul>
+<li></code>storage/logs/emails.log<code> doesn't exist</li>
+<li>Emails not logged</li>
+</ul>
+
+<strong>Solution:</strong>
+</code>`<code>bash
+<h1>Create log file</h1>
+<p>touch storage/logs/emails.log</p>
+
+<h1>Set permissions</h1>
+<p>chmod 664 storage/logs/emails.log</p>
+
+<h1>Check logging config</h1>
+<p>php artisan tinker >>> config('logging.channels.emails')</p>
+</code>`<code>
+
+<p>---</p>
+
+<h3>Issue: Migration Failed</h3>
+
+<strong>Symptoms:</strong>
+<ul>
+<li>Error: "Table already exists"</li>
+<li>Migration rollback issues</li>
+</ul>
+
+<strong>Solution:</strong>
+</code>`<code>bash
+<h1>Rollback specific migration</h1>
+<p>php artisan migrate:rollback --step=1</p>
+
+<h1>Or fresh migration (WARNING: deletes all data)</h1>
+<p>php artisan migrate:fresh</p>
+
+<h1>Run specific migration</h1>
+<p>php artisan migrate --path=database/migrations/2025_12_15_070612_create_tenant_invitations_table.php</p>
+</code>`<code>
+
+<p>---</p>
+
+<h2>API Testing Issues</h2>
+
+<h3>Issue: Postman Cookie Not Sent</h3>
+
+<strong>Symptoms:</strong>
+<ul>
+<li>Ownership scope error</li>
+<li>Cookie not recognized</li>
+</ul>
+
+<strong>Solution:</strong>
+<ol>
+<li>Enable cookies in Postman settings</li>
+<li>Set cookie manually in request headers:</li>
+</ol>
+</code>`<code>
+<p>Cookie: ownership_uuid={uuid}</p>
+</code>`<code>
+
+<p>---</p>
+
+<h3>Issue: CORS Error in Frontend</h3>
+
+<strong>Symptoms:</strong>
+<ul>
+<li>Error: "CORS policy blocked"</li>
+<li>Frontend cannot call API</li>
+</ul>
+
+<strong>Solution:</strong>
+</code>`<code>php
+<p>// In config/cors.php 'paths' => ['api/*'], 'allowed_origins' => [env('FRONTEND_URL')], 'supports_credentials' => true,</p>
+</code>`<code>
+
+<p>---</p>
+
+<h2>Quick Diagnostics</h2>
+
+<h3>Check System Health</h3>
+
+</code>`<code>bash
+<h1>1. Check database connection</h1>
+<p>php artisan tinker >>> DB::connection()->getPdo();</p>
+
+<h1>2. Check mail configuration</h1>
+<p>>>> config('mail.default');</p>
+
+<h1>3. Check frontend URL</h1>
+<p>>>> env('FRONTEND_URL');</p>
+
+<h1>4. Test invitation service</h1>
+<p>>>> $service = app(\App\Services\V1\Tenant\TenantInvitationService::class); >>> $service->all()->count();</p>
+
+<h1>5. Check permissions</h1>
+<p>>>> \Spatie\Permission\Models\Permission::where('name', 'like', 'tenants.invitations.%')->get();</p>
+</code>`<code>
+
+<p>---</p>
+
+<h2>Getting Help</h2>
+
+<h3>Logs to Check</h3>
+
+<ol>
+<li><strong>Laravel Log:</strong> </code>storage/logs/laravel.log<code></li>
+<li><strong>Email Log:</strong> </code>storage/logs/emails.log<code></li>
+<li><strong>Web Server Log:</strong> </code>/var/log/nginx/error.log` or Apache equivalent</li>
+<li><strong>Database Log:</strong> MySQL/PostgreSQL logs</li>
+</ol>
+
+<h3>Information to Gather</h3>
+
+<p>When reporting issues, include:</p>
+<ul>
+<li>Error message (exact text)</li>
+<li>Request payload (if API)</li>
+<li>Token value (for token issues)</li>
+<li>User ID and ownership ID</li>
+<li>Relevant log entries</li>
+<li>Steps to reproduce</li>
+</ul>
+
+<p>---</p>
+
+<h2>Related Documentation</h2>
+
+<ul>
+<li><strong><a href="./11-testing-guide.md">Testing Guide</a></strong></li>
+<li><strong><a href="./03-api-endpoints-owner.md">API Endpoints - Owner</a></strong></li>
+<li><strong><a href="./04-api-endpoints-public.md">API Endpoints - Public</a></strong></li>
+<li><strong><a href="./08-mail-configuration.md">Mail Configuration</a></strong></li>
+</ul>
+        </main>
+    </div>
+    
+    <button class="print-btn" id="printBtn" title="Print Documentation">
+        🖨️ Print
+    </button>
+    
+    <script src="app.js"></script>
+</body>
+</html>

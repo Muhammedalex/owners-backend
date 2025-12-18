@@ -26,7 +26,7 @@ class UserController extends Controller
         $this->authorize('viewAny', User::class);
 
         $currentUser = $request->user();
-        $perPage = $request->input('per_page', 15);
+        $perPage = (int) $request->input('per_page', 15);
         $filters = $request->only(['search', 'type', 'active', 'verified']);
 
         // If user has 'view.own' permission but not 'view', scope to current ownership
@@ -40,6 +40,15 @@ class UserController extends Controller
                 ], 400);
             }
             $filters['ownership_id'] = $ownershipId;
+        }
+
+        if ($perPage === -1) {
+            $users = $this->userService->all($filters);
+
+            return response()->json([
+                'success' => true,
+                'data' => UserResource::collection($users),
+            ]);
         }
 
         $users = $this->userService->paginate($perPage, $filters);

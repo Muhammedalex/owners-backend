@@ -153,15 +153,34 @@ class InvoiceSeeder extends Seeder
      */
     private function createInvoiceItems(Invoice $invoice, Contract $contract): void
     {
-        // Main rent item
-        InvoiceItem::create([
-            'invoice_id' => $invoice->id,
-            'type' => 'rent',
-            'description' => 'Monthly rent for ' . $invoice->period_start . ' to ' . $invoice->period_end,
-            'quantity' => 1,
-            'unit_price' => $contract->rent,
-            'total' => $contract->rent,
-        ]);
+        $contract->loadMissing('units');
+
+        if ($contract->units->isEmpty()) {
+            // Main rent item (single-unit fallback)
+            InvoiceItem::create([
+                'invoice_id' => $invoice->id,
+                'type' => 'rent',
+                'description' => 'Monthly rent for ' . $invoice->period_start . ' to ' . $invoice->period_end,
+                'quantity' => 1,
+                'unit_price' => $contract->rent,
+                'total' => $contract->rent,
+            ]);
+        } else {
+            // One item per unit
+            foreach ($contract->units as $unit) {
+                $pivotRent = $unit->pivot?->rent_amount;
+                $unitRent = $pivotRent !== null ? (float) $pivotRent : (float) $contract->rent;
+
+                InvoiceItem::create([
+                    'invoice_id' => $invoice->id,
+                    'type' => 'rent',
+                    'description' => 'Monthly rent for unit ' . ($unit->number ?? $unit->id) . ' for ' . $invoice->period_start . ' to ' . $invoice->period_end,
+                    'quantity' => 1,
+                    'unit_price' => $unitRent,
+                    'total' => $unitRent,
+                ]);
+            }
+        }
 
         // Sometimes add additional items (service fees, etc.)
         if (rand(0, 1)) { // 50% chance

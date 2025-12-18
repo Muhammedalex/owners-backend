@@ -22,8 +22,14 @@ class ContractResource extends JsonResource
         return [
             'id' => $this->id,
             'uuid' => $this->uuid,
-            'unit' => $this->whenLoaded('unit', function () {
-                return new UnitResource($this->unit);
+            // All units for this contract (many-to-many)
+            'units' => $this->whenLoaded('units', function () {
+                return UnitResource::collection($this->units);
+            }),
+            'total_area' => $this->whenLoaded('units', function () {
+                return (float) $this->units->sum(function ($unit) {
+                    return (float) ($unit->area ?? 0);
+                });
             }),
             'tenant' => $this->whenLoaded('tenant', function () {
                 return new TenantResource($this->tenant);
@@ -53,6 +59,11 @@ class ContractResource extends JsonResource
             'is_active' => $this->isActive(),
             'is_expired' => $this->isExpired(),
             'is_draft' => $this->isDraft(),
+            'units_count' => $this->when(isset($this->units_count), $this->units_count, function () {
+                return $this->whenLoaded('units', function () {
+                    return $this->units->count();
+                });
+            }),
             'created_by' => $this->whenLoaded('createdBy', function () {
                 return new UserResource($this->createdBy);
             }),

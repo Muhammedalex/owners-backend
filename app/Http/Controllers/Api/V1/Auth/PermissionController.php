@@ -26,8 +26,19 @@ class PermissionController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $perPage = $request->input('per_page', 15);
+        $this->authorize('viewAny', Permission::class);
+
+        $perPage = (int) $request->input('per_page', 15);
         $filters = $request->only(['search', 'guard_name', 'module']);
+
+        if ($perPage === -1) {
+            $permissions = $this->permissionService->all($filters);
+
+            return response()->json([
+                'success' => true,
+                'data' => PermissionResource::collection($permissions),
+            ]);
+        }
 
         $permissions = $this->permissionService->paginate($perPage, $filters);
 
@@ -48,6 +59,8 @@ class PermissionController extends Controller
      */
     public function show(Permission $permission): JsonResponse
     {
+        $this->authorize('view', $permission);
+
         $permission = $this->permissionService->find($permission->id);
 
         if (!$permission) {
@@ -71,6 +84,8 @@ class PermissionController extends Controller
      */
     public function groupedByModule(): JsonResponse
     {
+        $this->authorize('viewAny', Permission::class);
+
         $grouped = $this->permissionService->getGroupedByModuleForUI();
 
         return response()->json([

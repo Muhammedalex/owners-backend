@@ -33,11 +33,19 @@ class ContractController extends Controller
             return $this->errorResponse('messages.errors.ownership_required', 400);
         }
 
-        $perPage = $request->input('per_page', 15);
+        $perPage = (int) $request->input('per_page', 15);
         $filters = array_merge(
             ['ownership_id' => $ownershipId], // MANDATORY
             $request->only(['search', 'status', 'tenant_id', 'unit_id', 'start_date', 'end_date', 'ejar_code'])
         );
+
+        if ($perPage === -1) {
+            $contracts = $this->contractService->all($filters);
+
+            return $this->successResponse(
+                ContractResource::collection($contracts)
+            );
+        }
 
         $contracts = $this->contractService->paginate($perPage, $filters);
 
@@ -73,7 +81,7 @@ class ContractController extends Controller
         $contract = $this->contractService->create($data);
 
         return $this->successResponse(
-            new ContractResource($contract->load(['unit', 'tenant.user', 'ownership', 'createdBy', 'approvedBy', 'parent', 'children', 'terms'])),
+            new ContractResource($contract->load(['unit', 'units', 'tenant.user', 'ownership', 'createdBy', 'approvedBy', 'parent', 'children', 'terms'])),
             'contracts.created',
             201
         );
@@ -102,6 +110,7 @@ class ContractController extends Controller
         // Load all related data
         $contract->load([
             'unit',
+            'units',
             'tenant.user',
             'ownership',
             'createdBy',
@@ -135,7 +144,7 @@ class ContractController extends Controller
         $contract = $this->contractService->update($contract, $data);
 
         return $this->successResponse(
-            new ContractResource($contract->load(['unit', 'tenant.user', 'ownership', 'createdBy', 'approvedBy', 'parent', 'children', 'terms'])),
+            new ContractResource($contract->load(['unit', 'units', 'tenant.user', 'ownership', 'createdBy', 'approvedBy', 'parent', 'children', 'terms'])),
             'contracts.updated'
         );
     }

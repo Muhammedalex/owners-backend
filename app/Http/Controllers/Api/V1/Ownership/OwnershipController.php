@@ -26,7 +26,7 @@ class OwnershipController extends Controller
     {
         $this->authorize('viewAny', Ownership::class);
 
-        $perPage = $request->input('per_page', 15);
+        $perPage = (int) $request->input('per_page', 15);
         $filters = $request->only(['search', 'type', 'ownership_type', 'city', 'active']);
 
         // Apply ownership scope if user is not Super Admin
@@ -48,6 +48,15 @@ class OwnershipController extends Controller
             }
             // Add ownership IDs filter
             $filters['ownership_ids'] = $ownershipIds;
+        }
+
+        if ($perPage === -1) {
+            $ownerships = $this->ownershipService->all($filters);
+
+            return response()->json([
+                'success' => true,
+                'data' => OwnershipResource::collection($ownerships),
+            ]);
         }
 
         $ownerships = $this->ownershipService->paginate($perPage, $filters);

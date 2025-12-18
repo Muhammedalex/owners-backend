@@ -33,11 +33,19 @@ class InvoiceController extends Controller
             return $this->errorResponse('messages.errors.ownership_required', 400);
         }
 
-        $perPage = $request->input('per_page', 15);
+        $perPage = (int) $request->input('per_page', 15);
         $filters = array_merge(
             ['ownership_id' => $ownershipId], // MANDATORY
             $request->only(['search', 'status', 'contract_id', 'overdue', 'start_date', 'end_date'])
         );
+
+        if ($perPage === -1) {
+            $invoices = $this->invoiceService->all($filters);
+
+            return $this->successResponse(
+                InvoiceResource::collection($invoices)
+            );
+        }
 
         $invoices = $this->invoiceService->paginate($perPage, $filters);
 

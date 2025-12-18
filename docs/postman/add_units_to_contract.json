@@ -1,0 +1,331 @@
+{
+    "info": {
+      "name": "Owners API - V1 (Updated Security & Multi-Units Contracts)",
+      "_postman_id": "11111111-2222-3333-4444-555555555555",
+      "description": "Collection تغطي التغييرات الأخيرة:\n- حماية Roles/Permissions عبر Policies و authorize()\n- عقود متعددة الوحدات (unit_ids) بدل/مع unit_id\n- توثيق الحقول الجديدة في العقود والفواتير",
+      "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "item": [
+      {
+        "name": "Auth",
+        "item": [
+          {
+            "name": "Login (for token)",
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Accept",
+                  "value": "application/json"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"email\": \"owner@example.com\",\n  \"password\": \"password\"\n}"
+              },
+              "url": {
+                "raw": "{{base_url}}/api/v1/auth/login",
+                "host": ["{{base_url}}"],
+                "path": ["api", "v1", "auth", "login"]
+              }
+            },
+            "response": []
+          }
+        ]
+      },
+      {
+        "name": "Roles & Permissions",
+        "item": [
+          {
+            "name": "List Roles (protected by RolePolicy + authorize)",
+            "request": {
+              "method": "GET",
+              "header": [
+                {
+                  "key": "Authorization",
+                  "value": "Bearer {{access_token}}"
+                },
+                {
+                  "key": "Accept",
+                  "value": "application/json"
+                }
+              ],
+              "url": {
+                "raw": "{{base_url}}/api/v1/roles?per_page=15&search=&guard_name=web",
+                "host": ["{{base_url}}"],
+                "path": ["api", "v1", "roles"],
+                "query": [
+                  { "key": "per_page", "value": "15" },
+                  { "key": "search", "value": "" },
+                  { "key": "guard_name", "value": "web" }
+                ]
+              },
+              "description": "يتطلب صلاحية: auth.roles.view عبر RolePolicy::viewAny\nSuper Admin يتجاوز الـ scope عبر isSuperAdmin()."
+            },
+            "response": []
+          },
+          {
+            "name": "Create Role",
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Authorization",
+                  "value": "Bearer {{access_token}}"
+                },
+                {
+                  "key": "Accept",
+                  "value": "application/json"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"name\": \"Manager\",\n  \"guard_name\": \"web\",\n  \"permissions\": [\"auth.users.view\", \"auth.users.update\"]\n}"
+              },
+              "url": {
+                "raw": "{{base_url}}/api/v1/roles",
+                "host": ["{{base_url}}"],
+                "path": ["api", "v1", "roles"]
+              },
+              "description": "محمي بـ authorize('create', Role::class) + RolePolicy::create"
+            },
+            "response": []
+          },
+          {
+            "name": "Sync Role Permissions",
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Authorization",
+                  "value": "Bearer {{access_token}}"
+                },
+                {
+                  "key": "Accept",
+                  "value": "application/json"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"permissions\": [1, 2, 3]\n}"
+              },
+              "url": {
+                "raw": "{{base_url}}/api/v1/roles/{{role_id}}/permissions/sync",
+                "host": ["{{base_url}}"],
+                "path": ["api", "v1", "roles", "{{role_id}}", "permissions", "sync"]
+              },
+              "description": "محمي بـ authorize('assignPermissions', $role) في RoleController"
+            },
+            "response": []
+          },
+          {
+            "name": "List Permissions (read-only, with authorize)",
+            "request": {
+              "method": "GET",
+              "header": [
+                {
+                  "key": "Authorization",
+                  "value": "Bearer {{access_token}}"
+                },
+                {
+                  "key": "Accept",
+                  "value": "application/json"
+                }
+              ],
+              "url": {
+                "raw": "{{base_url}}/api/v1/permissions?per_page=50&search=&guard_name=web&module=",
+                "host": ["{{base_url}}"],
+                "path": ["api", "v1", "permissions"],
+                "query": [
+                  { "key": "per_page", "value": "50" },
+                  { "key": "search", "value": "" },
+                  { "key": "guard_name", "value": "web" },
+                  { "key": "module", "value": "" }
+                ]
+              },
+              "description": "محمي بـ authorize('viewAny', Permission::class) عبر PermissionPolicy::viewAny\nSuper Admin يتجاوز القيود."
+            },
+            "response": []
+          },
+          {
+            "name": "Get Permissions Grouped (for UI)",
+            "request": {
+              "method": "GET",
+              "header": [
+                {
+                  "key": "Authorization",
+                  "value": "Bearer {{access_token}}"
+                },
+                {
+                  "key": "Accept",
+                  "value": "application/json"
+                }
+              ],
+              "url": {
+                "raw": "{{base_url}}/api/v1/permissions/grouped",
+                "host": ["{{base_url}}"],
+                "path": ["api", "v1", "permissions", "grouped"]
+              },
+              "description": "محمي بـ authorize('viewAny', Permission::class)\nيُستخدم في واجهة إدارة الأدوار."
+            },
+            "response": []
+          }
+        ]
+      },
+      {
+        "name": "Contracts - Multi Units",
+        "item": [
+          {
+            "name": "Create Contract (single unit - legacy)",
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Authorization",
+                  "value": "Bearer {{access_token}}"
+                },
+                {
+                  "key": "Accept",
+                  "value": "application/json"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"unit_id\": 1,\n  \"tenant_id\": 1,\n  \"number\": \"CNT-001-{{randomNumber}}\",\n  \"version\": 1,\n  \"start\": \"{{today}}\",\n  \"end\": \"{{one_year_from_today}}\",\n  \"rent\": 10000,\n  \"payment_frequency\": \"monthly\",\n  \"deposit\": 20000,\n  \"deposit_status\": \"pending\",\n  \"status\": \"active\"\n}"
+              },
+              "url": {
+                "raw": "{{base_url}}/api/v1/contracts",
+                "host": ["{{base_url}}"],
+                "path": ["api", "v1", "contracts"]
+              },
+              "description": "يستخدم `unit_id` فقط (توافق قديم).\nالـ backend سيقوم أيضًا بإنشاء pivot في `contract_units` لوحدة واحدة."
+            },
+            "response": []
+          },
+          {
+            "name": "Create Contract (multiple units) - NEW",
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Authorization",
+                  "value": "Bearer {{access_token}}"
+                },
+                {
+                  "key": "Accept",
+                  "value": "application/json"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"unit_ids\": [1, 2, 3],\n  \"tenant_id\": 1,\n  \"number\": \"CNT-MULTI-{{randomNumber}}\",\n  \"version\": 1,\n  \"start\": \"{{today}}\",\n  \"end\": \"{{one_year_from_today}}\",\n  \"rent\": 25000,\n  \"payment_frequency\": \"monthly\",\n  \"deposit\": 50000,\n  \"deposit_status\": \"pending\",\n  \"status\": \"active\"\n}"
+              },
+              "url": {
+                "raw": "{{base_url}}/api/v1/contracts",
+                "host": ["{{base_url}}"],
+                "path": ["api", "v1", "contracts"]
+              },
+              "description": "يستخدم `unit_ids` (عدة وحدات).\nالقواعد:\n- required_without بين unit_id و unit_ids.\n- التحقق من الملكية + التوفر في ContractService::validateUnitsForContract.\n- يتم إنشاء أسطر في `contract_units` لكل وحدة."
+            },
+            "response": []
+          },
+          {
+            "name": "Update Contract Units (switch to multiple units)",
+            "request": {
+              "method": "PUT",
+              "header": [
+                {
+                  "key": "Authorization",
+                  "value": "Bearer {{access_token}}"
+                },
+                {
+                  "key": "Accept",
+                  "value": "application/json"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"unit_ids\": [2, 3, 4],\n  \"rent\": 30000\n}"
+              },
+              "url": {
+                "raw": "{{base_url}}/api/v1/contracts/{{contract_id}}",
+                "host": ["{{base_url}}"],
+                "path": ["api", "v1", "contracts", "{{contract_id}}"]
+              },
+              "description": "يعدل عقد موجود ليرتبط بعدة وحدات.\nفي Service::update سيتم التحقق من الوحدات وعمل sync على pivot."
+            },
+            "response": []
+          },
+          {
+            "name": "Show Contract (with units)",
+            "request": {
+              "method": "GET",
+              "header": [
+                {
+                  "key": "Authorization",
+                  "value": "Bearer {{access_token}}"
+                },
+                {
+                  "key": "Accept",
+                  "value": "application/json"
+                }
+              ],
+              "url": {
+                "raw": "{{base_url}}/api/v1/contracts/{{contract_id}}",
+                "host": ["{{base_url}}"],
+                "path": ["api", "v1", "contracts", "{{contract_id}}"]
+              },
+              "description": "الاستجابة تحتوي على:\n- `unit` (الوحدة الأساسية legacy)\n- `units`: قائمة الوحدات المرتبطة\n- `units_count`: عدد الوحدات"
+            },
+            "response": []
+          }
+        ]
+      }
+    ],
+    "variable": [
+      {
+        "key": "base_url",
+        "value": "http://localhost:8000"
+      },
+      {
+        "key": "access_token",
+        "value": ""
+      },
+      {
+        "key": "randomNumber",
+        "value": "1001"
+      },
+      {
+        "key": "today",
+        "value": "2025-12-17"
+      },
+      {
+        "key": "one_year_from_today",
+        "value": "2026-12-17"
+      }
+    ]
+  }

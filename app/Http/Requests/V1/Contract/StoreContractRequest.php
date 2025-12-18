@@ -28,8 +28,19 @@ class StoreContractRequest extends FormRequest
         }
 
         return [
+            // Legacy single-unit contract (backward compatibility)
             'unit_id' => [
-                'required',
+                'sometimes',
+                'required_without:unit_ids',
+                'integer',
+                Rule::exists('units', 'id')->where(function ($query) use ($ownershipId) {
+                    return $query->where('ownership_id', $ownershipId);
+                }),
+            ],
+
+            // Multiple-units contract
+            'unit_ids' => ['sometimes', 'required_without:unit_id', 'array', 'min:1'],
+            'unit_ids.*' => [
                 'integer',
                 Rule::exists('units', 'id')->where(function ($query) use ($ownershipId) {
                     return $query->where('ownership_id', $ownershipId);
@@ -54,7 +65,7 @@ class StoreContractRequest extends FormRequest
             'version' => ['nullable', 'integer', 'min:1'],
             'parent_id' => ['nullable', 'integer', 'exists:contracts,id'],
             'ejar_code' => ['nullable', 'string', 'max:100'], // Optional ejar registration code
-            'start' => ['required', 'date', 'after_or_equal:today'],
+            'start' => ['required', 'date'],
             'end' => ['required', 'date', 'after:start'],
             'rent' => ['required', 'numeric', 'min:0', 'max:9999999999.99'],
             'payment_frequency' => ['nullable', 'string', 'max:50', Rule::in(['monthly', 'quarterly', 'yearly', 'weekly'])],

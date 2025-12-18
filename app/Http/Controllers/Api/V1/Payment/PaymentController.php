@@ -34,11 +34,19 @@ class PaymentController extends Controller
             return $this->errorResponse('messages.errors.ownership_required', 400);
         }
 
-        $perPage = $request->input('per_page', 15);
+        $perPage = (int) $request->input('per_page', 15);
         $filters = array_merge(
             ['ownership_id' => $ownershipId], // MANDATORY
             $request->only(['search', 'status', 'invoice_id', 'method'])
         );
+
+        if ($perPage === -1) {
+            $payments = $this->paymentService->all($filters);
+
+            return $this->successResponse(
+                PaymentResource::collection($payments)
+            );
+        }
 
         $payments = $this->paymentService->paginate($perPage, $filters);
 

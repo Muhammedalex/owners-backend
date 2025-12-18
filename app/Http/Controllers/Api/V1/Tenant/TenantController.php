@@ -33,11 +33,19 @@ class TenantController extends Controller
             return $this->errorResponse('messages.errors.ownership_required', 400);
         }
 
-        $perPage = $request->input('per_page', 15);
+        $perPage = (int) $request->input('per_page', 15);
         $filters = array_merge(
             ['ownership_id' => $ownershipId], // MANDATORY
             $request->only(['search', 'rating', 'employment'])
         );
+
+        if ($perPage === -1) {
+            $tenants = $this->tenantService->all($filters);
+
+            return $this->successResponse(
+                TenantResource::collection($tenants)
+            );
+        }
 
         $tenants = $this->tenantService->paginate($perPage, $filters);
 

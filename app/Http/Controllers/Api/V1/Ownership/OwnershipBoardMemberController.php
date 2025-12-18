@@ -33,11 +33,20 @@ class OwnershipBoardMemberController extends Controller
             ], 400);
         }
 
-        $perPage = $request->input('per_page', 15);
+        $perPage = (int) $request->input('per_page', 15);
         $filters = array_merge(
             ['ownership_id' => $ownershipId],
             $request->only(['user_id', 'role', 'active'])
         );
+
+        if ($perPage === -1) {
+            $boardMembers = $this->boardMemberService->all($filters);
+
+            return response()->json([
+                'success' => true,
+                'data' => OwnershipBoardMemberResource::collection($boardMembers),
+            ]);
+        }
 
         $boardMembers = $this->boardMemberService->paginate($perPage, $filters);
 

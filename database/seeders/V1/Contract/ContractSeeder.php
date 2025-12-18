@@ -31,18 +31,18 @@ class ContractSeeder extends Seeder
         foreach ($ownerships as $ownership) {
             $this->command->info("Processing ownership: {$ownership->name}");
 
-            // Get available units for this ownership
-            $units = Unit::where('ownership_id', $ownership->id)
-                ->where('status', 'available')
-                ->get();
+            // Get units for this ownership
+            $units = Unit::where('ownership_id', $ownership->id)->get();
+            $this->command->info("  Found {$units->count()} units for ownership {$ownership->id}");
 
             if ($units->isEmpty()) {
-                $this->command->warn("  No available units found for ownership: {$ownership->name}");
+                $this->command->warn("  No units found for ownership: {$ownership->name}");
                 continue;
             }
 
             // Get tenants for this ownership
             $tenants = Tenant::where('ownership_id', $ownership->id)->get();
+            $this->command->info("  Found {$tenants->count()} tenants for ownership {$ownership->id}");
 
             if ($tenants->isEmpty()) {
                 $this->command->warn("  No tenants found for ownership: {$ownership->name}");
@@ -50,20 +50,34 @@ class ContractSeeder extends Seeder
             }
 
             // Create 1-3 contracts per ownership
-            $contractsCount = min(rand(1, 3), min($units->count(), $tenants->count()));
-            $selectedUnits = $units->random($contractsCount);
+            $contractsCount = min(rand(1, 3), $tenants->count());
+            $this->command->info("  Target contracts to create: {$contractsCount}");
             $selectedTenants = $tenants->random($contractsCount);
 
-            foreach ($selectedUnits as $index => $unit) {
-                $tenant = $selectedTenants[$index];
+            foreach ($selectedTenants as $index => $tenant) {
+                // For each tenant, pick 1-3 units (if available) to simulate multi-unit contracts
+                $maxUnitsPerContract = min(3, $units->count());
+                $this->command->info("    Iteration {$index}: maxUnitsPerContract={$maxUnitsPerContract} (units left: {$units->count()})");
+
+                if ($maxUnitsPerContract === 0) {
+                    $this->command->warn("    No units left to assign for contracts in ownership: {$ownership->name}");
+                    break;
+                }
+
+                $unitsCountForContract = rand(1, $maxUnitsPerContract);
+                $contractUnits = $units->random($unitsCountForContract);
+                $primaryUnit = $contractUnits->first();
+
+                $this->command->info("    Selected {$unitsCountForContract} units for new contract. Primary unit ID: {$primaryUnit->id}");
+
                 $startDate = now()->subMonths(rand(0, 12));
                 $endDate = $startDate->copy()->addYears(rand(1, 3));
-                $rent = $unit->price_monthly ?? rand(3000, 15000);
+                $rent = $primaryUnit->price_monthly ?? rand(3000, 15000);
                 $deposit = $rent * rand(2, 4); // 2-4 months deposit
 
                 $contract = Contract::create([
                     'uuid' => (string) Str::uuid(),
-                    'unit_id' => $unit->id,
+                    'unit_id' => $primaryUnit->id, // legacy single unit reference
                     'tenant_id' => $tenant->id,
                     'ownership_id' => $ownership->id,
                     'number' => $this->generateContractNumber($ownership->id, $index + 1),
@@ -83,13 +97,31 @@ class ContractSeeder extends Seeder
                     'approved_by' => null,
                 ]);
 
+                $this->command->info("    Created contract ID {$contract->id} with number {$contract->number}");
+
+                // Attach units to contract (pivot)
+                $unitIds = $contractUnits->pluck('id')->all();
+                $this->command->info('    Syncing units to contract_units pivot: [' . implode(', ', $unitIds) . ']');
+                $contract->units()->sync($unitIds);
+                $this->command->info('    Synced ' . count($unitIds) . ' units to contract_units for contract ID ' . $contract->id);
+
                 // Create contract terms
                 $this->createContractTerms($contract);
 
-                // Update unit status to rented
-                $unit->update(['status' => 'rented']);
+                // Update units status to rented
+                foreach ($contractUnits as $unit) {
+                    $unit->update(['status' => 'rented']);
+                }
 
-                $this->command->info("  ✓ Created contract: {$contract->number} for unit {$unit->number}");
+                $unitsNumbers = $contractUnits->pluck('number')->implode(', ');
+                $this->command->info("  ✓ Created contract: {$contract->number} for units {$unitsNumbers}");
+
+                // Remove used units from pool to avoid reusing them in other contracts
+                $units = $units->whereNotIn('id', $contractUnits->pluck('id'));
+                if ($units->isEmpty()) {
+                    $this->command->warn("    Units pool exhausted for ownership: {$ownership->name}");
+                    break;
+                }
             }
 
             $this->command->info("  ✓ Completed contracts for {$ownership->name}");

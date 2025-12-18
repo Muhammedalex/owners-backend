@@ -34,6 +34,10 @@ class PermissionSeeder extends Seeder
             'auth.permissions.view',
             'auth.permissions.assign',
 
+            // Auth Module - User Direct Permission Management
+            // من يملك هذه الصلاحية يمكنه إعطاء/سحب صلاحيات مباشرة من المستخدمين
+            'auth.permissions.manage',
+
             // Ownership Module
             'ownerships.view',              // View ownerships list/details
             'ownerships.create',            // Create new ownership
@@ -71,6 +75,16 @@ class PermissionSeeder extends Seeder
             'tenants.verify',
             'tenants.rating.update',
 
+            // Tenant Invitations Module
+            'tenants.invitations.view',
+            'tenants.invitations.create',
+            'tenants.invitations.update',
+            'tenants.invitations.delete',
+            'tenants.invitations.cancel',
+            'tenants.invitations.resend',
+            'tenants.invitations.close_without_contact',
+            'tenants.invitations.notifications', // Receive notifications about invitations
+
             // Contract Management Module (for future)
             'contracts.view',
             'contracts.create',
@@ -79,6 +93,7 @@ class PermissionSeeder extends Seeder
             'contracts.approve',
             'contracts.sign',
             'contracts.terminate',
+            'contracts.notifications', // Receive notifications about contracts
 
             // Invoice Module
             'invoices.view',

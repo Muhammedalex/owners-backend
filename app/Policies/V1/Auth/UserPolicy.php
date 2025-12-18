@@ -11,6 +11,11 @@ class UserPolicy
      */
     public function viewAny(User $user): bool
     {
+        // Super Admin can view all users
+        if ($user->isSuperAdmin()) {
+            return true;
+        }
+
         // User can view if they have either 'auth.users.view' or 'auth.users.view.own'
         return $user->can('auth.users.view') || $user->can('auth.users.view.own');
     }
@@ -20,6 +25,11 @@ class UserPolicy
      */
     public function view(User $user, User $model): bool
     {
+        // Super Admin can view all users
+        if ($user->isSuperAdmin()) {
+            return true;
+        }
+
         // Users can always view their own profile
         if ($user->id === $model->id) {
             return true;
@@ -48,6 +58,11 @@ class UserPolicy
      */
     public function create(User $user): bool
     {
+        // Super Admin can create users
+        if ($user->isSuperAdmin()) {
+            return true;
+        }
+
         return $user->can('auth.users.create');
     }
 
@@ -56,6 +71,11 @@ class UserPolicy
      */
     public function update(User $user, User $model): bool
     {
+        // Super Admin can update all users
+        if ($user->isSuperAdmin()) {
+            return true;
+        }
+
         // Users can always update their own profile
         if ($user->id === $model->id) {
             return $user->can('auth.users.update.own');
@@ -74,6 +94,11 @@ class UserPolicy
             return false;
         }
 
+        // Super Admin can delete all users (except themselves)
+        if ($user->isSuperAdmin()) {
+            return true;
+        }
+
         return $user->can('auth.users.delete');
     }
 
@@ -82,6 +107,11 @@ class UserPolicy
      */
     public function activate(User $user, User $model): bool
     {
+        // Super Admin can activate all users
+        if ($user->isSuperAdmin()) {
+            return true;
+        }
+
         return $user->can('auth.users.activate');
     }
 
@@ -95,7 +125,33 @@ class UserPolicy
             return false;
         }
 
+        // Super Admin can deactivate all users (except themselves)
+        if ($user->isSuperAdmin()) {
+            return true;
+        }
+
         return $user->can('auth.users.deactivate');
+    }
+
+    /**
+     * Determine whether the user can manage direct permissions for the model.
+     */
+    public function managePermissions(User $user, User $model): bool
+    {
+        // Users cannot manage their own permissions via this endpoint
+        if ($user->id === $model->id) {
+            return false;
+        }
+
+        // Super Admin can manage all users' permissions
+       
+
+        // Only Super Admin can manage another Super Admin
+        if ($model->isSuperAdmin() && !$user->isSuperAdmin()) {
+            return false;
+        }
+
+        return $user->can('auth.permissions.manage');
     }
 }
 

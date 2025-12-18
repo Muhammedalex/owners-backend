@@ -34,11 +34,20 @@ class BuildingController extends Controller
             ], 400);
         }
 
-        $perPage = $request->input('per_page', 15);
+        $perPage = (int) $request->input('per_page', 15);
         $filters = array_merge(
             ['ownership_id' => $ownershipId], // MANDATORY
             $request->only(['search', 'type', 'portfolio_id', 'parent_id', 'city', 'active'])
         );
+
+        if ($perPage === -1) {
+            $buildings = $this->buildingService->all($filters);
+
+            return response()->json([
+                'success' => true,
+                'data' => BuildingResource::collection($buildings),
+            ]);
+        }
 
         $buildings = $this->buildingService->paginate($perPage, $filters);
 

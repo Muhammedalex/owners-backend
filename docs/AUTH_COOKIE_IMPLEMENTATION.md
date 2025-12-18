@@ -1,255 +1,77 @@
-# Auth Cookie Implementation - Summary
+APP_NAME=Laravel
+APP_ENV=production
+APP_KEY=base64:d7AaoLofeh3mi/7+gP9M3RlD9em1Oo1IXFGfVMzIDDs=
+APP_DEBUG=true
+APP_URL=https://owner.iv-erp.com/
 
-## Changes Made
+APP_LOCALE=en
+APP_FALLBACK_LOCALE=en
+APP_FAKER_LOCALE=en_US
 
-### 1. Token Storage Strategy
+APP_MAINTENANCE_DRIVER=file
+# APP_MAINTENANCE_STORE=database
 
-**Before:**
-- Access token: localStorage/sessionStorage
-- Refresh token: localStorage/sessionStorage (accessible via JS)
+# PHP_CLI_SERVER_WORKERS=4
 
-**After:**
-- Access token: In-memory JavaScript variable (NOT in localStorage)
-- Refresh token: httpOnly cookie (NOT accessible via JS)
+BCRYPT_ROUNDS=12
 
----
+LOG_CHANNEL=stack
+LOG_STACK=single
+LOG_DEPRECATIONS_CHANNEL=null
+LOG_LEVEL=debug
 
-## Backend Changes
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=owner_owners
+DB_USERNAME=owner_alex
+DB_PASSWORD="H7j#E+8zbG%v9B!#"
 
-### AuthController Updates
+SESSION_DRIVER=database
+SESSION_LIFETIME=120
+SESSION_ENCRYPT=false
+SESSION_PATH=/
+SESSION_DOMAIN=null
 
-1. **Login/Register Endpoints**
-   - Set refresh token in httpOnly cookie
-   - Return only access_token in JSON response (not refresh_token)
-   - Cookie settings:
-     - `httpOnly: true` - Not accessible via JavaScript
-     - `secure: true` - HTTPS only
-     - `sameSite: 'lax'` - CSRF protection
+BROADCAST_CONNECTION=reverb
+FILESYSTEM_DISK=local
+QUEUE_CONNECTION=database
 
-2. **Refresh Endpoint**
-   - Read refresh token from cookie (not request body)
-   - Validate refresh token from cookie
-   - Set new refresh token in cookie after refresh
-   - Return only access_token in JSON response
+CACHE_STORE=database
+# CACHE_PREFIX=
 
-3. **Logout Endpoints**
-   - Read refresh token from cookie
-   - Clear refresh token cookie after logout
+MEMCACHED_HOST=127.0.0.1
 
-### RefreshTokenRequest Updates
+REDIS_CLIENT=phpredis
+REDIS_HOST=127.0.0.1
+REDIS_PASSWORD=null
+REDIS_PORT=6379
 
-- Removed `refresh_token` from validation rules
-- Added custom validator to check cookie instead
+MAIL_MAILER=log
+MAIL_SCHEME=null
+MAIL_HOST=127.0.0.1
+MAIL_PORT=2525
+MAIL_USERNAME=null
+MAIL_PASSWORD=null
+MAIL_FROM_ADDRESS="hello@example.com"
+MAIL_FROM_NAME="${APP_NAME}"
 
----
+AWS_ACCESS_KEY_ID=
+AWS_SECRET_ACCESS_KEY=
+AWS_DEFAULT_REGION=us-east-1
+AWS_BUCKET=
+AWS_USE_PATH_STYLE_ENDPOINT=false
 
-## Frontend Changes Required
+VITE_APP_NAME="${APP_NAME}"
 
-### 1. Axios Configuration
+REVERB_APP_ID=357849
+REVERB_APP_KEY=tuyv366mnxf3ry681okg
+REVERB_APP_SECRET=stlg60n71rpfwmtfertg
+REVERB_HOST="localhost"
+REVERB_PORT=8080
+REVERB_SCHEME=http
 
-```javascript
-const apiClient = axios.create({
-  withCredentials: true, // CRITICAL: Send cookies with requests
-});
-```
-
-### 2. Access Token Storage
-
-```javascript
-// Store in memory, NOT localStorage
-let accessToken = null;
-
-const setAccessToken = (token) => {
-  accessToken = token;
-};
-```
-
-### 3. Token Refresh
-
-```javascript
-// Refresh endpoint - empty body, cookie sent automatically
-const response = await axios.post(
-  '/auth/refresh',
-  {}, // Empty body
-  { withCredentials: true }
-);
-```
-
-### 4. Login/Register Response
-
-```javascript
-// Response structure changed
-{
-  "data": {
-    "tokens": {
-      "access_token": "...", // Only this in JSON
-      "token_type": "Bearer",
-      "expires_in": 3600
-    }
-    // refresh_token is NOT in response - it's in cookie
-  }
-}
-```
-
----
-
-## API Response Structure
-
-### Login Response
-
-```json
-{
-  "success": true,
-  "message": "Login successful.",
-  "data": {
-    "user": { ... },
-    "tokens": {
-      "access_token": "2|...",
-      "token_type": "Bearer",
-      "expires_in": 3600
-    }
-  }
-}
-```
-
-**Set-Cookie Header:**
-```
-Set-Cookie: refresh_token=...; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=2592000
-```
-
-### Refresh Response
-
-```json
-{
-  "success": true,
-  "message": "Token refreshed successfully.",
-  "data": {
-    "user": { ... },
-    "tokens": {
-      "access_token": "2|...",
-      "token_type": "Bearer",
-      "expires_in": 3600
-    }
-  }
-}
-```
-
-**Set-Cookie Header:**
-```
-Set-Cookie: refresh_token=...; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=2592000
-```
-
----
-
-## Security Benefits
-
-1. **XSS Protection**
-   - Refresh token in httpOnly cookie cannot be accessed by JavaScript
-   - Even if XSS attack occurs, refresh token is safe
-
-2. **No Persistent Storage**
-   - Access token not stored in localStorage/sessionStorage
-   - Reduces risk of token theft
-
-3. **Automatic Cookie Handling**
-   - Browser automatically sends cookies with requests
-   - No manual token management needed
-
-4. **CSRF Protection**
-   - SameSite cookie attribute prevents CSRF attacks
-
----
-
-## Testing the Refresh Token Fix
-
-### Issue
-You were getting: `"Invalid or expired refresh token."`
-
-### Root Cause
-The refresh endpoint was expecting `refresh_token` in the request body, but it should come from the cookie.
-
-### Solution
-1. Updated `AuthController::refresh()` to read from cookie
-2. Updated `RefreshTokenRequest` to validate cookie
-3. Cookie is automatically sent by browser with `withCredentials: true`
-
-### Testing Steps
-
-1. **Login**
-   ```bash
-   POST /api/v1/auth/login
-   Body: { "email": "...", "password": "..." }
-   ```
-   - Check response: Should have `access_token` in JSON
-   - Check Set-Cookie header: Should have `refresh_token` cookie
-
-2. **Refresh Token**
-   ```bash
-   POST /api/v1/auth/refresh
-   Body: {} (empty)
-   Headers: Cookie: refresh_token=...
-   ```
-   - Should return new `access_token`
-   - Should set new `refresh_token` cookie
-
-3. **Verify Cookie**
-   - In browser DevTools → Application → Cookies
-   - Should see `refresh_token` cookie
-   - Should be httpOnly (not accessible via `document.cookie`)
-
----
-
-## CORS Configuration
-
-For cookies to work with cross-origin requests, ensure:
-
-1. **Backend CORS allows credentials:**
-   ```php
-   // In bootstrap/app.php or CORS config
-   ->withMiddleware(function (Middleware $middleware) {
-       $middleware->api(prepend: [
-           \Illuminate\Http\Middleware\HandleCors::class,
-       ]);
-   })
-   ```
-
-2. **Frontend sends credentials:**
-   ```javascript
-   axios.create({
-     withCredentials: true,
-   });
-   ```
-
-3. **Sanctum stateful domains configured:**
-   ```php
-   // config/sanctum.php
-   'stateful' => ['localhost:3000', 'your-frontend-domain.com'],
-   ```
-
----
-
-## Migration Checklist
-
-- [x] Update AuthController to set cookies
-- [x] Update refresh endpoint to read from cookie
-- [x] Update logout to clear cookie
-- [x] Update RefreshTokenRequest validation
-- [x] Update frontend API integration docs
-- [ ] Update frontend axios config (withCredentials: true)
-- [ ] Update frontend token storage (memory only)
-- [ ] Update frontend refresh logic (empty body)
-- [ ] Test login flow
-- [ ] Test refresh flow
-- [ ] Test logout flow
-- [ ] Verify cookies in browser DevTools
-
----
-
-## Notes
-
-- Refresh token cookie expires in 30 days (configurable)
-- Access token expires in 60 minutes (configurable)
-- On page refresh, access token is lost (by design)
-- Use refresh token to get new access token automatically
-- All cookie operations are handled automatically by browser
-
+VITE_REVERB_APP_KEY="${REVERB_APP_KEY}"
+VITE_REVERB_HOST="${REVERB_HOST}"
+VITE_REVERB_PORT="${REVERB_PORT}"
+VITE_REVERB_SCHEME="${REVERB_SCHEME}"

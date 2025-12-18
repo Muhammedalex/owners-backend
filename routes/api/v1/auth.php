@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\V1\Auth\AuthController;
+use App\Http\Controllers\Api\V1\Auth\UserPermissionController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -30,6 +31,13 @@ Route::prefix('auth')->name('v1.auth.')->group(function () {
         // Me endpoint needs ownership scope to return current_ownership_uuid
         Route::get('/me', [AuthController::class, 'me'])->middleware('ownership.scope')->name('me');
         Route::post('/resend-verification', [AuthController::class, 'resendVerification'])->name('resend-verification');
+
+        // User direct permissions management
+        Route::prefix('users')->name('users.')->group(function () {
+            Route::get('{user}/permissions', [UserPermissionController::class, 'show'])->name('permissions.show');
+            Route::post('{user}/permissions/grant', [UserPermissionController::class, 'grant'])->name('permissions.grant');
+            Route::post('{user}/permissions/revoke', [UserPermissionController::class, 'revoke'])->name('permissions.revoke');
+        });
     });
 });
 

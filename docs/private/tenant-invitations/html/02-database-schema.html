@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Schema - Tenant Invitations - Tenant Invitation Documentation</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <h1>📋 Tenant Invitation Feature</h1>
+        <p>Complete Documentation - Tenant Self-Registration via Invitation</p>
+    </header>
+    
+    <div class="container">
+        <aside class="sidebar">
+            <h2>Navigation</h2>
+            <nav>
+                <ul>
+                    <li><a href="index.html" data-route="">📖 Overview</a></li>
+                    <li><a href="#" data-route="overview">📋 Feature Overview</a></li>
+                    <li><a href="#" data-route="database">🗄️ Database Schema</a></li>
+                    <li><a href="#" data-route="api-owner">🔐 API - Owner</a></li>
+                    <li><a href="#" data-route="api-public">🌐 API - Public</a></li>
+                    <li><a href="#" data-route="workflow-owner">👤 Owner Workflow</a></li>
+                    <li><a href="#" data-route="workflow-tenant">🏠 Tenant Workflow</a></li>
+                    <li><a href="#" data-route="invitation-types">🔄 Invitation Types</a></li>
+                    <li><a href="#" data-route="mail-config">📧 Mail Configuration</a></li>
+                    <li><a href="#" data-route="permissions">🔒 Permissions & Security</a></li>
+                    <li><a href="#" data-route="registration">👥 User Registration</a></li>
+                    <li><a href="#" data-route="testing">🧪 Testing Guide</a></li>
+                    <li><a href="#" data-route="troubleshooting">🔧 Troubleshooting</a></li>
+                </ul>
+            </nav>
+        </aside>
+        
+        <main class="main-content">
+            <h1>Database Schema - Tenant Invitations</h1>
+
+<h2>Overview</h2>
+
+<p>This document describes the database structure for the Tenant Invitation feature, including tables, relationships, indexes, and migrations.</p>
+
+<p>---</p>
+
+<h2>Tables</h2>
+
+<h3>1. <code>tenant_invitations</code></h3>
+
+<p>Stores all tenant invitation records.</p>
+
+<h4>Schema</h4>
+
+<p>``<code>sql CREATE TABLE tenant_invitations ( id BIGINT PRIMARY KEY AUTO_INCREMENT, uuid CHAR(36) UNIQUE NOT NULL, ownership_id BIGINT NOT NULL, invited_by BIGINT NOT NULL, email VARCHAR(255) NULL, phone VARCHAR(20) NULL, name VARCHAR(255) NULL, token VARCHAR(64) UNIQUE NOT NULL, status VARCHAR(50) DEFAULT 'pending', expires_at TIMESTAMP NOT NULL, accepted_at TIMESTAMP NULL, accepted_by BIGINT NULL, tenant_id BIGINT NULL, notes TEXT NULL, created_at TIMESTAMP, updated_at TIMESTAMP,</p>
+
+<p>FOREIGN KEY (ownership_id) REFERENCES ownerships(id) ON DELETE CASCADE, FOREIGN KEY (invited_by) REFERENCES users(id) ON DELETE CASCADE, FOREIGN KEY (accepted_by) REFERENCES users(id) ON DELETE SET NULL, FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE SET NULL,</p>
+
+<p>INDEX idx_token (token), INDEX idx_email (email), INDEX idx_ownership_id (ownership_id), INDEX idx_status (status), INDEX idx_expires_at (expires_at), INDEX idx_invited_by (invited_by) );</p>
+</code>`<code>
+
+<h4>Fields</h4>
+
+<p>| Field | Type | Nullable | Description | |-------|------|----------|-------------| | </code>id<code> | BIGINT | NO | Primary key | | </code>uuid<code> | CHAR(36) | NO | Unique identifier (for API) | | </code>ownership_id<code> | BIGINT | NO | Ownership this invitation belongs to | | </code>invited_by<code> | BIGINT | NO | User who created the invitation | | </code>email<code> | VARCHAR(255) | YES | Email address (for single-use invitations) | | </code>phone<code> | VARCHAR(20) | YES | Phone number (for single-use invitations) | | </code>name<code> | VARCHAR(255) | YES | Optional name of invitee | | </code>token<code> | VARCHAR(64) | NO | Secure invitation token (unique) | | </code>status<code> | VARCHAR(50) | NO | Status: </code>pending<code>, </code>accepted<code>, </code>expired<code>, </code>cancelled<code> | | </code>expires_at<code> | TIMESTAMP | NO | Expiration date/time | | </code>accepted_at<code> | TIMESTAMP | YES | When invitation was accepted | | </code>accepted_by<code> | BIGINT | YES | User ID who accepted (for single-use) | | </code>tenant_id<code> | BIGINT | YES | First tenant created (for single-use) | | </code>notes<code> | TEXT | YES | Optional notes | | </code>created_at<code> | TIMESTAMP | NO | Creation timestamp | | </code>updated_at<code> | TIMESTAMP | NO | Last update timestamp |</p>
+
+<h4>Relationships</h4>
+
+<ul>
+<li><strong>BelongsTo </code>Ownership<code></strong> - The ownership this invitation belongs to</li>
+<li><strong>BelongsTo </code>User<code> (invited_by)</strong> - User who created the invitation</li>
+<li><strong>BelongsTo </code>User<code> (accepted_by)</strong> - User who accepted (single-use only)</li>
+<li><strong>BelongsTo </code>Tenant<code> (tenant_id)</strong> - First tenant created (single-use only)</li>
+<li><strong>HasMany </code>Tenant<code> (via invitation_id)</strong> - All tenants created from this invitation (multi-use)</li>
+</ul>
+
+<h4>Indexes</h4>
+
+<ul>
+<li></code>idx_token<code> - Fast token lookup (public endpoints)</li>
+<li></code>idx_email<code> - Email search</li>
+<li></code>idx_ownership_id<code> - Ownership filtering</li>
+<li></code>idx_status<code> - Status filtering</li>
+<li></code>idx_expires_at<code> - Expiration queries</li>
+<li></code>idx_invited_by<code> - User filtering</li>
+</ul>
+
+<p>---</p>
+
+<h3>2. </code>tenants<code> (Modified)</h3>
+
+<p>Added </code>invitation_id<code> field to track which invitation created the tenant.</p>
+
+<h4>New Field</h4>
+
+</code>`<code>sql
+<p>ALTER TABLE tenants ADD COLUMN invitation_id BIGINT NULL; ALTER TABLE tenants ADD FOREIGN KEY (invitation_id) REFERENCES tenant_invitations(id) ON DELETE SET NULL; ALTER TABLE tenants ADD INDEX idx_invitation_id (invitation_id);</p>
+</code>`<code>
+
+<h4>Field Details</h4>
+
+<p>| Field | Type | Nullable | Description | |-------|------|----------|-------------| | </code>invitation_id<code> | BIGINT | YES | Links tenant to the invitation that created it |</p>
+
+<h4>Relationships</h4>
+
+<ul>
+<li><strong>BelongsTo </code>TenantInvitation<code></strong> - The invitation that created this tenant</li>
+</ul>
+
+<p>---</p>
+
+<h2>Migration Files</h2>
+
+<h3>1. Create Tenant Invitations Table</h3>
+
+<strong>File:</strong> </code>database/migrations/2025_12_15_070612_create_tenant_invitations_table.php<code>
+
+<strong>Purpose:</strong> Creates the </code>tenant_invitations<code> table with all fields, indexes, and foreign keys.
+
+<strong>Run:</strong> </code>php artisan migrate<code>
+
+<h3>2. Add Invitation ID to Tenants</h3>
+
+<strong>File:</strong> </code>database/migrations/2025_12_15_080000_add_invitation_id_to_tenants_table.php<code>
+
+<strong>Purpose:</strong> Adds </code>invitation_id<code> foreign key to </code>tenants<code> table.
+
+<strong>Run:</strong> </code>php artisan migrate<code>
+
+<p>---</p>
+
+<h2>Data Relationships</h2>
+
+<h3>Entity Relationship Diagram</h3>
+
+</code>`<code>
+<p>Ownership (1) ──< (Many) TenantInvitation │                      │ │                      ├──> User (invited_by) │                      ├──> User (accepted_by) │                      ├──> Tenant (tenant_id) [single-use] │                      └──> Tenant[] (via invitation_id) [multi-use] │ └──< (Many) Tenant │ └──> User (user_id) └──> TenantInvitation (invitation_id)</p>
+</code>`<code>
+
+<p>---</p>
+
+<h2>Data Scenarios</h2>
+
+<h3>Scenario 1: Single-use Invitation (With Email)</h3>
+
+</code>`<code>sql
+<p>-- Invitation created INSERT INTO tenant_invitations ( uuid, ownership_id, invited_by, email, token, status, expires_at ) VALUES ( 'uuid-123', 1, 5, 'tenant@example.com', 'token-abc...', 'pending', '2025-12-22 10:00:00' );</p>
+
+<p>-- Tenant accepts UPDATE tenant_invitations SET status = 'accepted', accepted_at = NOW(), accepted_by = 10, tenant_id = 1 WHERE id = 1;</p>
+
+<p>INSERT INTO tenants ( user_id, ownership_id, invitation_id, national_id, ... ) VALUES ( 10, 1, 1, '1234567890', ... );</p>
+</code>`<code>
+
+<h3>Scenario 2: Multi-use Invitation (Without Email/Phone)</h3>
+
+</code>`<code>sql
+<p>-- Invitation created (no email/phone) INSERT INTO tenant_invitations ( uuid, ownership_id, invited_by, token, status, expires_at ) VALUES ( 'uuid-456', 1, 5, 'token-xyz...', 'pending', '2025-12-22 10:00:00' );</p>
+
+<p>-- First tenant accepts INSERT INTO tenants ( user_id, ownership_id, invitation_id, national_id, ... ) VALUES ( 10, 1, 2, '1234567890', ... );</p>
+
+<p>-- Second tenant accepts (same invitation) INSERT INTO tenants ( user_id, ownership_id, invitation_id, national_id, ... ) VALUES ( 11, 1, 2, '0987654321', ... );</p>
+
+<p>-- Invitation remains 'pending' until owner manually closes it</p>
+</code>`<code>
+
+<p>---</p>
+
+<h2>Query Examples</h2>
+
+<h3>Find Active Invitations for Ownership</h3>
+
+</code>`<code>sql
+<p>SELECT * FROM tenant_invitations WHERE ownership_id = 1 AND status = 'pending' AND expires_at > NOW() ORDER BY created_at DESC;</p>
+</code>`<code>
+
+<h3>Find Invitation by Token</h3>
+
+</code>`<code>sql
+<p>SELECT * FROM tenant_invitations WHERE token = 'abc123...' AND status = 'pending' AND expires_at > NOW();</p>
+</code>`<code>
+
+<h3>Get All Tenants from Multi-use Invitation</h3>
+
+</code>`<code>sql
+<p>SELECT t.*, u.email, u.first, u.last FROM tenants t JOIN users u ON t.user_id = u.id WHERE t.invitation_id = 2;</p>
+</code>`<code>
+
+<h3>Count Tenants per Invitation</h3>
+
+</code>`<code>sql
+<p>SELECT ti.id, ti.token, ti.status, COUNT(t.id) as tenants_count FROM tenant_invitations ti LEFT JOIN tenants t ON t.invitation_id = ti.id GROUP BY ti.id, ti.token, ti.status;</p>
+</code>`<code>
+
+<p>---</p>
+
+<h2>Constraints and Rules</h2>
+
+<h3>Business Rules</h3>
+
+<ol>
+<li><strong>Email/Phone Rule:</strong></li>
+</ol>
+<ul>
+<li>If </code>email<code> OR </code>phone<code> is set → Single-use invitation</li>
+<li>If both </code>email<code> AND </code>phone<code> are NULL → Multi-use invitation</li>
+</ul>
+
+<ol>
+<li><strong>Status Rules:</strong></li>
+</ol>
+<ul>
+<li></code>pending<code> → Can be accepted</li>
+<li></code>accepted<code> → Already used (single-use only)</li>
+<li></code>expired<code> → Past expiration date</li>
+<li></code>cancelled<code> → Manually cancelled by owner</li>
+</ul>
+
+<ol>
+<li><strong>Expiration Rules:</strong></li>
+</ol>
+<ul>
+<li>Default: 7 days from creation</li>
+<li>Configurable: 1-30 days</li>
+<li>Cannot accept expired invitations</li>
+</ul>
+
+<ol>
+<li><strong>Token Rules:</strong></li>
+</ol>
+<ul>
+<li>Must be unique</li>
+<li>64 characters</li>
+<li>Generated using </code>Str::random(64)<code></li>
+</ul>
+
+<p>---</p>
+
+<h2>Indexes Performance</h2>
+
+<h3>Query Performance</h3>
+
+<ul>
+<li><strong>Token Lookup:</strong> O(log n) - Fast token validation</li>
+<li><strong>Ownership Filtering:</strong> O(log n) - Efficient ownership scoping</li>
+<li><strong>Status Filtering:</strong> O(log n) - Quick status queries</li>
+<li><strong>Expiration Queries:</strong> O(log n) - Efficient expiration checks</li>
+</ul>
+
+<h3>Recommended Indexes</h3>
+
+<p>All critical indexes are already created. Additional indexes may be added based on query patterns:</p>
+
+</code>`<code>sql
+<p>-- Composite index for common queries CREATE INDEX idx_ownership_status_expires ON tenant_invitations(ownership_id, status, expires_at);</p>
+
+<p>-- Index for email lookups (if needed) CREATE INDEX idx_email_ownership ON tenant_invitations(email, ownership_id);</p>
+</code>`<code>
+
+<p>---</p>
+
+<h2>Data Integrity</h2>
+
+<h3>Foreign Key Constraints</h3>
+
+<ul>
+<li><strong></code>ownership_id<code></strong> → </code>CASCADE DELETE<code> - If ownership deleted, invitations deleted</li>
+<li><strong></code>invited_by<code></strong> → </code>CASCADE DELETE<code> - If user deleted, invitations deleted</li>
+<li><strong></code>accepted_by<code></strong> → </code>SET NULL<code> - If user deleted, accepted_by set to NULL</li>
+<li><strong></code>tenant_id<code></strong> → </code>SET NULL<code> - If tenant deleted, tenant_id set to NULL</li>
+<li><strong></code>invitation_id<code> (in tenants)</strong> → </code>SET NULL<code> - If invitation deleted, link removed</li>
+</ul>
+
+<h3>Unique Constraints</h3>
+
+<ul>
+<li><strong></code>uuid<code></strong> - Must be unique across all invitations</li>
+<li><strong></code>token<code></strong> - Must be unique across all invitations</li>
+</ul>
+
+<p>---</p>
+
+<h2>Migration Rollback</h2>
+
+<h3>Rollback Order</h3>
+
+<ol>
+<li>Rollback </code>add_invitation_id_to_tenants_table<code> first</li>
+<li>Then rollback </code>create_tenant_invitations_table<code></li>
+</ol>
+
+</code>`<code>bash
+<p>php artisan migrate:rollback --step=1  # Remove invitation_id from tenants php artisan migrate:rollback --step=1  # Drop tenant_invitations table</p>
+</code>`<code>
+
+<p>---</p>
+
+<h2>Related Files</h2>
+
+<ul>
+<li><strong>Migration 1:</strong> </code>database/migrations/2025_12_15_070612_create_tenant_invitations_table.php<code></li>
+<li><strong>Migration 2:</strong> </code>database/migrations/2025_12_15_080000_add_invitation_id_to_tenants_table.php<code></li>
+<li><strong>Model:</strong> </code>app/Models/V1/Tenant/TenantInvitation.php<code></li>
+<li><strong>Tenant Model:</strong> </code>app/Models/V1/Tenant/Tenant.php`</li>
+</ul>
+        </main>
+    </div>
+    
+    <button class="print-btn" id="printBtn" title="Print Documentation">
+        🖨️ Print
+    </button>
+    
+    <script src="app.js"></script>
+</body>
+</html>

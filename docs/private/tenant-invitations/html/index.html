@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tenant Invitation Feature - Documentation</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <h1>📋 Tenant Invitation Feature</h1>
+        <p>Complete Documentation - Tenant Self-Registration via Invitation</p>
+    </header>
+    
+    <div class="container">
+        <aside class="sidebar">
+            <h2>Navigation</h2>
+            <nav>
+                <ul>
+                    <li><a href="#" data-route="">📖 Overview</a></li>
+                    <li><a href="#" data-route="overview">📋 Feature Overview</a></li>
+                    <li><a href="#" data-route="database">🗄️ Database Schema</a></li>
+                    <li><a href="#" data-route="api-owner">🔐 API - Owner</a></li>
+                    <li><a href="#" data-route="api-public">🌐 API - Public</a></li>
+                    <li><a href="#" data-route="workflow-owner">👤 Owner Workflow</a></li>
+                    <li><a href="#" data-route="workflow-tenant">🏠 Tenant Workflow</a></li>
+                    <li><a href="#" data-route="invitation-types">🔄 Invitation Types</a></li>
+                    <li><a href="#" data-route="mail-config">📧 Mail Configuration</a></li>
+                    <li><a href="#" data-route="permissions">🔒 Permissions & Security</a></li>
+                    <li><a href="#" data-route="registration">👥 User Registration</a></li>
+                    <li><a href="#" data-route="testing">🧪 Testing Guide</a></li>
+                    <li><a href="#" data-route="troubleshooting">🔧 Troubleshooting</a></li>
+                </ul>
+            </nav>
+        </aside>
+        
+        <main class="main-content" id="content">
+            <!-- Content will be loaded dynamically -->
+            <h1>Tenant Invitation Feature - Complete Documentation</h1>
+            <p>Welcome to the comprehensive documentation for the Tenant Self-Registration via Invitation feature.</p>
+            
+            <h2>📋 Documentation Structure</h2>
+            <p>This documentation is organized into separate files for easy navigation and reference.</p>
+            
+            <h3>📋 Core Documentation</h3>
+            <ul>
+                <li><strong><a href="#" data-route="overview">01-overview.md</a></strong> - Feature overview, business requirements, and key concepts</li>
+                <li><strong><a href="#" data-route="database">02-database-schema.md</a></strong> - Database structure, migrations, and relationships</li>
+                <li><strong><a href="#" data-route="api-owner">03-api-endpoints-owner.md</a></strong> - Owner-facing API endpoints (authenticated)</li>
+                <li><strong><a href="#" data-route="api-public">04-api-endpoints-public.md</a></strong> - Public API endpoints (no authentication)</li>
+                <li><strong><a href="#" data-route="workflow-owner">05-workflow-owner.md</a></strong> - Owner workflow: creating and managing invitations</li>
+                <li><strong><a href="#" data-route="workflow-tenant">06-workflow-tenant.md</a></strong> - Tenant workflow: receiving and accepting invitations</li>
+                <li><strong><a href="#" data-route="invitation-types">07-invitation-types.md</a></strong> - Single-use vs Multi-use invitations explained</li>
+                <li><strong><a href="#" data-route="mail-config">08-mail-configuration.md</a></strong> - Ownership-specific SMTP mail configuration</li>
+                <li><strong><a href="#" data-route="permissions">09-permissions-security.md</a></strong> - Permissions, policies, and security considerations</li>
+                <li><strong><a href="#" data-route="registration">10-user-registration-flow.md</a></strong> - User creation, role assignment, and ownership mapping</li>
+                <li><strong><a href="#" data-route="testing">11-testing-guide.md</a></strong> - Testing scenarios, commands, and examples</li>
+                <li><strong><a href="#" data-route="troubleshooting">12-troubleshooting.md</a></strong> - Common issues, errors, and solutions</li>
+            </ul>
+            
+            <h3>🚀 Quick Start</h3>
+            <div class="alert alert-info">
+                <strong>For Developers:</strong> Start with the Overview, then review Database Schema and API endpoints.
+            </div>
+            <div class="alert alert-info">
+                <strong>For Product Owners:</strong> Read the Overview and Workflow documents.
+            </div>
+            <div class="alert alert-info">
+                <strong>For System Administrators:</strong> Review Mail Configuration and Troubleshooting guides.
+            </div>
+            
+            <h3>✨ Key Features</h3>
+            <ul>
+                <li><span class="badge badge-success">✅</span> Single-use Invitations - Invitations with email/phone (one-time use)</li>
+                <li><span class="badge badge-success">✅</span> Multi-use Invitations - Invitations without email/phone (multiple tenants can join)</li>
+                <li><span class="badge badge-success">✅</span> Ownership-specific Mail - Each ownership can have its own SMTP configuration</li>
+                <li><span class="badge badge-success">✅</span> Automatic User Creation - Users are created with tenant type and role</li>
+                <li><span class="badge badge-success">✅</span> Ownership Mapping - Users are automatically linked to ownership</li>
+                <li><span class="badge badge-success">✅</span> Secure Tokens - 64-character random tokens for invitation links</li>
+                <li><span class="badge badge-success">✅</span> Expiration Management - Configurable expiration (default: 7 days)</li>
+                <li><span class="badge badge-success">✅</span> Bulk Invitations - Send multiple invitations at once</li>
+            </ul>
+            
+            <h3>📚 Related Documentation</h3>
+            <ul>
+                <li><strong>Public Documentation:</strong> <code>docs/new-features/01-tenant-self-registration.md</code></li>
+                <li><strong>Postman Collection:</strong> <code>docs/postman/Tenant_Invitations_API.postman_collection.json</code></li>
+                <li><strong>Testing Guide:</strong> <code>docs/new-features/TESTING_GUIDE.md</code></li>
+                <li><strong>Mail Configuration:</strong> <code>docs/new-features/OWNERSHIP_MAIL_CONFIG.md</code></li>
+            </ul>
+            
+            <hr style="margin: 2rem 0; border: none; border-top: 2px solid #e0e0e0;">
+            
+            <p><strong>Version:</strong> 1.0<br>
+            <strong>Last Updated:</strong> December 15, 2025<br>
+            <strong>Status:</strong> <span class="badge badge-success">✅ Implemented and Tested</span></p>
+        </main>
+    </div>
+    
+    <button class="print-btn" id="printBtn" title="Print Documentation">
+        🖨️ Print
+    </button>
+    
+    <script src="app.js"></script>
+</body>
+</html>
+

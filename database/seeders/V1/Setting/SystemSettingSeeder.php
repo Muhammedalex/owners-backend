@@ -465,6 +465,58 @@ class SystemSettingSeeder extends Seeder
                 'description' => 'Frequency of reminders in days',
             ],
 
+            // Mail/SMTP Settings (Ownership-specific)
+            // Note: These are optional - if not set, system default mail config is used
+            [
+                'key' => 'smtp_host',
+                'value' => null,
+                'value_type' => 'string',
+                'group' => 'notification',
+                'description' => 'SMTP server hostname (leave empty to use system default)',
+            ],
+            [
+                'key' => 'smtp_port',
+                'value' => null,
+                'value_type' => 'integer',
+                'group' => 'notification',
+                'description' => 'SMTP server port (leave empty to use system default)',
+            ],
+            [
+                'key' => 'smtp_username',
+                'value' => null,
+                'value_type' => 'string',
+                'group' => 'notification',
+                'description' => 'SMTP username (leave empty to use system default)',
+            ],
+            [
+                'key' => 'smtp_password',
+                'value' => null,
+                'value_type' => 'string',
+                'group' => 'notification',
+                'description' => 'SMTP password (leave empty to use system default)',
+            ],
+            [
+                'key' => 'smtp_encryption',
+                'value' => 'tls',
+                'value_type' => 'string',
+                'group' => 'notification',
+                'description' => 'SMTP encryption (tls or ssl)',
+            ],
+            [
+                'key' => 'email_from_address',
+                'value' => null,
+                'value_type' => 'string',
+                'group' => 'notification',
+                'description' => 'From email address for ownership emails (leave empty to use system default)',
+            ],
+            [
+                'key' => 'email_from_name',
+                'value' => null,
+                'value_type' => 'string',
+                'group' => 'notification',
+                'description' => 'From name for ownership emails (leave empty to use system default)',
+            ],
+
             // Document Settings
             [
                 'key' => 'document_retention_days',

@@ -3,6 +3,8 @@
 namespace App\Services\V1\Invoice;
 
 use App\Models\V1\Invoice\Invoice;
+use App\Models\V1\Invoice\InvoiceItem;
+use App\Models\V1\Contract\Contract;
 use App\Repositories\V1\Invoice\Interfaces\InvoiceRepositoryInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
@@ -131,6 +133,75 @@ class InvoiceService
         return DB::transaction(function () use ($invoice) {
             return $this->invoiceRepository->markAsSent($invoice);
         });
+    }
+
+    /**
+     * Generate invoice from contract (supports multiple units).
+     *
+     * @param Contract $contract
+     * @param array{start:string,end:string,due:string,amount?:float,tax_rate?:float} $period
+     */
+    public function generateFromContract(Contract $contract, array $period): Invoice
+    {
+        return DB::transaction(function () use ($contract, $period) {
+            $amount = $period['amount'] ?? (float) $contract->rent;
+            $taxRate = $period['tax_rate'] ?? 15.00;
+
+            $invoice = $this->create([
+                'contract_id' => $contract->id,
+                'ownership_id' => $contract->ownership_id,
+                'number' => $period['number'] ?? null,
+                'period_start' => $period['start'],
+                'period_end' => $period['end'],
+                'due' => $period['due'],
+                'amount' => $amount,
+                'tax_rate' => $taxRate,
+                'status' => $period['status'] ?? 'sent',
+                'generated_by' => $period['generated_by'] ?? null,
+                'generated_at' => $period['generated_at'] ?? now(),
+            ]);
+
+            // Create invoice items
+            $this->createInvoiceItemsForContract($invoice, $contract);
+
+            return $invoice;
+        });
+    }
+
+    /**
+     * Create invoice items for a contract (single or multiple units).
+     */
+    protected function createInvoiceItemsForContract(Invoice $invoice, Contract $contract): void
+    {
+        $units = $contract->relationLoaded('units') ? $contract->units : $contract->units()->get();
+
+        if ($units->isEmpty()) {
+            // Fallback: single item based on contract rent
+            InvoiceItem::create([
+                'invoice_id' => $invoice->id,
+                'type' => 'rent',
+                'description' => 'Rent for contract #' . $contract->number,
+                'quantity' => 1,
+                'unit_price' => $contract->rent,
+                'total' => $contract->rent,
+            ]);
+            return;
+        }
+
+        // If multiple units: one item per unit (using pivot rent_amount when available)
+        foreach ($units as $unit) {
+            $pivotRent = $unit->pivot?->rent_amount;
+            $unitRent = $pivotRent !== null ? (float) $pivotRent : (float) $contract->rent;
+
+            InvoiceItem::create([
+                'invoice_id' => $invoice->id,
+                'type' => 'rent',
+                'description' => 'Rent for unit ' . ($unit->number ?? $unit->id) . ' for period ' . $invoice->period_start . ' to ' . $invoice->period_end,
+                'quantity' => 1,
+                'unit_price' => $unitRent,
+                'total' => $unitRent,
+            ]);
+        }
     }
 }
 

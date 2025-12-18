@@ -112,4 +112,20 @@ return [
 
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Email Verification
+    |--------------------------------------------------------------------------
+    |
+    | This option controls whether email verification is required and enabled
+    | for new user registrations. When disabled, users are automatically
+    | verified upon registration.
+    |
+    */
+
+    'verification' => [
+        'enabled' => env('AUTH_EMAIL_VERIFICATION_ENABLED', false),
+        'expire' => env('AUTH_VERIFICATION_EXPIRE', 60), // minutes
+    ],
+
 ];

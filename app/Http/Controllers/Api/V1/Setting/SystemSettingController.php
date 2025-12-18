@@ -60,7 +60,16 @@ class SystemSettingController extends Controller
             $filters['value_type'] = $request->input('value_type');
         }
 
-        $perPage = $request->input('per_page', 15);
+        $perPage = (int) $request->input('per_page', 15);
+
+        if ($perPage === -1) {
+            $settings = $this->settingService->all($filters);
+
+            return $this->successResponse(
+                SystemSettingResource::collection($settings)
+            );
+        }
+
         $settings = $this->settingService->paginate($perPage, $filters);
 
         return $this->successResponse(

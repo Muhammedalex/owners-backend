@@ -31,6 +31,7 @@ class Tenant extends Model
     protected $fillable = [
         'user_id',
         'ownership_id',
+        'invitation_id',
         'national_id',
         'id_type',
         'id_document',
@@ -80,6 +81,14 @@ class Tenant extends Model
     public function contracts(): HasMany
     {
         return $this->hasMany(Contract::class, 'tenant_id');
+    }
+
+    /**
+     * Get the invitation that created this tenant (if created via invitation).
+     */
+    public function invitation(): BelongsTo
+    {
+        return $this->belongsTo(TenantInvitation::class, 'invitation_id');
     }
 
     /**

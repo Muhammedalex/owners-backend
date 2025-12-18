@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Workflow - Tenant Side - Tenant Invitation Documentation</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <h1>📋 Tenant Invitation Feature</h1>
+        <p>Complete Documentation - Tenant Self-Registration via Invitation</p>
+    </header>
+    
+    <div class="container">
+        <aside class="sidebar">
+            <h2>Navigation</h2>
+            <nav>
+                <ul>
+                    <li><a href="index.html" data-route="">📖 Overview</a></li>
+                    <li><a href="#" data-route="overview">📋 Feature Overview</a></li>
+                    <li><a href="#" data-route="database">🗄️ Database Schema</a></li>
+                    <li><a href="#" data-route="api-owner">🔐 API - Owner</a></li>
+                    <li><a href="#" data-route="api-public">🌐 API - Public</a></li>
+                    <li><a href="#" data-route="workflow-owner">👤 Owner Workflow</a></li>
+                    <li><a href="#" data-route="workflow-tenant">🏠 Tenant Workflow</a></li>
+                    <li><a href="#" data-route="invitation-types">🔄 Invitation Types</a></li>
+                    <li><a href="#" data-route="mail-config">📧 Mail Configuration</a></li>
+                    <li><a href="#" data-route="permissions">🔒 Permissions & Security</a></li>
+                    <li><a href="#" data-route="registration">👥 User Registration</a></li>
+                    <li><a href="#" data-route="testing">🧪 Testing Guide</a></li>
+                    <li><a href="#" data-route="troubleshooting">🔧 Troubleshooting</a></li>
+                </ul>
+            </nav>
+        </aside>
+        
+        <main class="main-content">
+            <h1>Workflow - Tenant Side</h1>
+
+<h2>Overview</h2>
+
+<p>This document describes the workflow for tenants to receive and accept invitations.</p>
+
+<p>---</p>
+
+<h2>Receiving Invitation</h2>
+
+<h3>Scenario 1: Email Invitation</h3>
+
+<strong>Use Case:</strong> Tenant receives invitation via email
+
+<h4>Email Content</h4>
+
+<strong>Subject:</strong> <code>You're invited to register as a tenant - {Ownership Name}</code>
+
+<strong>Body:</strong>
+<p>``<code> Dear {Name or "Future Tenant"},</p>
+
+<p>You have been invited by {Ownership Name} to register as a tenant in their property management system.</p>
+
+<p>Click the link below to complete your registration: {Registration Link}</p>
+
+<p>This link will expire on {Expiration Date}.</p>
+
+<p>If you did not expect this invitation, please ignore this email.</p>
+
+<p>Best regards, {Ownership Name}</p>
+</code>`<code>
+
+<h4>Steps</h4>
+
+<ol>
+<li><strong>Receive Email</strong></li>
+</ol>
+<ul>
+<li>Tenant receives email from ownership</li>
+<li>Email contains invitation link</li>
+</ul>
+
+<ol>
+<li><strong>Click Link</strong></li>
+</ol>
+<ul>
+<li>Link format: </code>https://app.example.com/register/tenant?token=abc123...<code></li>
+<li>Redirects to registration page</li>
+</ul>
+
+<p>---</p>
+
+<h3>Scenario 2: Public Link</h3>
+
+<strong>Use Case:</strong> Tenant finds invitation link on website/social media
+
+<h4>Steps</h4>
+
+<ol>
+<li><strong>Find Link</strong></li>
+</ol>
+<ul>
+<li>Tenant sees link on website</li>
+<li>Or receives link from friend/colleague</li>
+</ul>
+
+<ol>
+<li><strong>Click Link</strong></li>
+</ol>
+<ul>
+<li>Same link format</li>
+<li>Redirects to registration page</li>
+</ul>
+
+<p>---</p>
+
+<h2>Registration Process</h2>
+
+<h3>Step 1: Token Validation</h3>
+
+<strong>What Happens:</strong>
+<ul>
+<li>Frontend calls validation endpoint</li>
+<li>System checks token validity</li>
+<li>Returns invitation details</li>
+</ul>
+
+<strong>Possible Outcomes:</strong>
+
+<p><span class="badge badge-success">✅</span> <strong>Valid Token</strong></p>
+</code>`<code>json
+<p>{ "valid": true, "invitation": { "email": "tenant@example.com", "name": "Ahmed Ali", "ownership": { "name": "ABC Real Estate" }, "expires_at": "2025-12-22 10:00:00" } }</p>
+</code>`<code>
+
+<p><span class="badge badge-warning">❌</span> <strong>Invalid Token</strong></p>
+<ul>
+<li>Error: "Invalid invitation token"</li>
+<li>Show error page</li>
+</ul>
+
+<p><span class="badge badge-warning">❌</span> <strong>Expired Token</strong></p>
+<ul>
+<li>Error: "Invitation has expired"</li>
+<li>Show expiration message</li>
+<li>Option to contact owner</li>
+</ul>
+
+<p><span class="badge badge-warning">❌</span> <strong>Already Accepted</strong> (Single-use)</p>
+<ul>
+<li>Error: "Invitation has already been accepted"</li>
+<li>Show message</li>
+<li>Option to login if already registered</li>
+</ul>
+
+<p><span class="badge badge-warning">❌</span> <strong>Cancelled</strong></p>
+<ul>
+<li>Error: "Invitation has been cancelled"</li>
+<li>Show message</li>
+<li>Option to contact owner</li>
+</ul>
+
+<p>---</p>
+
+<h3>Step 2: Fill Registration Form</h3>
+
+<strong>Form Fields:</strong>
+
+<h4>Personal Information</h4>
+<ul>
+<li><strong>First Name</strong> (required)</li>
+<li><strong>Last Name</strong> (required)</li>
+<li><strong>Email</strong> (required, pre-filled if available)</li>
+<li><strong>Phone</strong> (optional)</li>
+</ul>
+
+<h4>Account Security</h4>
+<ul>
+<li><strong>Password</strong> (required, min 8 chars)</li>
+<li><strong>Password Confirmation</strong> (required)</li>
+</ul>
+
+<h4>Identity Information</h4>
+<ul>
+<li><strong>National ID</strong> (optional)</li>
+<li><strong>ID Type</strong> (optional): </code>national_id<code>, </code>iqama<code>, </code>passport<code>, </code>commercial_registration<code></li>
+<li><strong>ID Expiry Date</strong> (optional)</li>
+</ul>
+
+<h4>Emergency Contact</h4>
+<ul>
+<li><strong>Emergency Name</strong> (optional)</li>
+<li><strong>Emergency Phone</strong> (optional)</li>
+<li><strong>Emergency Relation</strong> (optional)</li>
+</ul>
+
+<h4>Employment Information</h4>
+<ul>
+<li><strong>Employment Status</strong> (optional): </code>employed<code>, </code>self_employed<code>, </code>unemployed<code>, </code>retired<code>, </code>student<code></li>
+<li><strong>Employer</strong> (optional)</li>
+<li><strong>Income</strong> (optional)</li>
+</ul>
+
+<h4>Additional</h4>
+<ul>
+<li><strong>Notes</strong> (optional)</li>
+</ul>
+
+<strong>Pre-filled Data:</strong>
+<ul>
+<li>Email (if invitation has email)</li>
+<li>Name (if invitation has name)</li>
+</ul>
+
+<p>---</p>
+
+<h3>Step 3: Submit Registration</h3>
+
+<strong>What Happens:</strong>
+
+<ol>
+<li><strong>Frontend Validation</strong></li>
+</ol>
+<ul>
+<li>Validates all required fields</li>
+<li>Checks password strength</li>
+<li>Validates email format</li>
+<li>Validates phone format (Saudi)</li>
+</ul>
+
+<ol>
+<li><strong>API Request</strong></li>
+</ol>
+   </code>`<code>
+<p>POST /api/v1/public/tenant-invitations/{token}/accept</p>
+   </code>`<code>
+
+<ol>
+<li><strong>Backend Processing</strong></li>
+</ol>
+<ul>
+<li>Validates token again</li>
+<li>Checks expiration</li>
+<li>Validates email match (single-use)</li>
+<li>Creates/updates user account</li>
+<li>Sets user type: </code>tenant<code></li>
+<li>Assigns role: </code>Tenant<code></li>
+<li>Creates tenant profile</li>
+<li>Links to ownership</li>
+<li>Updates invitation status</li>
+<li>Generates auth tokens</li>
+</ul>
+
+<ol>
+<li><strong>Response</strong></li>
+</ol>
+   </code>`<code>json
+<p>{ "success": true, "data": { "user": { ... }, "tenant": { ... }, "access_token": "...", "redirect_to": "/dashboard" } }</p>
+   </code>`<code>
+
+<p>---</p>
+
+<h3>Step 4: Post-Registration</h3>
+
+<strong>What Happens:</strong>
+
+<ol>
+<li><strong>Token Storage</strong></li>
+</ol>
+<ul>
+<li>Frontend saves </code>access_token<code></li>
+<li>Stores in localStorage/sessionStorage</li>
+</ul>
+
+<ol>
+<li><strong>Redirect</strong></li>
+</ol>
+<ul>
+<li>Redirects to </code>/dashboard<code></li>
+<li>User is automatically logged in</li>
+</ul>
+
+<ol>
+<li><strong>Email Verification</strong> (if enabled)</li>
+</ol>
+<ul>
+<li>Email verification sent</li>
+<li>User must verify email</li>
+<li>Some features may be restricted until verified</li>
+</ul>
+
+<p>---</p>
+
+<h2>Registration Scenarios</h2>
+
+<h3>Scenario 1: New User Registration</h3>
+
+<strong>Case:</strong> User doesn't have an account yet
+
+<strong>Process:</strong>
+<ol>
+<li>User fills registration form</li>
+<li>System creates new user account</li>
+<li>Sets type: </code>tenant<code></li>
+<li>Assigns role: </code>Tenant<code></li>
+<li>Creates tenant profile</li>
+<li>Links to ownership</li>
+<li>User can login immediately</li>
+</ol>
+
+<p>---</p>
+
+<h3>Scenario 2: Existing User Registration</h3>
+
+<strong>Case:</strong> User already has an account (different email or same email)
+
+<strong>Process:</strong>
+
+<strong>If Same Email:</strong>
+<ol>
+<li>System finds existing user</li>
+<li>Checks if tenant already exists for this ownership</li>
+<li>If exists → Error: "Tenant already exists"</li>
+<li>If not exists → Creates tenant profile</li>
+<li>Updates user type to </code>tenant<code> (if not already)</li>
+<li>Assigns </code>Tenant<code> role (if not already)</li>
+<li>Links to ownership</li>
+</ol>
+
+<strong>If Different Email:</strong>
+<ol>
+<li>System creates new user account</li>
+<li>Continues with normal registration flow</li>
+</ol>
+
+<p>---</p>
+
+<h3>Scenario 3: Multi-use Invitation</h3>
+
+<strong>Case:</strong> Multiple tenants using same invitation link
+
+<strong>Process:</strong>
+<ol>
+<li>First tenant registers → Creates tenant, invitation stays </code>pending<code></li>
+<li>Second tenant registers → Creates tenant, invitation stays </code>pending<code></li>
+<li>Third tenant registers → Creates tenant, invitation stays </code>pending<code></li>
+<li>All tenants linked to same invitation via </code>invitation_id<code></li>
+<li>Owner can see all tenants who joined</li>
+<li>Owner manually closes invitation when done</li>
+</ol>
+
+<p>---</p>
+
+<h2>Error Handling</h2>
+
+<h3>Common Errors</h3>
+
+<h4>1. Email Mismatch (Single-use)</h4>
+
+<strong>Error:</strong> "Email does not match invitation."
+
+<strong>Cause:</strong> Registration email doesn't match invitation email
+
+<strong>Solution:</strong> Use the email address from the invitation
+
+<p>---</p>
+
+<h4>2. Tenant Already Exists</h4>
+
+<strong>Error:</strong> "Tenant already exists for this ownership."
+
+<strong>Cause:</strong> User already registered as tenant for this ownership
+
+<strong>Solution:</strong> Login with existing account
+
+<p>---</p>
+
+<h4>3. Password Too Weak</h4>
+
+<strong>Error:</strong> Validation error for password
+
+<strong>Cause:</strong> Password doesn't meet requirements
+
+<strong>Solution:</strong> Use stronger password (min 8 chars, recommended: uppercase, lowercase, numbers, symbols)
+
+<p>---</p>
+
+<h4>4. Invalid Phone Format</h4>
+
+<strong>Error:</strong> Validation error for phone
+
+<strong>Cause:</strong> Phone number not in Saudi format
+
+<strong>Solution:</strong> Use format: </code>+966501234567<code> or </code>0501234567<code>
+
+<p>---</p>
+
+<h2>User Experience Flow</h2>
+
+<h3>Successful Registration Flow</h3>
+
+</code>`<code>
+<ol>
+<li>Click invitation link</li>
+</ol>
+<p>↓</p>
+<ol>
+<li>See registration page</li>
+</ol>
+<p>↓</p>
+<ol>
+<li>Form pre-filled with email/name (if available)</li>
+</ol>
+<p>↓</p>
+<ol>
+<li>Fill remaining fields</li>
+</ol>
+<p>↓</p>
+<ol>
+<li>Submit form</li>
+</ol>
+<p>↓</p>
+<ol>
+<li>See success message</li>
+</ol>
+<p>↓</p>
+<ol>
+<li>Automatically logged in</li>
+</ol>
+<p>↓</p>
+<ol>
+<li>Redirected to dashboard</li>
+</ol>
+</code>`<code>
+
+<h3>Error Flow</h3>
+
+</code>`<code>
+<ol>
+<li>Click invitation link</li>
+</ol>
+<p>↓</p>
+<ol>
+<li>See error message (expired/invalid/cancelled)</li>
+</ol>
+<p>↓</p>
+<ol>
+<li>Option to contact owner</li>
+</ol>
+<p>↓</p>
+<ol>
+<li>Or request new invitation</li>
+</ol>
+</code>`<code>
+
+<p>---</p>
+
+<h2>Frontend Implementation Guide</h2>
+
+<h3>Page Structure</h3>
+
+</code>`<code>
+<p>/register/tenant?token={token} ├── Token Validation (on load) ├── Registration Form │   ├── Personal Info Section │   ├── Account Security Section │   ├── Identity Section │   ├── Emergency Contact Section │   └── Employment Section └── Submit Button</p>
+</code>`<code>
+
+<h3>Validation Flow</h3>
+
+</code>`<code>javascript
+<p>// 1. Validate token on page load validateToken(token) .then(data => { if (data.valid) { prefillForm(data.invitation); showForm(); } else { showError(data.message); } });</p>
+
+<p>// 2. Validate form before submit validateForm() .then(valid => { if (valid) { submitRegistration(); } });</p>
+
+<p>// 3. Submit registration submitRegistration() .then(data => { saveToken(data.access_token); redirect(data.redirect_to); }) .catch(error => { showErrors(error.errors); });</p>
+</code>``
+
+<p>---</p>
+
+<h2>Security Considerations</h2>
+
+<h3>For Tenants</h3>
+
+<ol>
+<li><strong>Token Security</strong></li>
+</ol>
+<ul>
+<li>Don't share invitation link</li>
+<li>Link is single-use (for email invitations)</li>
+<li>Link expires after set time</li>
+</ul>
+
+<ol>
+<li><strong>Password Security</strong></li>
+</ol>
+<ul>
+<li>Use strong password</li>
+<li>Don't reuse passwords</li>
+<li>Keep password secure</li>
+</ul>
+
+<ol>
+<li><strong>Email Verification</strong></li>
+</ol>
+<ul>
+<li>Verify email if required</li>
+<li>Check spam folder for verification email</li>
+</ul>
+
+<p>---</p>
+
+<h2>Related Documentation</h2>
+
+<ul>
+<li><strong><a href="./04-api-endpoints-public.md">API Endpoints - Public</a></strong></li>
+<li><strong><a href="./07-invitation-types.md">Invitation Types</a></strong></li>
+<li><strong><a href="./10-user-registration-flow.md">User Registration Flow</a></strong></li>
+</ul>
+        </main>
+    </div>
+    
+    <button class="print-btn" id="printBtn" title="Print Documentation">
+        🖨️ Print
+    </button>
+    
+    <script src="app.js"></script>
+</body>
+</html>

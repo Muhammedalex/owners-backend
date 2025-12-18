@@ -41,11 +41,18 @@ return [
     ],
     'validation' => [
         'required' => 'The :attribute field is required',
+        'required_without' => 'The :attribute field is required when :other is not present',
         'email' => 'The :attribute must be a valid email address',
         'unique' => 'The :attribute has already been taken',
         'exists' => 'The selected :attribute is invalid',
-        'min' => 'The :attribute must be at least :min',
-        'max' => 'The :attribute may not be greater than :max',
+        'min' => [
+            'string' => 'The :attribute must be at least :min characters',
+            'numeric' => 'The :attribute must be at least :min',
+        ],
+        'max' => [
+            'string' => 'The :attribute may not be greater than :max characters',
+            'numeric' => 'The :attribute may not be greater than :max',
+        ],
         'numeric' => 'The :attribute must be a number',
         'date' => 'The :attribute must be a valid date',
         'boolean' => 'The :attribute field must be true or false',
@@ -57,6 +64,9 @@ return [
         'in' => 'The selected :attribute is invalid',
         'array' => 'The :attribute must be an array',
         'integer' => 'The :attribute must be an integer',
+        'custom' => [
+            'unit_not_available' => 'One or more selected units are not available for contracting.',
+        ],
     ],
     'attributes' => [
         'email' => 'email',
@@ -130,6 +140,11 @@ return [
         'specifications' => 'specifications',
         'key' => 'key',
         'value' => 'value',
+        'first_name' => 'first name',
+        'last_name' => 'last name',
+        'password_confirmation' => 'password confirmation',
+        'expires_in_days' => 'expiration days',
+        'invitations' => 'invitations',
     ],
 ];
 

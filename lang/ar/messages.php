@@ -41,11 +41,18 @@ return [
     ],
     'validation' => [
         'required' => 'حقل :attribute مطلوب',
+        'required_without' => 'حقل :attribute مطلوب عندما لا يكون :other موجوداً',
         'email' => 'يجب أن يكون :attribute بريد إلكتروني صالح',
         'unique' => ':attribute موجود مسبقاً',
         'exists' => ':attribute المحدد غير صالح',
-        'min' => 'يجب أن يكون :attribute على الأقل :min',
-        'max' => 'يجب ألا يتجاوز :attribute :max',
+        'min' => [
+            'string' => 'يجب أن يكون :attribute على الأقل :min حرف',
+            'numeric' => 'يجب أن يكون :attribute على الأقل :min',
+        ],
+        'max' => [
+            'string' => 'يجب ألا يتجاوز :attribute :max حرف',
+            'numeric' => 'يجب ألا يتجاوز :attribute :max',
+        ],
         'numeric' => 'يجب أن يكون :attribute رقماً',
         'date' => 'يجب أن يكون :attribute تاريخاً صالحاً',
         'boolean' => 'يجب أن يكون :attribute true أو false',
@@ -57,6 +64,9 @@ return [
         'in' => ':attribute المحدد غير صالح',
         'array' => 'يجب أن يكون :attribute مصفوفة',
         'integer' => 'يجب أن يكون :attribute رقماً صحيحاً',
+        'custom' => [
+            'unit_not_available' => 'إحدى الوحدات المختارة غير متاحة للتعاقد.',
+        ],
     ],
     'attributes' => [
         'email' => 'البريد الإلكتروني',
@@ -130,6 +140,11 @@ return [
         'specifications' => 'المواصفات',
         'key' => 'المفتاح',
         'value' => 'القيمة',
+        'first_name' => 'الاسم الأول',
+        'last_name' => 'اسم العائلة',
+        'password_confirmation' => 'تأكيد كلمة المرور',
+        'expires_in_days' => 'أيام الانتهاء',
+        'invitations' => 'الدعوات',
     ],
 ];
 
