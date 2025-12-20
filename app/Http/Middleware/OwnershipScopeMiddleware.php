@@ -26,7 +26,7 @@ class OwnershipScopeMiddleware
 
         // Read ownership_uuid from cookie
         $ownershipUuid = $request->cookie('ownership_uuid');
-        
+        Log::info('ownershipUuid', ['ownershipUuid' => $ownershipUuid]);
         // If no cookie and user is not Super Admin, try to get default ownership
         if (!$ownershipUuid && !$user->isSuperAdmin()) {
             $defaultOwnership = $user->getDefaultOwnership();
@@ -40,7 +40,7 @@ class OwnershipScopeMiddleware
                 ], 403);
             }
         }
-
+        Log::info('ownershipUuid', ['ownershipUuid' => $ownershipUuid]);
         // If still no UUID (Super Admin without cookie), allow access without scope
         if (!$ownershipUuid) {
             // Super Admin can access without ownership scope

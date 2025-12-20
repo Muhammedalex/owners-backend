@@ -2,8 +2,10 @@
 
 namespace App\Http\Requests\V1\Contract;
 
+use App\Services\V1\Contract\ContractSettingService;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class StoreContractRequest extends FormRequest
 {
@@ -28,24 +30,17 @@ class StoreContractRequest extends FormRequest
         }
 
         return [
-            // Legacy single-unit contract (backward compatibility)
-            'unit_id' => [
-                'sometimes',
-                'required_without:unit_ids',
+            // Single source of truth: Advanced multiple-units contract with per-unit rent & notes
+            'units' => ['required', 'array', 'min:1'],
+            'units.*.unit_id' => [
+                'required',
                 'integer',
                 Rule::exists('units', 'id')->where(function ($query) use ($ownershipId) {
                     return $query->where('ownership_id', $ownershipId);
                 }),
             ],
-
-            // Multiple-units contract
-            'unit_ids' => ['sometimes', 'required_without:unit_id', 'array', 'min:1'],
-            'unit_ids.*' => [
-                'integer',
-                Rule::exists('units', 'id')->where(function ($query) use ($ownershipId) {
-                    return $query->where('ownership_id', $ownershipId);
-                }),
-            ],
+            'units.*.rent_amount' => ['nullable', 'numeric', 'min:0', 'max:9999999999.99'],
+            'units.*.notes' => ['nullable', 'string'],
             'tenant_id' => [
                 'required',
                 'integer',
@@ -67,14 +62,85 @@ class StoreContractRequest extends FormRequest
             'ejar_code' => ['nullable', 'string', 'max:100'], // Optional ejar registration code
             'start' => ['required', 'date'],
             'end' => ['required', 'date', 'after:start'],
-            'rent' => ['required', 'numeric', 'min:0', 'max:9999999999.99'],
+            'base_rent' => ['nullable', 'numeric', 'min:0', 'max:9999999999.99'],
+            'rent_fees' => ['nullable', 'numeric', 'min:0', 'max:9999999999.99'],
+            'vat_amount' => ['nullable', 'numeric', 'min:0', 'max:9999999999.99'],
+            'total_rent' => ['nullable', 'numeric', 'min:0', 'max:9999999999.99'],
+            'previous_balance' => ['nullable', 'numeric', 'min:0', 'max:9999999999.99'],
             'payment_frequency' => ['nullable', 'string', 'max:50', Rule::in(['monthly', 'quarterly', 'yearly', 'weekly'])],
             'deposit' => ['nullable', 'numeric', 'min:0', 'max:9999999999.99'],
             'deposit_status' => ['nullable', 'string', 'max:50', Rule::in(['pending', 'paid', 'refunded', 'forfeited'])],
             'document' => ['nullable', 'string', 'max:255'],
             'signature' => ['nullable', 'string'],
-            'status' => ['nullable', 'string', 'max:50', Rule::in(['draft', 'pending', 'active', 'expired', 'terminated', 'cancelled'])],
+            // Status is not accepted from request - always uses default from settings
+            // Ejar PDF document (optional)
+            'ejar_pdf' => ['nullable', 'file', 'mimes:pdf', 'max:10240'], // max ~10MB
         ];
+    }
+
+    /**
+     * Configure the validator instance.
+     */
+    public function withValidator(Validator $validator): void
+    {
+        $ownershipId = request()->input('current_ownership_id');
+        if (!$ownershipId) {
+            return;
+        }
+
+        $settingService = app(ContractSettingService::class);
+
+        $validator->after(function ($validator) use ($settingService, $ownershipId) {
+            $data = $this->all();
+
+            // Validate Ejar code requirement
+            if ($settingService->isEjarCodeRequired($ownershipId) && empty($data['ejar_code'])) {
+                $validator->errors()->add('ejar_code', __('messages.validation.required', [
+                    'attribute' => __('messages.attributes.ejar_code')
+                ]));
+            }
+
+            // Validate backdated contracts
+            if (!$settingService->areBackdatedContractsAllowed($ownershipId) && isset($data['start'])) {
+                $startDate = \Carbon\Carbon::parse($data['start']);
+                if ($startDate->isPast() && !$startDate->isToday()) {
+                    $validator->errors()->add('start', __('messages.validation.custom.backdated_contracts_not_allowed'));
+                }
+            }
+
+            // Validate contract duration
+            if (isset($data['start']) && isset($data['end'])) {
+                $startDate = \Carbon\Carbon::parse($data['start']);
+                $endDate = \Carbon\Carbon::parse($data['end']);
+                $durationMonths = $startDate->diffInMonths($endDate);
+
+                $minDuration = $settingService->getMinContractDurationMonths($ownershipId);
+                $maxDuration = $settingService->getMaxContractDurationMonths($ownershipId);
+
+                if ($durationMonths < $minDuration) {
+                    $validator->errors()->add('end', __('messages.validation.custom.contract_duration_too_short', [
+                        'min' => $minDuration
+                    ]));
+                }
+
+                if ($durationMonths > $maxDuration) {
+                    $validator->errors()->add('end', __('messages.validation.custom.contract_duration_too_long', [
+                        'max' => $maxDuration
+                    ]));
+                }
+            }
+
+            // Validate max units per contract
+            if (isset($data['units']) && is_array($data['units'])) {
+                $maxUnits = $settingService->getMaxUnitsPerContract($ownershipId);
+                if (count($data['units']) > $maxUnits) {
+                    $validator->errors()->add('units', __('messages.validation.max', [
+                        'attribute' => __('messages.attributes.units'),
+                        'max' => $maxUnits
+                    ]));
+                }
+            }
+        });
     }
 
     /**
@@ -83,7 +149,8 @@ class StoreContractRequest extends FormRequest
     public function attributes(): array
     {
         return [
-            'unit_id' => __('messages.attributes.unit_id'),
+            'units' => __('messages.attributes.unit_id'),
+            'units.*.unit_id' => __('messages.attributes.unit_id'),
             'tenant_id' => __('messages.attributes.tenant_id'),
             'number' => __('messages.attributes.number'),
             'version' => __('messages.attributes.version'),
@@ -91,13 +158,17 @@ class StoreContractRequest extends FormRequest
             'ejar_code' => __('messages.attributes.ejar_code'),
             'start' => __('messages.attributes.start_date'),
             'end' => __('messages.attributes.end_date'),
-            'rent' => __('messages.attributes.rent'),
+            'base_rent' => __('messages.attributes.base_rent'),
+            'rent_fees' => __('messages.attributes.rent_fees'),
+            'vat_amount' => __('messages.attributes.vat_amount'),
+            'total_rent' => __('messages.attributes.total_rent'),
+            'previous_balance' => __('messages.attributes.previous_balance'),
             'payment_frequency' => __('messages.attributes.payment_frequency'),
             'deposit' => __('messages.attributes.deposit'),
             'deposit_status' => __('messages.attributes.deposit_status'),
             'document' => __('messages.attributes.document'),
             'signature' => __('messages.attributes.signature'),
-            'status' => __('messages.attributes.status'),
+            'ejar_pdf' => __('messages.attributes.document'),
         ];
     }
 
@@ -107,8 +178,9 @@ class StoreContractRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'unit_id.required' => __('messages.validation.required', ['attribute' => __('messages.attributes.unit_id')]),
-            'unit_id.exists' => __('messages.validation.exists', ['attribute' => __('messages.attributes.unit_id')]),
+            'units.required' => __('messages.validation.required', ['attribute' => __('messages.attributes.unit_id')]),
+            'units.*.unit_id.required' => __('messages.validation.required', ['attribute' => __('messages.attributes.unit_id')]),
+            'units.*.unit_id.exists' => __('messages.validation.exists', ['attribute' => __('messages.attributes.unit_id')]),
             'tenant_id.required' => __('messages.validation.required', ['attribute' => __('messages.attributes.tenant_id')]),
             'tenant_id.exists' => __('messages.validation.exists', ['attribute' => __('messages.attributes.tenant_id')]),
             'number.required' => __('messages.validation.required', ['attribute' => __('messages.attributes.number')]),
@@ -117,11 +189,9 @@ class StoreContractRequest extends FormRequest
             'start.date' => __('messages.validation.date', ['attribute' => __('messages.attributes.start_date')]),
             'end.required' => __('messages.validation.required', ['attribute' => __('messages.attributes.end_date')]),
             'end.date' => __('messages.validation.date', ['attribute' => __('messages.attributes.end_date')]),
-            'rent.required' => __('messages.validation.required', ['attribute' => __('messages.attributes.rent')]),
-            'rent.numeric' => __('messages.validation.numeric', ['attribute' => __('messages.attributes.rent')]),
             'payment_frequency.in' => __('messages.validation.in', ['attribute' => __('messages.attributes.payment_frequency')]),
             'deposit_status.in' => __('messages.validation.in', ['attribute' => __('messages.attributes.deposit_status')]),
-            'status.in' => __('messages.validation.in', ['attribute' => __('messages.attributes.status')]),
+            'ejar_pdf.mimes' => __('messages.validation.invalid_file_type', ['attribute' => __('messages.attributes.document')]),
         ];
     }
 }

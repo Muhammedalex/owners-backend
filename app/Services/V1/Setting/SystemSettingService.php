@@ -143,7 +143,7 @@ class SystemSettingService
     public function bulkUpdate(array $settings, ?int $ownershipId = null): Collection
     {
         return DB::transaction(function () use ($settings, $ownershipId) {
-            $updated = collect();
+            $updated = [];
 
             foreach ($settings as $settingData) {
                 $key = $settingData['key'];
@@ -161,10 +161,10 @@ class SystemSettingService
                     $description
                 );
 
-                $updated->push($setting);
+                $updated[] = $setting;
             }
 
-            return $updated;
+            return new Collection($updated);
         });
     }
 }

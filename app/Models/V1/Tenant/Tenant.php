@@ -40,6 +40,8 @@ class Tenant extends Model
         'commercial_registration_expiry',
         'commercial_owner_name',
         'municipality_license_number',
+        'activity_name',
+        'activity_type',
         'emergency_name',
         'emergency_phone',
         'emergency_relation',

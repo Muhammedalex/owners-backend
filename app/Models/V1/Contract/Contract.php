@@ -34,7 +34,6 @@ class Contract extends Model
      */
     protected $fillable = [
         'uuid',
-        'unit_id',
         'tenant_id',
         'ownership_id',
         'number',
@@ -43,7 +42,11 @@ class Contract extends Model
         'ejar_code',
         'start',
         'end',
-        'rent',
+        'base_rent',
+        'rent_fees',
+        'vat_amount',
+        'total_rent',
+        'previous_balance',
         'payment_frequency',
         'deposit',
         'deposit_status',
@@ -64,20 +67,14 @@ class Contract extends Model
         return [
             'start' => 'date',
             'end' => 'date',
-            'rent' => 'decimal:2',
+            'base_rent' => 'decimal:2',
+            'rent_fees' => 'decimal:2',
+            'vat_amount' => 'decimal:2',
+            'total_rent' => 'decimal:2',
+            'previous_balance' => 'decimal:2',
             'deposit' => 'decimal:2',
             'version' => 'integer',
         ];
-    }
-
-    /**
-     * Get the unit associated with this contract (legacy single-unit relation).
-     *
-     * NOTE: For new features, prefer using units()/primaryUnit().
-     */
-    public function unit(): BelongsTo
-    {
-        return $this->belongsTo(Unit::class, 'unit_id');
     }
 
     /**
@@ -91,8 +88,8 @@ class Contract extends Model
     }
 
     /**
-     * Get the primary unit for this contract (for backward compatibility).
-     * Returns the first related unit (from pivot) or the legacy unit relation.
+     * Get the primary unit for this contract.
+     * Returns the first related unit from the pivot table.
      */
     public function primaryUnit(): ?Unit
     {
@@ -100,13 +97,15 @@ class Contract extends Model
             return $this->units->first();
         }
 
-        $unit = $this->units()->first();
+        return $this->units()->first();
+    }
 
-        if ($unit) {
-            return $unit;
-        }
-
-        return $this->unit; // fallback to legacy relation
+    /**
+     * Alias for primaryUnit() - for backward compatibility.
+     */
+    public function unit(): ?Unit
+    {
+        return $this->primaryUnit();
     }
 
     /**
@@ -210,7 +209,9 @@ class Contract extends Model
      */
     public function scopeForUnit($query, int $unitId)
     {
-        return $query->where('unit_id', $unitId);
+        return $query->whereHas('units', function ($q) use ($unitId) {
+            $q->where('units.id', $unitId);
+        });
     }
 
     /**

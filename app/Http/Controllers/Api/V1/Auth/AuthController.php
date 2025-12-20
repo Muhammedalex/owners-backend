@@ -39,7 +39,7 @@ class AuthController extends Controller
                 'success' => true,
                 'message' => $message,
                 'data' => [
-                    'user' => new UserResource($result['user']->load('ownerships')),
+                    'user' => new UserResource($result['user']->load('ownerships.settings')),
                     'tokens' => [
                         'access_token' => $result['tokens']['access_token'],
                         'token_type' => $result['tokens']['token_type'],
@@ -81,7 +81,7 @@ class AuthController extends Controller
                 'success' => true,
                 'message' => 'Login successful.',
                 'data' => [
-                    'user' => new UserResource($result['user']->load('ownerships')),
+                    'user' => new UserResource($result['user']->load('ownerships.settings')),
                     'current_ownership_uuid' => $result['default_ownership_uuid'],
                     'tokens' => [
                         'access_token' => $result['tokens']['access_token'],
@@ -131,12 +131,24 @@ class AuthController extends Controller
             $result = $this->authService->refreshToken($refreshToken);
             $refreshCookie = $this->authService->createRefreshTokenCookie($result['tokens']['refresh_token']);
 
+            // Check if ownership cookie already exists
+            $existingOwnershipCookie = $request->cookie('ownership_uuid');
+            $currentOwnershipUuid = $existingOwnershipCookie;
+
+            // Only get default ownership UUID if no cookie exists and user is not Super Admin
+            if (!$existingOwnershipCookie && !$result['user']->isSuperAdmin()) {
+                $defaultOwnership = $result['user']->getDefaultOwnership();
+                if ($defaultOwnership) {
+                    $currentOwnershipUuid = $defaultOwnership->uuid;
+                }
+            }
+
             $response = response()->json([
                 'success' => true,
                 'message' => 'Token refreshed successfully.',
                 'data' => [
-                    'user' => new UserResource($result['user']->load('ownerships')),
-                    'current_ownership_uuid' => $result['default_ownership_uuid'],
+                    'user' => new UserResource($result['user']->load('ownerships.settings')),
+                    'current_ownership_uuid' => $currentOwnershipUuid,
                     'tokens' => [
                         'access_token' => $result['tokens']['access_token'],
                         'token_type' => $result['tokens']['token_type'],
@@ -145,9 +157,9 @@ class AuthController extends Controller
                 ],
             ])->withCookie($refreshCookie);
 
-            // Set ownership cookie if default ownership exists
-            if (isset($result['default_ownership_uuid']) && $result['default_ownership_uuid']) {
-                $ownershipCookie = $this->authService->createOwnershipCookie($result['default_ownership_uuid']);
+            // Set ownership cookie only if no cookie already exists and we have a default ownership
+            if (!$existingOwnershipCookie && $currentOwnershipUuid) {
+                $ownershipCookie = $this->authService->createOwnershipCookie($currentOwnershipUuid);
                 $response = $response->withCookie($ownershipCookie);
             }
 
@@ -213,7 +225,7 @@ class AuthController extends Controller
      */
     public function me(Request $request): JsonResponse
     {
-        $user = $request->user()->load('ownerships');
+        $user = $request->user()->load('ownerships.settings');
         $currentOwnershipUuid = $request->input('current_ownership_uuid'); // From ownership.scope middleware
 
         return response()->json([

@@ -137,6 +137,33 @@ class MediaFileController extends Controller
     }
 
     /**
+     * Download media file.
+     * 
+     * GET /api/v1/media/{id}/download
+     * 
+     * Public files can be downloaded without authentication.
+     * Private files require authentication and proper permissions.
+     */
+    public function download(Request $request, int $id)
+    {
+        $mediaFile = MediaFile::find($id);
+        
+        if (!$mediaFile) {
+            abort(404, __('media.not_found'));
+        }
+
+        // If file is public, allow download without authentication
+        if ($mediaFile->isPublic()) {
+            return $this->mediaService->download($mediaFile);
+        }
+
+        // For private files, require authentication and authorization
+        Gate::authorize('download', $mediaFile);
+
+        return $this->mediaService->download($mediaFile);
+    }
+
+    /**
      * Update media file.
      * 
      * PUT /api/v1/media/{id}

@@ -1,0 +1,267 @@
+{
+	"info": {
+		"_postman_id": "media-documents-login-delete-download-collection",
+		"name": "Media & Documents - Login, Delete, Download",
+		"description": "API collection for Media Files and Documents - Login, Delete, and Download operations only.\n\n**Token Storage Strategy:**\n- Access Token: Stored in environment variable (use in Authorization header)\n- Refresh Token: Stored in httpOnly cookie (automatically managed by Postman)\n- Ownership UUID: Stored in httpOnly cookie (automatically managed by Postman)\n\n**Important Notes:**\n- Cookies are automatically sent with requests in Postman\n- View cookies: Click 'Cookies' link below the URL bar\n- Refresh token and ownership_uuid are NOT in JSON responses (they're in httpOnly cookies)\n- Ensure cookies are enabled in Postman settings\n- All endpoints require `ownership.scope` middleware (ownership_id is taken from cookie)\n- Ownership scope is MANDATORY for all users (including Super Admin)\n\n**Media Module:**\n- Delete: Requires `media.delete` permission\n- Download: Requires `media.download` permission\n\n**Documents Module:**\n- Delete: Requires `documents.delete` permission\n- Download: Requires `documents.download` permission",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "30358504"
+	},
+	"item": [
+		{
+			"name": "Authentication",
+			"item": [
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    if (response.data && response.data.tokens) {",
+									"        pm.environment.set('access_token', response.data.tokens.access_token);",
+									"        pm.environment.set('user_id', response.data.user.id);",
+									"        console.log('Access token saved to environment');",
+									"    }",
+									"    // Note: refresh_token and ownership_uuid are automatically stored in httpOnly cookies",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"admin@example.com\",\n    \"password\": \"password123\",\n    \"device_name\": \"Postman\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/auth/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"login"
+							]
+						},
+						"description": "Authenticate a user and receive access tokens.\n\n**Login Methods:**\nYou can login using either email OR phone:\n- `email` + `password`\n- `phone` + `password`\n\n**Required Fields:**\n- `email` OR `phone`: User identifier (one is required)\n- `password`: User password\n\n**Optional Fields:**\n- `device_name`: Device identifier for token management\n\n**Response:**\n- `access_token`: Stored in environment variable (use for Authorization header)\n- `refresh_token`: Automatically stored in httpOnly cookie (not in JSON response)\n- `ownership_uuid`: Automatically stored in httpOnly cookie if user has default ownership\n\n**Example Response:**\n```json\n{\n    \"success\": true,\n    \"message\": \"Login successful.\",\n    \"data\": {\n        \"user\": { ... },\n        \"tokens\": {\n            \"access_token\": \"1|xxxxxxxxxxxxx\",\n            \"token_type\": \"Bearer\",\n            \"expires_in\": 3600\n        }\n    }\n}\n```"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Media Files",
+			"item": [
+				{
+					"name": "Download Media File",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/media/{{media_id}}/download",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"media",
+								"{{media_id}}",
+								"download"
+							],
+							"variable": [
+								{
+									"key": "media_id",
+									"value": "1",
+									"description": "Media file ID"
+								}
+							]
+						},
+						"description": "Download a media file.\n\n**Path Parameters:**\n- `media_id`: Media file ID\n\n**Response:**\nReturns the media file as a download stream.\n\n**Permissions Required:**\n- `media.download`\n- Access to the media file's ownership\n\n**Note:**\n- The file will be downloaded with the original filename\n- Content-Type will be set based on media file MIME type\n- For images, thumbnails are not downloaded (only original file)\n\n**Example Response:**\nFile download stream (not JSON)"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Media File",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/media/{{media_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"media",
+								"{{media_id}}"
+							],
+							"variable": [
+								{
+									"key": "media_id",
+									"value": "1",
+									"description": "Media file ID"
+								}
+							]
+						},
+						"description": "Delete a media file. This will also delete the file from storage and all generated thumbnails.\n\n**Path Parameters:**\n- `media_id`: Media file ID\n\n**Permissions Required:**\n- `media.delete`\n- Access to the media file's ownership\n\n**Example Response:**\n```json\n{\n    \"success\": true,\n    \"message\": \"Media file deleted successfully.\"\n}\n```"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Documents",
+			"item": [
+				{
+					"name": "Download Document",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/documents/{{document_id}}/download",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"documents",
+								"{{document_id}}",
+								"download"
+							],
+							"variable": [
+								{
+									"key": "document_id",
+									"value": "1",
+									"description": "Document ID"
+								}
+							]
+						},
+						"description": "Download a document file.\n\n**Path Parameters:**\n- `document_id`: Document ID\n\n**Response:**\nReturns the document file as a download stream.\n\n**Permissions Required:**\n- `documents.download`\n- Access to the document's ownership\n\n**Note:**\n- The file will be downloaded with the original filename (title + extension)\n- Content-Type will be set based on document MIME type\n\n**Example Response:**\nFile download stream (not JSON)"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Document",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/documents/{{document_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"documents",
+								"{{document_id}}"
+							],
+							"variable": [
+								{
+									"key": "document_id",
+									"value": "1",
+									"description": "Document ID"
+								}
+							]
+						},
+						"description": "Delete a document. This will also delete the file from storage.\n\n**Path Parameters:**\n- `document_id`: Document ID\n\n**Permissions Required:**\n- `documents.delete`\n- Access to the document's ownership\n\n**Example Response:**\n```json\n{\n    \"success\": true,\n    \"message\": \"Document deleted successfully.\"\n}\n```"
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8000",
+			"type": "string"
+		},
+		{
+			"key": "access_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "media_id",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "document_id",
+			"value": "1",
+			"type": "string"
+		}
+	]
+}
+

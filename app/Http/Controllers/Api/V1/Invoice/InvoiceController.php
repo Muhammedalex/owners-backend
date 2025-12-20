@@ -109,7 +109,7 @@ class InvoiceController extends Controller
 
         // Load all related data
         $invoice->load([
-            'contract.unit',
+            'contract.units',
             'contract.tenant.user',
             'contract.ownership',
             'ownership',

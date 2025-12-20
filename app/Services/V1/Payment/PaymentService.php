@@ -4,6 +4,8 @@ namespace App\Services\V1\Payment;
 
 use App\Models\V1\Payment\Payment;
 use App\Repositories\V1\Payment\Interfaces\PaymentRepositoryInterface;
+use App\Services\V1\Document\DocumentService;
+use App\Services\V1\Media\MediaService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
@@ -11,7 +13,9 @@ use Illuminate\Support\Facades\DB;
 class PaymentService
 {
     public function __construct(
-        private PaymentRepositoryInterface $paymentRepository
+        private PaymentRepositoryInterface $paymentRepository,
+        private MediaService $mediaService,
+        private DocumentService $documentService
     ) {}
 
     /**
@@ -80,6 +84,19 @@ class PaymentService
     public function delete(Payment $payment): bool
     {
         return DB::transaction(function () use ($payment) {
+            // Load relationships
+            $payment->load(['mediaFiles', 'documents']);
+
+            // Delete all media files
+            foreach ($payment->mediaFiles as $mediaFile) {
+                $this->mediaService->delete($mediaFile);
+            }
+
+            // Delete all documents
+            foreach ($payment->documents as $document) {
+                $this->documentService->delete($document);
+            }
+
             return $this->paymentRepository->delete($payment);
         });
     }

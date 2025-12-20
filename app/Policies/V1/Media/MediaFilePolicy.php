@@ -86,5 +86,23 @@ class MediaFilePolicy
         // Check ownership access
         return $user->hasOwnership($mediaFile->ownership_id);
     }
+
+    /**
+     * Determine whether the user can download the model.
+     */
+    public function download(User $user, MediaFile $mediaFile): bool
+    {
+        if (!$user->can('media.download')) {
+            return false;
+        }
+
+        // Super Admin can download all
+        if ($user->isSuperAdmin()) {
+            return true;
+        }
+
+        // Check ownership access
+        return $user->hasOwnership($mediaFile->ownership_id);
+    }
 }
 

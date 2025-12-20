@@ -116,7 +116,7 @@ class TenantController extends Controller
             'user',
             'ownership',
             'mediaFiles',
-            'contracts.unit',
+            'contracts.units',
             'contracts.tenant',
             'contracts.ownership',
         ]);

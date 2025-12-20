@@ -8,7 +8,9 @@ use App\Models\V1\Auth\User;
 use App\Models\V1\Contract\Contract;
 use App\Models\V1\Ownership\Unit;
 use App\Repositories\V1\Contract\Interfaces\ContractRepositoryInterface;
+use App\Services\V1\Document\DocumentService;
 use App\Services\V1\Mail\OwnershipMailService;
+use App\Services\V1\Media\MediaService;
 use App\Services\V1\Notification\NotificationService;
 use App\Services\V1\Ownership\UserOwnershipMappingService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -23,7 +25,10 @@ class ContractService
         private ContractRepositoryInterface $contractRepository,
         private NotificationService $notificationService,
         private OwnershipMailService $mailService,
-        private UserOwnershipMappingService $mappingService
+        private UserOwnershipMappingService $mappingService,
+        private ContractSettingService $contractSettingService,
+        private MediaService $mediaService,
+        private DocumentService $documentService
     ) {}
 
     /**
@@ -80,44 +85,58 @@ class ContractService
     public function create(array $data): Contract
     {
         return DB::transaction(function () use ($data) {
-            // Extract unit_ids (multiple units) if provided
-            $unitIds = $data['unit_ids'] ?? null;
             $ownershipId = $data['ownership_id'] ?? null;
+            
+            // Apply default settings
+            $this->applyDefaultSettings($data, $ownershipId);
+
+            // Single source of truth: advanced units payload (with per-unit rent & notes)
+            $unitsPayload = $data['units'] ?? [];
 
             // Normalize to array of unit IDs (for validation)
-            $unitsForValidation = [];
-            if (is_array($unitIds) && !empty($unitIds)) {
-                $unitsForValidation = $unitIds;
-            } elseif (!empty($data['unit_id'])) {
-                $unitsForValidation = [$data['unit_id']];
-            }
+            $unitsForValidation = collect($unitsPayload)->pluck('unit_id')->all();
 
+            // Validate max units per contract
             if (!empty($unitsForValidation) && $ownershipId) {
+                $maxUnits = $this->contractSettingService->getMaxUnitsPerContract($ownershipId);
+                if (count($unitsForValidation) > $maxUnits) {
+                    throw ValidationException::withMessages([
+                        'units' => __('messages.validation.max', [
+                            'attribute' => __('messages.attributes.units'),
+                            'max' => $maxUnits
+                        ]),
+                    ]);
+                }
+                
                 $this->validateUnitsForContract($unitsForValidation, $ownershipId, null);
             }
 
-            // For legacy single-unit contracts, keep unit_id in data
+            // Auto-calculate financial fields using settings
+            $this->applyFinancialCalculations($data, $unitsPayload, $ownershipId);
+
+            // Remove units from data before creating contract (it's a relationship, not a column)
+            unset($data['units']);
+
             $contract = $this->contractRepository->create($data);
 
-            // Sync units pivot if multiple units are provided
-            if (is_array($unitIds) && !empty($unitIds)) {
-                $contract->units()->sync($unitIds);
-            } elseif (!empty($data['unit_id'])) {
-                // Fallback: if only unit_id is provided, ensure pivot has at least that unit
-                $contract->units()->sync([$data['unit_id']]);
+            // Sync units pivot using advanced payload if provided
+            if (!empty($unitsPayload)) {
+                $syncData = [];
+                foreach ($unitsPayload as $unit) {
+                    $unitId = $unit['unit_id'];
+                    $syncData[$unitId] = [
+                        'rent_amount' => $unit['rent_amount'] ?? null,
+                        'notes' => $unit['notes'] ?? null,
+                    ];
+                }
+                $contract->units()->sync($syncData);
             }
 
-            // Update units status only if contract is active
-            if ($contract->status === 'active') {
-                if (!empty($unitIds)) {
-                    $this->updateUnitsStatusForContract($unitIds, []);
-                } elseif (!empty($data['unit_id'])) {
-                    $this->updateUnitsStatusForContract([$data['unit_id']], []);
-                }
-            }
+            // Sync units status with contract status
+            $this->syncUnitsStatusWithContractStatus($contract);
 
             // Load relationships before sending notifications
-            $contract->load(['tenant.user', 'ownership', 'createdBy', 'units']);
+            $contract->load(['tenant.user', 'ownership', 'createdBy', 'units', 'documents']);
 
             // Send system notifications
             $this->notifyContractCreated($contract);
@@ -127,60 +146,190 @@ class ContractService
     }
 
     /**
+     * Apply default settings to contract data.
+     */
+    protected function applyDefaultSettings(array &$data, ?int $ownershipId): void
+    {
+        // Status is never accepted from request - always use default from settings
+        $defaultStatus = $this->contractSettingService->getDefaultContractStatus($ownershipId);
+        
+        // If approval is required and default status is active, change to pending
+        if ($this->contractSettingService->isContractApprovalRequired($ownershipId) && $defaultStatus === 'active') {
+            $data['status'] = 'pending';
+        } else {
+            $data['status'] = $defaultStatus;
+        }
+
+        // Apply default payment frequency if not provided
+        if (!isset($data['payment_frequency'])) {
+            $data['payment_frequency'] = $this->contractSettingService->getDefaultPaymentFrequency($ownershipId);
+        }
+    }
+
+    /**
+     * Apply financial calculations using settings.
+     */
+    protected function applyFinancialCalculations(array &$data, array $unitsPayload, ?int $ownershipId): void
+    {
+        // If units payload provided and auto-calculate enabled, calculate base_rent from units
+        if (!empty($unitsPayload) && $this->contractSettingService->isAutoCalculateContractRentEnabled($ownershipId)) {
+            $sumPerUnitRent = collect($unitsPayload)->sum(function ($unit) {
+                return isset($unit['rent_amount']) ? (float) $unit['rent_amount'] : 0.0;
+            });
+
+            if (!isset($data['base_rent'])) {
+                $data['base_rent'] = $sumPerUnitRent;
+            }
+        }
+
+        // Calculate VAT if not provided and auto-calculate is enabled
+        if ($this->contractSettingService->isAutoCalculateTotalRentEnabled($ownershipId)) {
+            $baseRent = $data['base_rent'] ?? 0;
+            $rentFees = $data['rent_fees'] ?? 0;
+
+            // Calculate VAT if not provided
+            if (!isset($data['vat_amount']) && $baseRent > 0) {
+                $data['vat_amount'] = $this->contractSettingService->calculateVatAmount(
+                    $baseRent,
+                    $rentFees,
+                    $ownershipId
+                );
+            }
+
+            // Calculate total_rent if not provided
+            if (!isset($data['total_rent'])) {
+                $previousBalance = $data['previous_balance'] ?? 0;
+                $data['total_rent'] = $this->contractSettingService->calculateTotalRent(
+                    $baseRent,
+                    $rentFees,
+                    $previousBalance,
+                    $ownershipId
+                );
+            }
+        } else {
+            // Manual calculation if auto-calculate is disabled
+            if (!isset($data['total_rent'])) {
+                $base = $data['base_rent'] ?? 0;
+                $fees = $data['rent_fees'] ?? 0;
+                $vat = $data['vat_amount'] ?? 0;
+                $previousBalance = $data['previous_balance'] ?? 0;
+                
+                // Add previous balance if setting is enabled
+                $total = $base + $fees + $vat;
+                if ($this->contractSettingService->isAutoCalculatePreviousBalanceToTotalRentEnabled($ownershipId)) {
+                    $total += $previousBalance;
+                }
+                $data['total_rent'] = $total;
+            }
+        }
+    }
+
+    /**
      * Update contract.
      */
     public function update(Contract $contract, array $data): Contract
     {
         return DB::transaction(function () use ($contract, $data) {
-            // Normalize unit IDs for update (support both unit_ids and legacy unit_id)
-            if (array_key_exists('unit_ids', $data) && is_array($data['unit_ids'])) {
-                $unitIds = $data['unit_ids'];
-            } elseif (array_key_exists('unit_id', $data) && $data['unit_id']) {
-                $unitIds = [$data['unit_id']];
-            } else {
-                $unitIds = null;
+            $ownershipId = $contract->ownership_id;
+            $previousStatus = $contract->status;
+
+            // Prevent editing active contracts
+            if ($contract->status === 'active') {
+                throw ValidationException::withMessages([
+                    'status' => __('messages.validation.custom.cannot_edit_active_contract') ?? 'Active contracts cannot be edited.',
+                ]);
             }
+
+            // Validate status transitions if status is provided (only draft or pending allowed)
+            if (isset($data['status'])) {
+                // Only allow draft or pending status in update
+                if (!in_array($data['status'], ['draft', 'pending'])) {
+                    throw ValidationException::withMessages([
+                        'status' => __('messages.validation.custom.can_only_set_draft_or_pending_in_update') ?? 'Status can only be set to draft or pending in update. Use approve endpoint for active status.',
+                    ]);
+                }
+                
+                // Validate status transition
+                $this->validateStatusTransition($previousStatus, $data['status'], $ownershipId);
+            }
+
+            // Validate editing permissions based on settings
+            $this->validateEditingPermissions($contract, $data, $ownershipId);
+
+            // Single source of truth: advanced units payload (with per-unit rent & notes)
+            $unitsPayload = $data['units'] ?? null;
+            $unitIds = is_array($unitsPayload) && !empty($unitsPayload)
+                ? collect($unitsPayload)->pluck('unit_id')->all()
+                : null;
 
             // حفظ الوحدات السابقة قبل التحديث لنعرف ما الذي تم فكه لاحقاً
             $previousUnitIds = $contract->units()->pluck('units.id')->all();
-            $previousStatus = $contract->status;
 
+            // Validate max units per contract
             if (is_array($unitIds) && !empty($unitIds)) {
-                $this->validateUnitsForContract($unitIds, $contract->ownership_id, $contract->id);
+                $maxUnits = $this->contractSettingService->getMaxUnitsPerContract($ownershipId);
+                if (count($unitIds) > $maxUnits) {
+                    throw ValidationException::withMessages([
+                        'units' => __('messages.validation.max', [
+                            'attribute' => __('messages.attributes.units'),
+                            'max' => $maxUnits
+                        ]),
+                    ]);
+                }
+                
+                $this->validateUnitsForContract($unitIds, $ownershipId, $contract->id);
             }
+
+            // Apply financial calculations using settings
+            $this->applyFinancialCalculationsForUpdate($data, $unitsPayload, $contract, $ownershipId);
+
+            // Remove units from data before updating contract (it's a relationship, not a column)
+            unset($data['units']);
 
             $updated = $this->contractRepository->update($contract, $data);
 
-            // Sync units pivot إذا تم تمرير unit_ids
-            if (is_array($unitIds)) {
+            // Sync units pivot إذا تم تمرير units payload أو unit_ids
+            if (is_array($unitsPayload) && !empty($unitsPayload)) {
+                $syncData = [];
+                foreach ($unitsPayload as $unit) {
+                    $unitId = $unit['unit_id'];
+                    $syncData[$unitId] = [
+                        'rent_amount' => $unit['rent_amount'] ?? null,
+                        'notes' => $unit['notes'] ?? null,
+                    ];
+                }
+                $updated->units()->sync($syncData);
+            } elseif (is_array($unitIds)) {
                 $updated->units()->sync($unitIds);
 
-                // لو العقد نشط: الوحدات الجديدة تصبح rented، والقديمة التي خرجت تتحرر إن لم يعد لها عقد نشط
+                // Handle units change: use sync method for status-based logic
                 if ($updated->status === 'active') {
+                    // If contract is active, mark new units as rented and release old ones
                     $this->updateUnitsStatusForContract($unitIds, $previousUnitIds);
                 } else {
-                    // لو العقد غير نشط (cancelled, terminated, expired, draft, pending):
-                    // كل الوحدات (القديمة والجديدة) تُعاد إلى available إذا لم يعد لها عقد نشط آخر
-                    $allRelated = array_unique(array_merge($previousUnitIds, $unitIds));
-                    $this->updateUnitsStatusForContract([], $allRelated);
+                    // If contract is not active, sync units status (will release if cancelled/terminated)
+                    $this->syncUnitsStatusWithContractStatus($updated);
+                    // Also handle old units that were removed
+                    $toRelease = array_diff($previousUnitIds, $unitIds);
+                    if (!empty($toRelease)) {
+                        $units = Unit::whereIn('id', $toRelease)->get();
+                        foreach ($units as $unit) {
+                            if (!$unit->activeContract()) {
+                                $unit->update(['status' => 'available']);
+                            }
+                        }
+                    }
                 }
             } else {
-                // لم تتغير الوحدات، لكن قد يتغير status
+                // Units didn't change, but status might have changed
                 if ($previousStatus !== $updated->status) {
-                    if ($updated->status === 'active') {
-                        // العقد أصبح نشطاً → كل الوحدات الحالية تصبح rented
-                        $currentUnitIds = $updated->units()->pluck('units.id')->all();
-                        $this->updateUnitsStatusForContract($currentUnitIds, []);
-                    } else {
-                        // العقد أصبح غير نشط → أرجع الوحدات إلى available إن لم يعد لها عقد نشط آخر
-                        $currentUnitIds = $updated->units()->pluck('units.id')->all();
-                        $this->updateUnitsStatusForContract([], $currentUnitIds);
-                    }
+                    // Sync units status with new contract status
+                    $this->syncUnitsStatusWithContractStatus($updated);
                 }
             }
 
             // Load relationships before sending notifications
-            $updated->load(['tenant.user', 'ownership', 'createdBy', 'units']);
+            $updated->load(['tenant.user', 'ownership', 'createdBy', 'units', 'documents']);
 
             // Send notifications if status changed
             if ($previousStatus !== $updated->status) {
@@ -275,11 +424,75 @@ class ContractService
     }
 
     /**
+     * Sync units status with contract status.
+     * This is a reusable method that can be called from multiple places.
+     * 
+     * Rules:
+     * - If contract is 'active': All units must be 'rented'
+     * - If contract is 'cancelled' or 'terminated': Units should be 'available' (if no other active contract)
+     * - For other statuses (draft, pending, expired): No automatic status change
+     * 
+     * @param Contract $contract The contract to sync units for
+     * @return void
+     */
+    public function syncUnitsStatusWithContractStatus(Contract $contract): void
+    {
+        // Load units if not already loaded
+        if (!$contract->relationLoaded('units')) {
+            $contract->load('units');
+        }
+
+        $unitIds = $contract->units->pluck('id')->all();
+
+        if (empty($unitIds)) {
+            return;
+        }
+
+        // If contract is active, ensure all units are rented
+        if ($contract->status === 'active') {
+            Unit::whereIn('id', $unitIds)->update(['status' => 'rented']);
+            return;
+        }
+
+        // If contract is cancelled or terminated, release units (set to available)
+        // Only if they don't have another active contract
+        if (in_array($contract->status, ['cancelled', 'terminated'])) {
+            $units = Unit::whereIn('id', $unitIds)->get();
+            foreach ($units as $unit) {
+                // Refresh to get latest relationships (in case units were just changed)
+                $unit->refresh();
+                
+                // If unit has no active contract, set status to available
+                if (!$unit->activeContract()) {
+                    $unit->update(['status' => 'available']);
+                }
+                // If unit has another active contract, keep it as rented (don't change)
+            }
+        }
+        
+        // For draft, pending, expired statuses: Don't automatically change unit status
+        // Units status should be managed manually or through other operations
+    }
+
+    /**
      * Delete contract.
      */
     public function delete(Contract $contract): bool
     {
         return DB::transaction(function () use ($contract) {
+            // Load relationships
+            $contract->load(['mediaFiles', 'documents']);
+
+            // Delete all media files
+            foreach ($contract->mediaFiles as $mediaFile) {
+                $this->mediaService->delete($mediaFile);
+            }
+
+            // Delete all documents
+            foreach ($contract->documents as $document) {
+                $this->documentService->delete($document);
+            }
+
             return $this->contractRepository->delete($contract);
         });
     }
@@ -290,8 +503,157 @@ class ContractService
     public function approve(Contract $contract, int $approvedBy): Contract
     {
         return DB::transaction(function () use ($contract, $approvedBy) {
-            return $this->contractRepository->approve($contract, $approvedBy);
+            // Validate that contract can be approved
+            if ($contract->status === 'active') {
+                throw ValidationException::withMessages([
+                    'status' => __('messages.validation.custom.contract_already_active') ?? 'Contract is already active.',
+                ]);
+            }
+
+            if ($contract->status === 'cancelled') {
+                throw ValidationException::withMessages([
+                    'status' => __('messages.validation.custom.cannot_approve_cancelled_contract') ?? 'Cannot approve a cancelled contract.',
+                ]);
+            }
+
+            $previousStatus = $contract->status;
+            $contract = $this->contractRepository->approve($contract, $approvedBy);
+
+            // Sync units status with contract status (will mark as rented since status is active)
+            $this->syncUnitsStatusWithContractStatus($contract);
+
+            // Load relationships before sending notifications
+            $contract->load(['tenant.user', 'ownership', 'createdBy', 'approvedBy', 'units', 'documents']);
+
+            // Send notifications if status changed
+            if ($previousStatus !== $contract->status) {
+                $this->notifyContractStatusChanged($contract, $previousStatus);
+            }
+
+            return $contract;
         });
+    }
+
+    /**
+     * Cancel contract.
+     * Only works on pending or draft contracts.
+     */
+    public function cancel(Contract $contract, ?string $reason = null): Contract
+    {
+        return DB::transaction(function () use ($contract, $reason) {
+            // Only pending or draft contracts can be cancelled
+            if (!in_array($contract->status, ['pending', 'draft'])) {
+                throw ValidationException::withMessages([
+                    'status' => __('messages.validation.custom.can_only_cancel_pending_or_draft_contract') ?? 'Only pending or draft contracts can be cancelled.',
+                ]);
+            }
+
+            $previousStatus = $contract->status;
+            
+            $contract->update([
+                'status' => 'cancelled',
+            ]);
+
+            // Sync units status with contract status (will release units since status is cancelled)
+            $this->syncUnitsStatusWithContractStatus($contract);
+
+            // Load relationships before sending notifications
+            $contract->load(['tenant.user', 'ownership', 'createdBy', 'approvedBy', 'units', 'documents']);
+
+            // Send notifications
+            $this->notifyContractStatusChanged($contract, $previousStatus);
+
+            return $contract->fresh(['units', 'tenant.user', 'ownership', 'createdBy', 'approvedBy', 'parent', 'children', 'terms', 'documents']);
+        });
+    }
+
+    /**
+     * Terminate contract.
+     * Only works on active contracts.
+     */
+    public function terminate(Contract $contract, ?string $reason = null): Contract
+    {
+        return DB::transaction(function () use ($contract, $reason) {
+            // Only active contracts can be terminated
+            if ($contract->status !== 'active') {
+                throw ValidationException::withMessages([
+                    'status' => __('messages.validation.custom.can_only_terminate_active_contract') ?? 'Only active contracts can be terminated.',
+                ]);
+            }
+
+            $previousStatus = $contract->status;
+            
+            $contract->update([
+                'status' => 'terminated',
+            ]);
+
+            // Sync units status with contract status (will release units since status is terminated)
+            $this->syncUnitsStatusWithContractStatus($contract);
+
+            // Load relationships before sending notifications
+            $contract->load(['tenant.user', 'ownership', 'createdBy', 'approvedBy', 'units', 'documents']);
+
+            // Send notifications
+            $this->notifyContractStatusChanged($contract, $previousStatus);
+
+            return $contract->fresh(['units', 'tenant.user', 'ownership', 'createdBy', 'approvedBy', 'parent', 'children', 'terms', 'documents']);
+        });
+    }
+
+    /**
+     * Validate status transition.
+     */
+    protected function validateStatusTransition(string $currentStatus, string $newStatus, ?int $ownershipId): void
+    {
+        // If status is not changing, allow it
+        if ($currentStatus === $newStatus) {
+            return;
+        }
+
+        // Draft can transition to pending or active (if approval not required)
+        if ($currentStatus === 'draft') {
+            if ($newStatus === 'cancelled') {
+                throw ValidationException::withMessages([
+                    'status' => __('messages.validation.custom.cannot_cancel_draft_contract') ?? 'Draft contracts cannot be cancelled. Delete the contract instead.',
+                ]);
+            }
+            // Allow transition to pending or active (if approval not required)
+            if ($newStatus === 'active' && $this->contractSettingService->isContractApprovalRequired($ownershipId)) {
+                throw ValidationException::withMessages([
+                    'status' => __('messages.validation.custom.cannot_set_active_without_approval') ?? 'Cannot set contract to active. Approval is required. Use the approve endpoint instead.',
+                ]);
+            }
+            return;
+        }
+
+        // Pending can transition to active (if approval not required), or cancelled
+        if ($currentStatus === 'pending') {
+            if ($newStatus === 'active' && $this->contractSettingService->isContractApprovalRequired($ownershipId)) {
+                throw ValidationException::withMessages([
+                    'status' => __('messages.validation.custom.cannot_set_active_without_approval') ?? 'Cannot set contract to active. Approval is required. Use the approve endpoint instead.',
+                ]);
+            }
+            if ($newStatus === 'draft') {
+                throw ValidationException::withMessages([
+                    'status' => __('messages.validation.custom.cannot_revert_to_draft') ?? 'Cannot revert contract to draft status.',
+                ]);
+            }
+            return;
+        }
+
+        // Cancelled cannot transition to any other status
+        if ($currentStatus === 'cancelled') {
+            throw ValidationException::withMessages([
+                'status' => __('messages.validation.custom.cannot_modify_cancelled_contract') ?? 'Cancelled contracts cannot be modified.',
+            ]);
+        }
+
+        // Active contracts cannot be edited (already checked above, but double-check)
+        if ($currentStatus === 'active') {
+            throw ValidationException::withMessages([
+                'status' => __('messages.validation.custom.cannot_edit_active_contract') ?? 'Active contracts cannot be edited.',
+            ]);
+        }
     }
 
     /**
@@ -434,6 +796,99 @@ class ContractService
                 );
             } catch (\Exception $e) {
                 Log::error("Failed to send email for contract status change: " . $e->getMessage());
+            }
+        }
+    }
+
+    /**
+     * Validate editing permissions based on settings.
+     */
+    protected function validateEditingPermissions(Contract $contract, array $data, int $ownershipId): void
+    {
+        // Check if editing active contracts is allowed
+        if ($contract->status === 'active' && !$this->contractSettingService->isEditingActiveContractsAllowed($ownershipId)) {
+            throw ValidationException::withMessages([
+                'status' => __('messages.validation.custom.cannot_edit_active_contract'),
+            ]);
+        }
+
+        // Check if editing contract dates is allowed
+        if (!$this->contractSettingService->isEditingContractDatesAllowed($ownershipId)) {
+            if (isset($data['start']) || isset($data['end'])) {
+                throw ValidationException::withMessages([
+                    'start' => __('messages.validation.custom.cannot_edit_contract_dates'),
+                    'end' => __('messages.validation.custom.cannot_edit_contract_dates'),
+                ]);
+            }
+        }
+
+        // Check if editing contract rent is allowed
+        if (!$this->contractSettingService->isEditingContractRentAllowed($ownershipId)) {
+            $rentFields = ['base_rent', 'rent_fees', 'vat_amount', 'total_rent'];
+            foreach ($rentFields as $field) {
+                if (isset($data[$field])) {
+                    throw ValidationException::withMessages([
+                        $field => __('messages.validation.custom.cannot_edit_contract_rent'),
+                    ]);
+                }
+            }
+        }
+    }
+
+    /**
+     * Apply financial calculations for update using settings.
+     */
+    protected function applyFinancialCalculationsForUpdate(array &$data, ?array $unitsPayload, Contract $contract, int $ownershipId): void
+    {
+        // If units payload provided and auto-calculate enabled, calculate base_rent from units
+        if (is_array($unitsPayload) && !empty($unitsPayload) && $this->contractSettingService->isAutoCalculateContractRentEnabled($ownershipId)) {
+            $sumPerUnitRent = collect($unitsPayload)->sum(function ($unit) {
+                return isset($unit['rent_amount']) ? (float) $unit['rent_amount'] : 0.0;
+            });
+
+            if (!isset($data['base_rent'])) {
+                $data['base_rent'] = $sumPerUnitRent;
+            }
+        }
+
+        // Calculate VAT and total_rent if auto-calculate is enabled
+        if ($this->contractSettingService->isAutoCalculateTotalRentEnabled($ownershipId)) {
+            $baseRent = $data['base_rent'] ?? $contract->base_rent ?? 0;
+            $rentFees = $data['rent_fees'] ?? $contract->rent_fees ?? 0;
+
+            // Calculate VAT if not provided and base rent changed
+            if (!isset($data['vat_amount']) && ($baseRent > 0 || $rentFees > 0)) {
+                $data['vat_amount'] = $this->contractSettingService->calculateVatAmount(
+                    $baseRent,
+                    $rentFees,
+                    $ownershipId
+                );
+            }
+
+            // Calculate total_rent if not provided
+            if (!isset($data['total_rent'])) {
+                $previousBalance = $data['previous_balance'] ?? $contract->previous_balance ?? 0;
+                $data['total_rent'] = $this->contractSettingService->calculateTotalRent(
+                    $baseRent,
+                    $rentFees,
+                    $previousBalance,
+                    $ownershipId
+                );
+            }
+        } else {
+            // Manual calculation if auto-calculate is disabled
+            if (!isset($data['total_rent'])) {
+                $base = $data['base_rent'] ?? $contract->base_rent ?? 0;
+                $fees = $data['rent_fees'] ?? $contract->rent_fees ?? 0;
+                $vat = $data['vat_amount'] ?? $contract->vat_amount ?? 0;
+                $previousBalance = $data['previous_balance'] ?? $contract->previous_balance ?? 0;
+                
+                // Add previous balance if setting is enabled
+                $total = $base + $fees + $vat;
+                if ($this->contractSettingService->isAutoCalculatePreviousBalanceToTotalRentEnabled($ownershipId)) {
+                    $total += $previousBalance;
+                }
+                $data['total_rent'] = $total;
             }
         }
     }

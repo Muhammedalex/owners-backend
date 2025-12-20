@@ -117,6 +117,14 @@ class Ownership extends Model
     }
 
     /**
+     * Get the settings for this ownership.
+     */
+    public function settings(): HasMany
+    {
+        return $this->hasMany(\App\Models\V1\Setting\SystemSetting::class, 'ownership_id');
+    }
+
+    /**
      * Scope a query to only include active ownerships.
      */
     public function scopeActive($query)

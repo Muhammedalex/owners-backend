@@ -7,6 +7,7 @@ use App\Http\Requests\V1\Ownership\AssignUserToOwnershipRequest;
 use App\Http\Resources\V1\Ownership\UserOwnershipMappingResource;
 use App\Models\V1\Auth\User;
 use App\Models\V1\Ownership\Ownership;
+use App\Policies\V1\Ownership\UserOwnershipMappingPolicy;
 use App\Services\V1\Ownership\UserOwnershipMappingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -14,7 +15,8 @@ use Illuminate\Http\Request;
 class UserOwnershipMappingController extends Controller
 {
     public function __construct(
-        private UserOwnershipMappingService $mappingService
+        private UserOwnershipMappingService $mappingService,
+        private UserOwnershipMappingPolicy $policy
     ) {}
 
     /**
@@ -23,13 +25,8 @@ class UserOwnershipMappingController extends Controller
     public function getUserOwnerships(User $user): JsonResponse
     {
         $requestUser = request()->user();
-
-        // Users can view their own ownerships, or Super Admin can view any
-        if ($requestUser->id !== $user->id && !$requestUser->isSuperAdmin()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Unauthorized.',
-            ], 403);
+        if (!$this->policy->viewUserOwnerships($requestUser, $user)) {
+            abort(403, 'Unauthorized.');
         }
 
         $mappings = $this->mappingService->getByUser($user->id);
@@ -52,6 +49,12 @@ class UserOwnershipMappingController extends Controller
                 'success' => false,
                 'message' => 'Ownership scope not found.',
             ], 400);
+        }
+
+        $ownership = Ownership::findOrFail($ownershipId);
+        $requestUser = request()->user();
+        if (!$this->policy->viewOwnershipUsers($requestUser, $ownership)) {
+            abort(403, 'Unauthorized.');
         }
 
         $mappings = $this->mappingService->getByOwnership($ownershipId);
@@ -97,6 +100,12 @@ class UserOwnershipMappingController extends Controller
             $data['ownership_id'] = $ownershipId;
         }
 
+        // Get ownership for authorization
+        $ownership = Ownership::findOrFail($ownershipId);
+        if (!$this->policy->assign($currentUser, $ownership)) {
+            abort(403, 'Unauthorized.');
+        }
+
         try {
             $mapping = $this->mappingService->create($data);
 
@@ -127,6 +136,12 @@ class UserOwnershipMappingController extends Controller
             ], 400);
         }
 
+        $ownership = Ownership::findOrFail($ownershipId);
+        $requestUser = request()->user();
+        if (!$this->policy->remove($requestUser, $ownership)) {
+            abort(403, 'Unauthorized.');
+        }
+
         $mapping = $this->mappingService->findByUserAndOwnership($user->id, $ownershipId);
 
         if (!$mapping) {
@@ -150,13 +165,8 @@ class UserOwnershipMappingController extends Controller
     public function setDefault(User $user, Ownership $ownership): JsonResponse
     {
         $requestUser = request()->user();
-
-        // Users can set their own default, or Super Admin can set for any user
-        if ($requestUser->id !== $user->id && !$requestUser->isSuperAdmin()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Unauthorized.',
-            ], 403);
+        if (!$this->policy->setDefault($requestUser, $user, $ownership)) {
+            abort(403, 'Unauthorized.');
         }
 
         $mapping = $this->mappingService->findByUserAndOwnership($user->id, $ownership->id);

@@ -6,6 +6,8 @@ use App\Models\V1\Ownership\Building;
 use App\Models\V1\Ownership\Ownership;
 use App\Models\V1\Ownership\Portfolio;
 use App\Repositories\V1\Ownership\Interfaces\OwnershipRepositoryInterface;
+use App\Services\V1\Document\DocumentService;
+use App\Services\V1\Media\MediaService;
 use Database\Seeders\V1\Setting\SystemSettingSeeder;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
@@ -15,7 +17,9 @@ use Illuminate\Support\Str;
 class OwnershipService
 {
     public function __construct(
-        private OwnershipRepositoryInterface $ownershipRepository
+        private OwnershipRepositoryInterface $ownershipRepository,
+        private MediaService $mediaService,
+        private DocumentService $documentService
     ) {}
 
     /**
@@ -165,6 +169,19 @@ class OwnershipService
     public function delete(Ownership $ownership): bool
     {
         return DB::transaction(function () use ($ownership) {
+            // Load relationships
+            $ownership->load(['mediaFiles', 'documents']);
+
+            // Delete all media files
+            foreach ($ownership->mediaFiles as $mediaFile) {
+                $this->mediaService->delete($mediaFile);
+            }
+
+            // Delete all documents
+            foreach ($ownership->documents as $document) {
+                $this->documentService->delete($document);
+            }
+
             return $this->ownershipRepository->delete($ownership);
         });
     }

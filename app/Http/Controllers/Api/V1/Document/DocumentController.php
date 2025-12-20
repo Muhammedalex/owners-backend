@@ -149,7 +149,7 @@ class DocumentController extends Controller
             abort(404, __('documents.not_found'));
         }
 
-        Gate::authorize('view', $document);
+        Gate::authorize('download', $document);
 
         return $this->documentService->download($document);
     }

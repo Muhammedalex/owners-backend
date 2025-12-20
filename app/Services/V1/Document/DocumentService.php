@@ -81,15 +81,28 @@ class DocumentService
     /**
      * Download a document.
      */
-    public function download(Document $document): \Symfony\Component\HttpFoundation\StreamedResponse
+    public function download(Document $document): \Symfony\Component\HttpFoundation\BinaryFileResponse
     {
         if (!Storage::disk('public')->exists($document->path)) {
             abort(404, 'Document file not found');
         }
 
-        return Storage::disk('public')->download(
-            $document->path,
-            $document->title . '.' . pathinfo($document->path, PATHINFO_EXTENSION)
+        $fileName = $document->title . '.' . pathinfo($document->path, PATHINFO_EXTENSION);
+        $filePath = Storage::disk('public')->path($document->path);
+        
+        // Get MIME type from database or detect from file
+        $mimeType = $document->mime;
+        if (!$mimeType && file_exists($filePath)) {
+            $mimeType = mime_content_type($filePath) ?? 'application/octet-stream';
+        }
+        $mimeType = $mimeType ?? 'application/octet-stream';
+
+        return response()->download(
+            $filePath,
+            $fileName,
+            [
+                'Content-Type' => $mimeType,
+            ]
         );
     }
 

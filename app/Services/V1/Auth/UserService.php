@@ -4,6 +4,8 @@ namespace App\Services\V1\Auth;
 
 use App\Models\V1\Auth\User;
 use App\Repositories\V1\Auth\Interfaces\UserRepositoryInterface;
+use App\Services\V1\Document\DocumentService;
+use App\Services\V1\Media\MediaService;
 use App\Services\V1\Notification\NotificationService;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -12,7 +14,9 @@ class UserService
 {
     public function __construct(
         private UserRepositoryInterface $userRepository,
-        private NotificationService $notificationService
+        private NotificationService $notificationService,
+        private MediaService $mediaService,
+        private DocumentService $documentService
     ) {}
 
     /**
@@ -177,7 +181,22 @@ class UserService
      */
     public function delete(User $user): bool
     {
-        return $this->userRepository->delete($user);
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($user) {
+            // Load relationships
+            $user->load(['mediaFiles', 'documents']);
+
+            // Delete all media files
+            foreach ($user->mediaFiles as $mediaFile) {
+                $this->mediaService->delete($mediaFile);
+            }
+
+            // Delete all documents
+            foreach ($user->documents as $document) {
+                $this->documentService->delete($document);
+            }
+
+            return $this->userRepository->delete($user);
+        });
     }
 
     /**

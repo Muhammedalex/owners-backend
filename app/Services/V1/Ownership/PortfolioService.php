@@ -4,6 +4,8 @@ namespace App\Services\V1\Ownership;
 
 use App\Models\V1\Ownership\Portfolio;
 use App\Repositories\V1\Ownership\Interfaces\PortfolioRepositoryInterface;
+use App\Services\V1\Document\DocumentService;
+use App\Services\V1\Media\MediaService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
@@ -11,7 +13,9 @@ use Illuminate\Support\Facades\DB;
 class PortfolioService
 {
     public function __construct(
-        private PortfolioRepositoryInterface $portfolioRepository
+        private PortfolioRepositoryInterface $portfolioRepository,
+        private MediaService $mediaService,
+        private DocumentService $documentService
     ) {}
 
     /**
@@ -86,6 +90,19 @@ class PortfolioService
     public function delete(Portfolio $portfolio): bool
     {
         return DB::transaction(function () use ($portfolio) {
+            // Load relationships
+            $portfolio->load(['mediaFiles', 'documents']);
+
+            // Delete all media files
+            foreach ($portfolio->mediaFiles as $mediaFile) {
+                $this->mediaService->delete($mediaFile);
+            }
+
+            // Delete all documents
+            foreach ($portfolio->documents as $document) {
+                $this->documentService->delete($document);
+            }
+
             return $this->portfolioRepository->delete($portfolio);
         });
     }

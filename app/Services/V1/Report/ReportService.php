@@ -548,7 +548,7 @@ class ReportService
             return Contract::where('ownership_id', $ownershipId)
                 ->where('status', 'active')
                 ->whereBetween('end', [now(), now()->addDays($days)])
-                ->with(['tenant.user', 'unit'])
+                ->with(['tenant.user', 'units'])
                 ->orderBy('end', 'asc')
                 ->get()
                 ->map(function ($contract) {
@@ -557,10 +557,10 @@ class ReportService
                         'uuid' => $contract->uuid,
                         'number' => $contract->number,
                         'tenant_name' => $contract->tenant->user->name ?? 'N/A',
-                        'unit_number' => $contract->unit->number ?? 'N/A',
+                        'unit_number' => $contract->primaryUnit()?->number ?? 'N/A',
                         'end_date' => $contract->end->format('Y-m-d'),
                         'days_remaining' => now()->diffInDays($contract->end, false),
-                        'rent' => (float) $contract->rent,
+                        'base_rent' => (float) ($contract->base_rent ?? 0),
                     ];
                 })
                 ->toArray();
@@ -577,7 +577,7 @@ class ReportService
         return Cache::remember($cacheKey, now()->addMinutes(self::CACHE_DURATION), function () use ($ownershipId) {
             return Invoice::where('ownership_id', $ownershipId)
                 ->where('status', 'overdue')
-                ->with(['contract.tenant.user', 'contract.unit'])
+                ->with(['contract.tenant.user', 'contract.units'])
                 ->orderBy('due', 'asc')
                 ->get()
                 ->map(function ($invoice) {
@@ -586,7 +586,7 @@ class ReportService
                         'uuid' => $invoice->uuid,
                         'number' => $invoice->number,
                         'tenant_name' => $invoice->contract->tenant->user->name ?? 'N/A',
-                        'unit_number' => $invoice->contract->unit->number ?? 'N/A',
+                        'unit_number' => $invoice->contract->unit()?->number ?? 'N/A',
                         'due_date' => $invoice->due->format('Y-m-d'),
                         'days_overdue' => now()->diffInDays($invoice->due, false),
                         'total' => (float) $invoice->total,
@@ -1315,7 +1315,7 @@ class ReportService
         return Cache::remember($cacheKey, now()->addMinutes(self::CACHE_DURATION), function () use ($days) {
             return Contract::where('status', 'active')
                 ->whereBetween('end', [now(), now()->addDays($days)])
-                ->with(['tenant.user', 'unit', 'ownership'])
+                ->with(['tenant.user', 'units', 'ownership'])
                 ->orderBy('end', 'asc')
                 ->get()
                 ->map(function ($contract) {
@@ -1324,11 +1324,11 @@ class ReportService
                         'uuid' => $contract->uuid,
                         'number' => $contract->number,
                         'tenant_name' => $contract->tenant->user->name ?? 'N/A',
-                        'unit_number' => $contract->unit->number ?? 'N/A',
+                        'unit_number' => $contract->primaryUnit()?->number ?? 'N/A',
                         'ownership_name' => $contract->ownership->name ?? 'N/A',
                         'end_date' => $contract->end->format('Y-m-d'),
                         'days_remaining' => now()->diffInDays($contract->end, false),
-                        'rent' => (float) $contract->rent,
+                        'base_rent' => (float) ($contract->base_rent ?? 0),
                     ];
                 })
                 ->toArray();
@@ -1344,7 +1344,7 @@ class ReportService
 
         return Cache::remember($cacheKey, now()->addMinutes(self::CACHE_DURATION), function () {
             return Invoice::where('status', 'overdue')
-                ->with(['contract.tenant.user', 'contract.unit', 'contract.ownership'])
+                ->with(['contract.tenant.user', 'contract.units', 'contract.ownership'])
                 ->orderBy('due', 'asc')
                 ->get()
                 ->map(function ($invoice) {
@@ -1353,7 +1353,7 @@ class ReportService
                         'uuid' => $invoice->uuid,
                         'number' => $invoice->number,
                         'tenant_name' => $invoice->contract->tenant->user->name ?? 'N/A',
-                        'unit_number' => $invoice->contract->unit->number ?? 'N/A',
+                        'unit_number' => $invoice->contract->unit()?->number ?? 'N/A',
                         'ownership_name' => $invoice->contract->ownership->name ?? 'N/A',
                         'due_date' => $invoice->due->format('Y-m-d'),
                         'days_overdue' => now()->diffInDays($invoice->due, false),

@@ -21,7 +21,9 @@ use App\Repositories\V1\Auth\Interfaces\UserRepositoryInterface;
 use App\Repositories\V1\Ownership\Interfaces\OwnershipBoardMemberRepositoryInterface;
 use App\Repositories\V1\Ownership\Interfaces\OwnershipRepositoryInterface;
 use App\Repositories\V1\Ownership\Interfaces\UserOwnershipMappingRepositoryInterface;
+use App\Services\V1\Contract\ContractService;
 use App\Services\V1\Ownership\OwnershipService;
+use App\Services\V1\Tenant\TenantService;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -439,13 +441,15 @@ class BumahrizCenterSeeder extends Seeder
     {
         $this->command->info('  Creating tenant records...');
 
+        $tenantService = app(TenantService::class);
+
         foreach ($tenantUsers as $index => $user) {
             $tenant = Tenant::where('user_id', $user->id)
                 ->where('ownership_id', $ownership->id)
                 ->first();
 
             if (!$tenant) {
-                $tenant = Tenant::create([
+                $tenant = $tenantService->create([
                     'user_id' => $user->id,
                     'ownership_id' => $ownership->id,
                     'national_id' => $this->generateNationalId(),
@@ -477,6 +481,8 @@ class BumahrizCenterSeeder extends Seeder
     {
         $this->command->info('  Creating contracts...');
 
+        $contractService = app(ContractService::class);
+
         // Get available units
         $units = Unit::where('ownership_id', $ownership->id)
             ->where('status', 'available')
@@ -503,17 +509,21 @@ class BumahrizCenterSeeder extends Seeder
             $tenant = $selectedTenants[$index];
             $startDate = now()->subMonths(rand(1, 6));
             $endDate = $startDate->copy()->addYears(rand(1, 2));
-            $rent = $unit->price_monthly ?? rand(5000, 15000);
-            $deposit = $rent * 3; // 3 months deposit
+            $baseRent = $unit->price_monthly ?? rand(5000, 15000);
+            $deposit = $baseRent * 3; // 3 months deposit
 
-            $contract = Contract::where('unit_id', $unit->id)
+            // Check if contract already exists for this unit and tenant
+            $existingContract = Contract::whereHas('units', function ($query) use ($unit) {
+                $query->where('units.id', $unit->id);
+            })
                 ->where('tenant_id', $tenant->id)
+                ->where('ownership_id', $ownership->id)
                 ->first();
 
-            if (!$contract) {
-                $contract = Contract::create([
-                    'uuid' => (string) Str::uuid(),
-                    'unit_id' => $unit->id,
+            if (!$existingContract) {
+                // Use ContractService to create contract with new structure
+                $contractData = [
+                    'uuid' => (string) Str::uuid(), // Explicitly set UUID
                     'tenant_id' => $tenant->id,
                     'ownership_id' => $ownership->id,
                     'number' => $this->generateContractNumber($ownership->id, $index + 1),
@@ -522,23 +532,37 @@ class BumahrizCenterSeeder extends Seeder
                     'ejar_code' => rand(0, 1) ? $this->generateEjarCode() : null, // 50% chance
                     'start' => $startDate->format('Y-m-d'),
                     'end' => $endDate->format('Y-m-d'),
-                    'rent' => $rent,
+                    'base_rent' => $baseRent,
                     'payment_frequency' => 'monthly',
                     'deposit' => $deposit,
                     'deposit_status' => 'paid',
-                    'document' => null,
-                    'signature' => null,
-                    'status' => 'active',
-                    // 'notes' => 'عقد إيجار محل تجاري في مركز بامحرز',
-                ]);
+                    'created_by' => $ownership->created_by,
+                    // Status will be set by service based on settings
+                    // Units will be synced by service
+                    'units' => [
+                        [
+                            'unit_id' => $unit->id,
+                            'rent_amount' => $baseRent,
+                            'notes' => null,
+                        ],
+                    ],
+                ];
 
-                // Update unit status
-                $unit->update(['status' => 'rented']);
+                $contract = $contractService->create($contractData);
+
+                // If contract status is not active (draft or pending), approve it to make it active
+                if (in_array($contract->status, ['draft', 'pending'])) {
+                    try {
+                        $contract = $contractService->approve($contract, $ownership->created_by);
+                    } catch (\Exception $e) {
+                        $this->command->warn("    ⚠ Could not approve contract {$contract->number}: {$e->getMessage()}");
+                    }
+                }
 
                 // Create contract terms
                 $this->createContractTerms($contract);
 
-                $this->command->info("    ✓ Created contract: {$contract->number} for unit {$unit->number}");
+                $this->command->info("    ✓ Created contract: {$contract->number} for unit {$unit->number} (Status: {$contract->status})");
             } else {
                 $this->command->info("    ✓ Contract already exists for unit {$unit->number}");
             }
@@ -615,7 +639,15 @@ class BumahrizCenterSeeder extends Seeder
                     ->first();
 
                 if (!$invoice) {
-                    $amount = $contract->rent;
+                    // Use base_rent or total_rent instead of legacy rent field
+                    $amount = $contract->base_rent ?? $contract->total_rent ?? 0;
+                    if ($amount === 0) {
+                        // Fallback: calculate from units if base_rent is not set
+                        $contract->load('units');
+                        $amount = $contract->units->sum(function ($unit) {
+                            return $unit->pivot->rent_amount ?? $unit->price_monthly ?? 0;
+                        });
+                    }
                     $taxRate = 15.00;
                     $tax = $amount * ($taxRate / 100);
                     $total = $amount + $tax;

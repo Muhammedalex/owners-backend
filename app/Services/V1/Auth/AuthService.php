@@ -146,14 +146,10 @@ class AuthService
             throw new AuthenticationException('Invalid or expired refresh token.');
         }
 
-        // Get default ownership UUID (if user is not Super Admin)
+        // Get default ownership UUID (if user is not Super Admin and no cookie exists)
+        // Note: We don't check cookie here as it's passed from controller
+        // This method should only return default if needed, controller will check for existing cookie
         $defaultOwnershipUuid = null;
-        if (!$user->isSuperAdmin()) {
-            $defaultOwnership = $user->getDefaultOwnership();
-            if ($defaultOwnership) {
-                $defaultOwnershipUuid = $defaultOwnership->uuid;
-            }
-        }
 
         return [
             'user' => $user,

@@ -67,7 +67,11 @@ class UserRepository implements UserRepositoryInterface
         if (isset($filters['active'])) {
             $query->where('active', $filters['active']);
         }
-
+        if (isset($filters['ownership_id'])) {
+            $query->whereHas('ownershipMappings', function ($q) use ($filters) {
+                $q->where('ownership_id', $filters['ownership_id']);
+            });
+        }
         return $query->latest()->get();
     }
 

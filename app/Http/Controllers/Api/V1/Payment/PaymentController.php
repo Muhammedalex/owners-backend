@@ -109,7 +109,7 @@ class PaymentController extends Controller
 
         // Load all related data
         $payment->load([
-            'invoice.contract.unit',
+            'invoice.contract.units',
             'invoice.contract.tenant.user',
             'invoice.contract.ownership',
             'invoice.items',

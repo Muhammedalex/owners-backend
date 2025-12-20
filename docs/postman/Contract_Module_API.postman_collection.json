@@ -1,0 +1,561 @@
+{
+  "info": {
+    "_postman_id": "contract-module-api-collection",
+    "name": "Contract Module API - V1",
+    "description": "API collection for Contract Management (KSA legal, multiple units, financial breakdown, Ejar PDF).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@example.com\",\n  \"password\": \"password123\",\n  \"device_name\": \"Postman\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "login"]
+            },
+            "description": "Login to get access token (required for contract endpoints)."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Contracts",
+      "item": [
+        {
+          "name": "List Contracts",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/contracts?per_page=15&status=&search=",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "contracts"],
+              "query": [
+                {
+                  "key": "per_page",
+                  "value": "15",
+                  "description": "Items per page (use -1 for all)"
+                },
+                {
+                  "key": "status",
+                  "value": "",
+                  "description": "Filter by status (draft, pending, active, expired, terminated, cancelled)"
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "description": "Search by contract number, ejar_code, tenant name/email"
+                }
+              ]
+            },
+            "description": "Get paginated list of contracts for the current ownership. Ownership is taken from cookie (ownership.scope middleware)."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Contract",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/contracts/{{contract_uuid}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "contracts", "{{contract_uuid}}"]
+            },
+            "description": "Get full contract details by UUID (includes units, tenant, ownership, financial fields, documents, invoices)."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Contract",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "tenant_id",
+                  "value": "1",
+                  "type": "text",
+                  "description": "Required: Tenant ID (must belong to current ownership)"
+                },
+                {
+                  "key": "number",
+                  "value": "CNT-2025-0001",
+                  "type": "text",
+                  "description": "Required: Contract number (unique per ownership)"
+                },
+                {
+                  "key": "ejar_code",
+                  "value": "EJAR-2025-001234",
+                  "type": "text",
+                  "description": "Optional: Ejar platform registration code"
+                },
+                {
+                  "key": "start",
+                  "value": "2025-01-01",
+                  "type": "text",
+                  "description": "Required: Start date (YYYY-MM-DD)"
+                },
+                {
+                  "key": "end",
+                  "value": "2025-12-31",
+                  "type": "text",
+                  "description": "Required: End date (YYYY-MM-DD, must be after start)"
+                },
+                {
+                  "key": "rent",
+                  "value": "120000",
+                  "type": "text",
+                  "description": "Required: Main rent amount (legacy, usually yearly)"
+                },
+                {
+                  "key": "base_rent",
+                  "value": "120000",
+                  "type": "text",
+                  "description": "Optional: Base yearly rent (sum of per-unit rents). If omitted and units[*].rent_amount provided, will be auto-calculated."
+                },
+                {
+                  "key": "rent_fees",
+                  "value": "5000",
+                  "type": "text",
+                  "description": "Optional: Rent fees / admin fees (yearly)"
+                },
+                {
+                  "key": "vat_amount",
+                  "value": "18750",
+                  "type": "text",
+                  "description": "Optional: VAT amount"
+                },
+                {
+                  "key": "total_rent",
+                  "value": "143750",
+                  "type": "text",
+                  "description": "Optional: Total rent (base_rent + rent_fees + vat_amount). If omitted, will be auto-calculated when possible."
+                },
+                {
+                  "key": "previous_balance",
+                  "value": "0",
+                  "type": "text",
+                  "description": "Optional: Previous balance from expired contract"
+                },
+                {
+                  "key": "payment_frequency",
+                  "value": "monthly",
+                  "type": "text",
+                  "description": "Optional: Payment frequency (monthly, quarterly, yearly, weekly)"
+                },
+                {
+                  "key": "deposit",
+                  "value": "20000",
+                  "type": "text",
+                  "description": "Optional: Deposit amount"
+                },
+                {
+                  "key": "deposit_status",
+                  "value": "pending",
+                  "type": "text",
+                  "description": "Optional: Deposit status (pending, paid, refunded, forfeited)"
+                },
+                {
+                  "key": "status",
+                  "value": "draft",
+                  "type": "text",
+                  "description": "⚠️ IGNORED: Status is never accepted from request. System automatically sets status based on settings (default_contract_status and contract_approval_required)."
+                },
+                {
+                  "key": "ejar_pdf",
+                  "type": "file",
+                  "src": [],
+                  "description": "Optional: Ejar platform contract PDF file"
+                },
+                {
+                  "key": "units[0][unit_id]",
+                  "value": "10",
+                  "type": "text",
+                  "description": "Required: Unit ID (first unit)"
+                },
+                {
+                  "key": "units[0][rent_amount]",
+                  "value": "60000",
+                  "type": "text",
+                  "description": "Optional: Per-unit rent amount"
+                },
+                {
+                  "key": "units[0][notes]",
+                  "value": "محل 10 - الدور الأرضي",
+                  "type": "text",
+                  "description": "Optional: Notes for this unit"
+                },
+                {
+                  "key": "units[1][unit_id]",
+                  "value": "11",
+                  "type": "text",
+                  "description": "Required: Unit ID (second unit)"
+                },
+                {
+                  "key": "units[1][rent_amount]",
+                  "value": "60000",
+                  "type": "text",
+                  "description": "Optional: Per-unit rent amount"
+                },
+                {
+                  "key": "units[1][notes]",
+                  "value": "محل 11 - الدور الأرضي",
+                  "type": "text",
+                  "description": "Optional: Notes for this unit"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/contracts",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "contracts"]
+            },
+            "description": "Create a new contract with multiple units, per-unit rent, financial breakdown, and optional Ejar PDF. Use multipart/form-data."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Contract",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "number",
+                  "value": "CNT-2025-0001-REV1",
+                  "type": "text",
+                  "description": "Optional: New contract number"
+                },
+                {
+                  "key": "status",
+                  "value": "pending",
+                  "type": "text",
+                  "description": "⚠️ RESTRICTED: Can only be 'draft' or 'pending'. Cannot set to 'active' (use approve endpoint). Cannot edit active contracts."
+                },
+                {
+                  "key": "base_rent",
+                  "value": "130000",
+                  "type": "text",
+                  "description": "Optional: Update base rent"
+                },
+                {
+                  "key": "rent_fees",
+                  "value": "6000",
+                  "type": "text",
+                  "description": "Optional: Update fees"
+                },
+                {
+                  "key": "vat_amount",
+                  "value": "20400",
+                  "type": "text",
+                  "description": "Optional: Update VAT"
+                },
+                {
+                  "key": "total_rent",
+                  "value": "156400",
+                  "type": "text",
+                  "description": "Optional: Update total rent"
+                },
+                {
+                  "key": "previous_balance",
+                  "value": "5000",
+                  "type": "text",
+                  "description": "Optional: Previous balance from old contract"
+                },
+                {
+                  "key": "ejar_pdf",
+                  "type": "file",
+                  "src": [],
+                  "description": "Optional: Replace existing Ejar PDF"
+                },
+                {
+                  "key": "units[0][unit_id]",
+                  "value": "10",
+                  "type": "text",
+                  "description": "Optional: If units array sent, full set will be resynced"
+                },
+                {
+                  "key": "units[0][rent_amount]",
+                  "value": "65000",
+                  "type": "text",
+                  "description": "Optional: Updated per-unit rent"
+                },
+                {
+                  "key": "units[0][notes]",
+                  "value": "محل 10 - تعديل الإيجار",
+                  "type": "text",
+                  "description": "Optional: Updated notes"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/contracts/{{contract_uuid}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "contracts", "{{contract_uuid}}"]
+            },
+            "description": "Update existing contract. Any field omitted will not be changed. If units[] is sent, pivot and per-unit rent/notes will be resynced."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Contract",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/contracts/{{contract_uuid}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "contracts", "{{contract_uuid}}"]
+            },
+            "description": "Delete a contract by UUID."
+          },
+          "response": []
+        },
+        {
+          "name": "Approve Contract",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/contracts/{{contract_uuid}}/approve",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "contracts", "{{contract_uuid}}", "approve"]
+            },
+            "description": "Approve contract and mark it as active. Only authorized users with 'contracts.approve' permission can call this.\n\n**Requirements:**\n- Contract status must be 'pending' or 'draft'\n- Cannot approve already active contracts\n- Cannot approve cancelled contracts\n\n**What Happens:**\n- Status changes to 'active'\n- Units are marked as 'rented'\n- Notifications are sent\n- 'approved_by' field is set to current user"
+          },
+          "response": []
+        },
+        {
+          "name": "Cancel Contract",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Optional cancellation reason (max 500 characters)\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/contracts/{{contract_uuid}}/cancel",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "contracts", "{{contract_uuid}}", "cancel"]
+            },
+            "description": "Cancel a contract that hasn't been activated yet.\n\n**Requirements:**\n- Contract status must be 'pending' or 'draft' only\n- Requires 'contracts.terminate' permission\n- Optional 'reason' field (max 500 characters)\n\n**What Happens:**\n- Status changes to 'cancelled'\n- Units are released (set to 'available')\n- Notifications are sent\n\n**Cannot Cancel:**\n- Active contracts (use terminate instead)\n- Already cancelled contracts\n- Terminated contracts\n- Expired contracts"
+          },
+          "response": []
+        },
+        {
+          "name": "Terminate Contract",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Optional termination reason (max 500 characters)\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/contracts/{{contract_uuid}}/terminate",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "contracts", "{{contract_uuid}}", "terminate"]
+            },
+            "description": "Terminate an active contract (ends it before expiration).\n\n**Requirements:**\n- Contract status must be 'active' only\n- Requires 'contracts.terminate' permission\n- Optional 'reason' field (max 500 characters)\n\n**What Happens:**\n- Status changes to 'terminated'\n- Units are released (set to 'available')\n- Notifications are sent\n\n**Cannot Terminate:**\n- Draft contracts (use cancel instead)\n- Pending contracts (use cancel instead)\n- Already cancelled contracts\n- Already terminated contracts\n- Expired contracts"
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000",
+      "type": "string"
+    },
+    {
+      "key": "access_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "contract_uuid",
+      "value": "00000000-0000-0000-0000-000000000000",
+      "type": "string"
+    }
+  ]
+}
+
+

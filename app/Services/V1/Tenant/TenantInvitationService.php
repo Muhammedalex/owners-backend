@@ -292,6 +292,8 @@ class TenantInvitationService
                 'commercial_registration_expiry' => $registrationData['commercial_registration_expiry'] ?? null,
                 'commercial_owner_name' => $registrationData['commercial_owner_name'] ?? null,
                 'municipality_license_number' => $registrationData['municipality_license_number'] ?? null,
+                'activity_name' => $registrationData['activity_name'] ?? null,
+                'activity_type' => $registrationData['activity_type'] ?? null,
                 'emergency_name' => $registrationData['emergency_name'] ?? null,
                 'emergency_phone' => $registrationData['emergency_phone'] ?? null,
                 'emergency_relation' => $registrationData['emergency_relation'] ?? null,

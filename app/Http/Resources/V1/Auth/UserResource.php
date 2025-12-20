@@ -70,7 +70,31 @@ class UserResource extends JsonResource
                     return [
                         'uuid' => $ownership->uuid,
                         'name' => $ownership->name,
+                        'legal' => $ownership->legal,
+                        'type' => $ownership->type,
+                        'ownership_type' => $ownership->ownership_type,
+                        'registration' => $ownership->registration,
+                        'tax_id' => $ownership->tax_id,
+                        'street' => $ownership->street,
+                        'city' => $ownership->city,
+                        'state' => $ownership->state,
+                        'country' => $ownership->country,
+                        'zip_code' => $ownership->zip_code,
+                        'email' => $ownership->email,
+                        'phone' => $ownership->phone,
+                        'active' => $ownership->active,
                         'default' => $ownership->pivot->default ?? false,
+                        'settings' => $this->when($ownership->relationLoaded('settings'), function () use ($ownership) {
+                            return $ownership->settings->map(function ($setting) {
+                                return [
+                                    'key' => $setting->key,
+                                    'value' => $setting->value,
+                                    'value_type' => $setting->value_type,
+                                    'group' => $setting->group,
+                                    'description' => $setting->description,
+                                ];
+                            });
+                        }),
                     ];
                 });
             }),

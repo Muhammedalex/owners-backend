@@ -29,9 +29,11 @@ Route::prefix('contracts')->name('v1.contracts.')->middleware(['auth:sanctum', '
     Route::get('/', [ContractController::class, 'index'])->name('index');
     Route::post('/', [ContractController::class, 'store'])->name('store');
     Route::get('/{contract:uuid}', [ContractController::class, 'show'])->name('show');
-    Route::put('/{contract:uuid}', [ContractController::class, 'update'])->name('update');
+    Route::post('/{contract:uuid}', [ContractController::class, 'update'])->name('update');
     Route::patch('/{contract:uuid}', [ContractController::class, 'update'])->name('update.patch');
     Route::delete('/{contract:uuid}', [ContractController::class, 'destroy'])->name('destroy');
     Route::post('/{contract:uuid}/approve', [ContractController::class, 'approve'])->name('approve');
+    Route::post('/{contract:uuid}/cancel', [ContractController::class, 'cancel'])->name('cancel');
+    Route::post('/{contract:uuid}/terminate', [ContractController::class, 'terminate'])->name('terminate');
 });
 

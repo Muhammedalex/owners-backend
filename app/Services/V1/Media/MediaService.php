@@ -99,6 +99,34 @@ class MediaService
     }
 
     /**
+     * Download a media file.
+     */
+    public function download(MediaFile $mediaFile): \Symfony\Component\HttpFoundation\BinaryFileResponse
+    {
+        if (!Storage::disk('public')->exists($mediaFile->path)) {
+            abort(404, 'Media file not found');
+        }
+
+        $fileName = $mediaFile->name ?? ($mediaFile->title ?? 'media_file') . '.' . pathinfo($mediaFile->path, PATHINFO_EXTENSION);
+        $filePath = Storage::disk('public')->path($mediaFile->path);
+        
+        // Get MIME type from database or detect from file
+        $mimeType = $mediaFile->mime;
+        if (!$mimeType && file_exists($filePath)) {
+            $mimeType = mime_content_type($filePath) ?? 'application/octet-stream';
+        }
+        $mimeType = $mimeType ?? 'application/octet-stream';
+ 
+        return response()->download(
+            $filePath,
+            $fileName,
+            [
+                'Content-Type' => $mimeType,
+            ]
+        );
+    }
+
+    /**
      * Reorder media files.
      */
     public function reorder(array $mediaFileIds): bool

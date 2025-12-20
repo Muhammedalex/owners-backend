@@ -90,5 +90,33 @@ class ContractPolicy
         // Check permission and ownership access
         return $user->can('contracts.approve') && $user->hasOwnership($contract->ownership_id);
     }
+
+    /**
+     * Determine whether the user can cancel the contract.
+     */
+    public function cancel(User $user, Contract $contract): bool
+    {
+        // Super Admin can cancel all
+        if ($user->isSuperAdmin()) {
+            return $user->can('contracts.terminate');
+        }
+
+        // Check permission and ownership access
+        return $user->can('contracts.terminate') && $user->hasOwnership($contract->ownership_id);
+    }
+
+    /**
+     * Determine whether the user can terminate the contract.
+     */
+    public function terminate(User $user, Contract $contract): bool
+    {
+        // Super Admin can terminate all
+        if ($user->isSuperAdmin()) {
+            return $user->can('contracts.terminate');
+        }
+
+        // Check permission and ownership access
+        return $user->can('contracts.terminate') && $user->hasOwnership($contract->ownership_id);
+    }
 }
 

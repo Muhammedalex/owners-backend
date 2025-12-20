@@ -48,6 +48,8 @@ class TenantResource extends JsonResource
                 $this->relationLoaded('mediaFiles'),
                 fn() => $this->getMediaFile('tenant_municipality_license') ? new MediaFileResource($this->getMediaFile('tenant_municipality_license')) : null
             ),
+            'activity_name' => $this->activity_name,
+            'activity_type' => $this->activity_type,
             'emergency_name' => $this->emergency_name,
             'emergency_phone' => $this->emergency_phone,
             'emergency_relation' => $this->emergency_relation,

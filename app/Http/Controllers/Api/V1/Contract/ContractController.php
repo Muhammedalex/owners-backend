@@ -8,6 +8,7 @@ use App\Http\Requests\V1\Contract\UpdateContractRequest;
 use App\Http\Resources\V1\Contract\ContractResource;
 use App\Models\V1\Contract\Contract;
 use App\Services\V1\Contract\ContractService;
+use App\Services\V1\Document\DocumentService;
 use App\Traits\HasLocalizedResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -16,7 +17,8 @@ class ContractController extends Controller
 {
     use HasLocalizedResponse;
     public function __construct(
-        private ContractService $contractService
+        private ContractService $contractService,
+        private DocumentService $documentService
     ) {}
 
     /**
@@ -80,8 +82,29 @@ class ContractController extends Controller
 
         $contract = $this->contractService->create($data);
 
+        // Handle Ejar PDF upload if provided
+        if ($request->hasFile('ejar_pdf')) {
+            $file = $request->file('ejar_pdf');
+
+            // Delete old ejar_pdf if exists (safety in case of re-create scenarios)
+            $oldDoc = $contract->getDocument('ejar_pdf');
+            if ($oldDoc) {
+                $this->documentService->delete($oldDoc);
+            }
+
+            $this->documentService->upload(
+                entity: $contract,
+                file: $file,
+                type: 'ejar_pdf',
+                ownershipId: $ownershipId,
+                title: 'Ejar Contract PDF',
+                uploadedBy: $request->user()->id,
+                description: 'Ejar platform contract PDF'
+            );
+        }
+
         return $this->successResponse(
-            new ContractResource($contract->load(['unit', 'units', 'tenant.user', 'ownership', 'createdBy', 'approvedBy', 'parent', 'children', 'terms'])),
+            new ContractResource($contract->load(['units', 'tenant.user', 'ownership', 'createdBy', 'approvedBy', 'parent', 'children', 'terms', 'documents'])),
             'contracts.created',
             201
         );
@@ -109,7 +132,6 @@ class ContractController extends Controller
 
         // Load all related data
         $contract->load([
-            'unit',
             'units',
             'tenant.user',
             'ownership',
@@ -118,6 +140,7 @@ class ContractController extends Controller
             'parent',
             'children',
             'terms',
+            'documents',
             'invoices.items',
             'invoices.payments',
         ]);
@@ -143,8 +166,29 @@ class ContractController extends Controller
 
         $contract = $this->contractService->update($contract, $data);
 
+        // Handle Ejar PDF upload if provided
+        if ($request->hasFile('ejar_pdf')) {
+            $file = $request->file('ejar_pdf');
+
+            // Delete old ejar_pdf if exists
+            $oldDoc = $contract->getDocument('ejar_pdf');
+            if ($oldDoc) {
+                $this->documentService->delete($oldDoc);
+            }
+
+            $this->documentService->upload(
+                entity: $contract,
+                file: $file,
+                type: 'ejar_pdf',
+                ownershipId: $contract->ownership_id,
+                title: 'Ejar Contract PDF',
+                uploadedBy: $request->user()->id,
+                description: 'Ejar platform contract PDF'
+            );
+        }
+
         return $this->successResponse(
-            new ContractResource($contract->load(['unit', 'units', 'tenant.user', 'ownership', 'createdBy', 'approvedBy', 'parent', 'children', 'terms'])),
+            new ContractResource($contract->load(['units', 'tenant.user', 'ownership', 'createdBy', 'approvedBy', 'parent', 'children', 'terms', 'documents'])),
             'contracts.updated'
         );
     }
@@ -178,8 +222,62 @@ class ContractController extends Controller
         $contract = $this->contractService->approve($contract, $request->user()->id);
 
         return $this->successResponse(
-            new ContractResource($contract->load(['unit', 'tenant.user', 'ownership', 'createdBy', 'approvedBy', 'parent', 'children', 'terms'])),
+            new ContractResource($contract->load(['units', 'tenant.user', 'ownership', 'createdBy', 'approvedBy', 'parent', 'children', 'terms', 'documents'])),
             'contracts.approved'
+        );
+    }
+
+    /**
+     * Cancel contract.
+     * Only works on pending or draft contracts.
+     * Ownership scope is mandatory from middleware.
+     */
+    public function cancel(Request $request, Contract $contract): JsonResponse
+    {
+        $this->authorize('cancel', $contract);
+
+        // Verify ownership scope (MANDATORY)
+        $ownershipId = $request->input('current_ownership_id');
+        if (!$ownershipId || $contract->ownership_id != $ownershipId) {
+            return $this->notFoundResponse('contracts.not_found');
+        }
+
+        $validated = $request->validate([
+            'reason' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $contract = $this->contractService->cancel($contract, $validated['reason'] ?? null);
+
+        return $this->successResponse(
+            new ContractResource($contract->load(['units', 'tenant.user', 'ownership', 'createdBy', 'approvedBy', 'parent', 'children', 'terms', 'documents'])),
+            'contracts.cancelled'
+        );
+    }
+
+    /**
+     * Terminate contract.
+     * Only works on active contracts.
+     * Ownership scope is mandatory from middleware.
+     */
+    public function terminate(Request $request, Contract $contract): JsonResponse
+    {
+        $this->authorize('terminate', $contract);
+
+        // Verify ownership scope (MANDATORY)
+        $ownershipId = $request->input('current_ownership_id');
+        if (!$ownershipId || $contract->ownership_id != $ownershipId) {
+            return $this->notFoundResponse('contracts.not_found');
+        }
+
+        $validated = $request->validate([
+            'reason' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $contract = $this->contractService->terminate($contract, $validated['reason'] ?? null);
+
+        return $this->successResponse(
+            new ContractResource($contract->load(['units', 'tenant.user', 'ownership', 'createdBy', 'approvedBy', 'parent', 'children', 'terms', 'documents'])),
+            'contracts.terminated'
         );
     }
 }

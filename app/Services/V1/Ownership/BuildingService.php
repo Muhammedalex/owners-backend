@@ -5,6 +5,8 @@ namespace App\Services\V1\Ownership;
 use App\Models\V1\Ownership\Building;
 use App\Models\V1\Ownership\Portfolio;
 use App\Repositories\V1\Ownership\Interfaces\BuildingRepositoryInterface;
+use App\Services\V1\Document\DocumentService;
+use App\Services\V1\Media\MediaService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
@@ -12,7 +14,9 @@ use Illuminate\Support\Facades\DB;
 class BuildingService
 {
     public function __construct(
-        private BuildingRepositoryInterface $buildingRepository
+        private BuildingRepositoryInterface $buildingRepository,
+        private MediaService $mediaService,
+        private DocumentService $documentService
     ) {}
 
     /**
@@ -94,6 +98,19 @@ class BuildingService
     public function delete(Building $building): bool
     {
         return DB::transaction(function () use ($building) {
+            // Load relationships
+            $building->load(['mediaFiles', 'documents']);
+
+            // Delete all media files
+            foreach ($building->mediaFiles as $mediaFile) {
+                $this->mediaService->delete($mediaFile);
+            }
+
+            // Delete all documents
+            foreach ($building->documents as $document) {
+                $this->documentService->delete($document);
+            }
+
             return $this->buildingRepository->delete($building);
         });
     }

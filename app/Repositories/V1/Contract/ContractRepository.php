@@ -27,7 +27,7 @@ class ContractRepository implements ContractRepositoryInterface
                             ->orWhere('last', 'like', "%{$search}%")
                             ->orWhere('email', 'like', "%{$search}%");
                     })
-                    ->orWhereHas('unit', function ($unitQuery) use ($search) {
+                    ->orWhereHas('units', function ($unitQuery) use ($search) {
                         $unitQuery->where('name', 'like', "%{$search}%")
                             ->orWhere('number', 'like', "%{$search}%");
                     });
@@ -63,7 +63,7 @@ class ContractRepository implements ContractRepositoryInterface
             $query->whereIn('ownership_id', $filters['ownership_ids']);
         }
 
-        return $query->with(['units', 'tenant.user', 'ownership', 'createdBy', 'approvedBy', 'parent', 'children'])
+        return $query->with(['units', 'tenant.user', 'ownership', 'createdBy', 'approvedBy', 'parent', 'children', 'documents'])
             ->latest()
             ->paginate($perPage);
     }
@@ -86,7 +86,7 @@ class ContractRepository implements ContractRepositoryInterface
                             ->orWhere('last', 'like', "%{$search}%")
                             ->orWhere('email', 'like', "%{$search}%");
                     })
-                    ->orWhereHas('unit', function ($unitQuery) use ($search) {
+                    ->orWhereHas('units', function ($unitQuery) use ($search) {
                         $unitQuery->where('name', 'like', "%{$search}%")
                             ->orWhere('number', 'like', "%{$search}%");
                     });
@@ -122,7 +122,7 @@ class ContractRepository implements ContractRepositoryInterface
             $query->whereIn('ownership_id', $filters['ownership_ids']);
         }
 
-        return $query->with(['units', 'tenant.user', 'ownership', 'createdBy', 'approvedBy', 'parent', 'children'])
+        return $query->with(['units', 'tenant.user', 'ownership', 'createdBy', 'approvedBy', 'parent', 'children', 'documents'])
             ->latest()
             ->get();
     }
@@ -132,7 +132,7 @@ class ContractRepository implements ContractRepositoryInterface
      */
     public function find(int $id): ?Contract
     {
-        return Contract::with(['unit', 'tenant.user', 'ownership', 'createdBy', 'approvedBy', 'parent', 'children', 'terms'])
+        return Contract::with(['units', 'tenant.user', 'ownership', 'createdBy', 'approvedBy', 'parent', 'children', 'terms', 'documents'])
             ->find($id);
     }
 
@@ -142,7 +142,7 @@ class ContractRepository implements ContractRepositoryInterface
     public function findByUuid(string $uuid): ?Contract
     {
         return Contract::where('uuid', $uuid)
-            ->with(['unit', 'units', 'tenant.user', 'ownership', 'createdBy', 'approvedBy', 'parent', 'children', 'terms'])
+            ->with(['units', 'tenant.user', 'ownership', 'createdBy', 'approvedBy', 'parent', 'children', 'terms', 'documents'])
             ->first();
     }
 
@@ -152,7 +152,7 @@ class ContractRepository implements ContractRepositoryInterface
     public function findByNumber(string $number): ?Contract
     {
         return Contract::where('number', $number)
-            ->with(['unit', 'units', 'tenant.user', 'ownership', 'createdBy', 'approvedBy', 'parent', 'children', 'terms'])
+            ->with(['units', 'tenant.user', 'ownership', 'createdBy', 'approvedBy', 'parent', 'children', 'terms', 'documents'])
             ->first();
     }
 
@@ -161,17 +161,14 @@ class ContractRepository implements ContractRepositoryInterface
      */
     public function findActiveContractForUnit(int $unitId): ?Contract
     {
-        // Support both legacy unit_id and new pivot table
+        // Use units pivot table only
         return Contract::where('status', 'active')
             ->where('start', '<=', now())
             ->where('end', '>=', now())
-            ->where(function ($q) use ($unitId) {
-                $q->where('unit_id', $unitId) // legacy
-                  ->orWhereHas('units', function ($uq) use ($unitId) {
-                      $uq->where('units.id', $unitId);
-                  });
+            ->whereHas('units', function ($uq) use ($unitId) {
+                $uq->where('units.id', $unitId);
             })
-            ->with(['unit', 'units', 'tenant.user', 'ownership', 'createdBy', 'approvedBy'])
+            ->with(['units', 'tenant.user', 'ownership', 'createdBy', 'approvedBy', 'documents'])
             ->first();
     }
 
@@ -180,6 +177,11 @@ class ContractRepository implements ContractRepositoryInterface
      */
     public function create(array $data): Contract
     {
+        // Ensure UUID is set if not provided (trait should handle this, but as fallback)
+        if (!isset($data['uuid']) || empty($data['uuid'])) {
+            $data['uuid'] = (string) \Illuminate\Support\Str::uuid();
+        }
+
         return Contract::create($data);
     }
 
@@ -189,7 +191,7 @@ class ContractRepository implements ContractRepositoryInterface
     public function update(Contract $contract, array $data): Contract
     {
         $contract->update($data);
-        return $contract->fresh(['unit', 'tenant.user', 'ownership', 'createdBy', 'approvedBy', 'parent', 'children', 'terms']);
+        return $contract->fresh(['units', 'tenant.user', 'ownership', 'createdBy', 'approvedBy', 'parent', 'children', 'terms', 'documents']);
     }
 
     /**
@@ -209,7 +211,7 @@ class ContractRepository implements ContractRepositoryInterface
             'status' => 'active',
             'approved_by' => $approvedBy,
         ]);
-        return $contract->fresh(['unit', 'tenant.user', 'ownership', 'createdBy', 'approvedBy', 'parent', 'children', 'terms']);
+        return $contract->fresh(['units', 'tenant.user', 'ownership', 'createdBy', 'approvedBy', 'parent', 'children', 'terms', 'documents']);
     }
 }
 

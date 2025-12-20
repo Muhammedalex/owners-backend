@@ -6,6 +6,7 @@ use App\Models\V1\Invoice\Invoice;
 use App\Models\V1\Invoice\InvoiceItem;
 use App\Models\V1\Contract\Contract;
 use App\Repositories\V1\Invoice\Interfaces\InvoiceRepositoryInterface;
+use App\Services\V1\Document\DocumentService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
@@ -13,7 +14,8 @@ use Illuminate\Support\Facades\DB;
 class InvoiceService
 {
     public function __construct(
-        private InvoiceRepositoryInterface $invoiceRepository
+        private InvoiceRepositoryInterface $invoiceRepository,
+        private DocumentService $documentService
     ) {}
 
     /**
@@ -111,6 +113,14 @@ class InvoiceService
     public function delete(Invoice $invoice): bool
     {
         return DB::transaction(function () use ($invoice) {
+            // Load relationships
+            $invoice->load(['documents']);
+
+            // Delete all documents
+            foreach ($invoice->documents as $document) {
+                $this->documentService->delete($document);
+            }
+
             return $this->invoiceRepository->delete($invoice);
         });
     }
@@ -144,7 +154,8 @@ class InvoiceService
     public function generateFromContract(Contract $contract, array $period): Invoice
     {
         return DB::transaction(function () use ($contract, $period) {
-            $amount = $period['amount'] ?? (float) $contract->rent;
+            // Use base_rent instead of legacy rent field
+            $amount = $period['amount'] ?? (float) ($contract->base_rent ?? 0);
             $taxRate = $period['tax_rate'] ?? 15.00;
 
             $invoice = $this->create([
@@ -176,14 +187,15 @@ class InvoiceService
         $units = $contract->relationLoaded('units') ? $contract->units : $contract->units()->get();
 
         if ($units->isEmpty()) {
-            // Fallback: single item based on contract rent
+            // Fallback: single item based on contract base_rent
+            $baseRent = (float) ($contract->base_rent ?? 0);
             InvoiceItem::create([
                 'invoice_id' => $invoice->id,
                 'type' => 'rent',
                 'description' => 'Rent for contract #' . $contract->number,
                 'quantity' => 1,
-                'unit_price' => $contract->rent,
-                'total' => $contract->rent,
+                'unit_price' => $baseRent,
+                'total' => $baseRent,
             ]);
             return;
         }
@@ -191,7 +203,11 @@ class InvoiceService
         // If multiple units: one item per unit (using pivot rent_amount when available)
         foreach ($units as $unit) {
             $pivotRent = $unit->pivot?->rent_amount;
-            $unitRent = $pivotRent !== null ? (float) $pivotRent : (float) $contract->rent;
+            // Fallback to base_rent divided by units count if pivot rent not available
+            $fallbackRent = $pivotRent !== null 
+                ? (float) $pivotRent 
+                : (float) (($contract->base_rent ?? 0) / max($units->count(), 1));
+            $unitRent = $pivotRent !== null ? (float) $pivotRent : $fallbackRent;
 
             InvoiceItem::create([
                 'invoice_id' => $invoice->id,

@@ -4,6 +4,7 @@ namespace App\Services\V1\Mail;
 
 use App\Repositories\V1\Setting\Interfaces\SystemSettingRepositoryInterface;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
 class OwnershipMailService
@@ -25,34 +26,6 @@ class OwnershipMailService
         private SystemSettingRepositoryInterface $settingRepository
     ) {}
 
-    /**
-     * Get mailer name for ownership-specific emails.
-     * Creates a dynamic mailer if ownership has custom SMTP settings.
-     *
-     * @param int|null $ownershipId Ownership ID (null for system-wide)
-     * @return string Mailer name to use
-     */
-    public function getMailerForOwnership(?int $ownershipId): string
-    {
-        // If no ownership ID, use default system mailer
-        if (!$ownershipId) {
-            return config('mail.default');
-        }
-
-        // Check if ownership has custom mail settings
-        $mailSettings = $this->getOwnershipMailSettings($ownershipId);
-
-        // If no custom settings, use default mailer
-        if (empty($mailSettings) || !$this->hasValidSmtpSettings($mailSettings)) {
-            return config('mail.default');
-        }
-
-        // Create/use dynamic mailer for this ownership
-        $mailerName = "ownership_{$ownershipId}";
-        $this->configureOwnershipMailer($mailerName, $mailSettings);
-
-        return $mailerName;
-    }
 
     /**
      * Get mail settings for a specific ownership.
@@ -102,41 +75,6 @@ class OwnershipMailService
         return true;
     }
 
-    /**
-     * Configure a dynamic mailer for ownership.
-     *
-     * @param string $mailerName
-     * @param array $settings
-     * @return void
-     */
-    private function configureOwnershipMailer(string $mailerName, array $settings): void
-    {
-        // Get default SMTP config as base
-        $defaultConfig = config('mail.mailers.smtp', []);
-
-        // Merge ownership-specific settings
-        $mailerConfig = [
-            'transport' => 'smtp',
-            'host' => $settings['smtp_host'] ?? $defaultConfig['host'] ?? '127.0.0.1',
-            'port' => (int) ($settings['smtp_port'] ?? $defaultConfig['port'] ?? 587),
-            'username' => $settings['smtp_username'] ?? $defaultConfig['username'] ?? null,
-            'password' => $settings['smtp_password'] ?? $defaultConfig['password'] ?? null,
-            'encryption' => $settings['smtp_encryption'] ?? $defaultConfig['encryption'] ?? 'tls',
-            'timeout' => $defaultConfig['timeout'] ?? null,
-            'local_domain' => $defaultConfig['local_domain'] ?? parse_url(config('app.url'), PHP_URL_HOST),
-        ];
-
-        // Dynamically add mailer to config
-        Config::set("mail.mailers.{$mailerName}", $mailerConfig);
-
-        // Set from address/name if provided
-        if (isset($settings['email_from_address'])) {
-            Config::set("mail.from.address", $settings['email_from_address']);
-        }
-        if (isset($settings['email_from_name'])) {
-            Config::set("mail.from.name", $settings['email_from_name']);
-        }
-    }
 
     /**
      * Get typed value from setting based on value_type.
@@ -162,6 +100,7 @@ class OwnershipMailService
 
     /**
      * Send email using ownership-specific mailer.
+     * If mailable implements ShouldQueue, it will be handled by SendOwnershipMailJob.
      *
      * @param int|null $ownershipId
      * @param string $to
@@ -170,8 +109,109 @@ class OwnershipMailService
      */
     public function sendForOwnership(?int $ownershipId, string $to, $mailable): void
     {
-        $mailer = $this->getMailerForOwnership($ownershipId);
-        Mail::mailer($mailer)->to($to)->send($mailable);
+        // Check if mailable implements ShouldQueue
+        $isQueued = $mailable instanceof \Illuminate\Contracts\Queue\ShouldQueue;
+
+        if ($isQueued) {
+            // Dispatch job that will fetch SMTP config in the queue
+            \App\Jobs\SendOwnershipMailJob::dispatch($ownershipId, $to, $mailable);
+        } else {
+            // Send synchronously
+            $mailSettings = $ownershipId ? $this->getOwnershipMailSettings($ownershipId) : [];
+            $hasCustomSettings = !empty($mailSettings) && $this->hasValidSmtpSettings($mailSettings);
+
+            if (!$hasCustomSettings) {
+                // No custom settings - use default mailer
+                Mail::to($to)->send($mailable);
+                return;
+            }
+
+            // Send with custom config
+            $customSmtpConfig = $this->buildSmtpConfig($mailSettings);
+            $customFromAddress = $mailSettings['email_from_address'] ?? null;
+            $customFromName = $mailSettings['email_from_name'] ?? null;
+            $this->sendSynchronously($to, $mailable, $customSmtpConfig, $customFromAddress, $customFromName);
+        }
+    }
+
+    /**
+     * Build SMTP configuration from settings.
+     *
+     * @param array $settings
+     * @return array
+     */
+    private function buildSmtpConfig(array $settings): array
+    {
+        $defaultConfig = config('mail.mailers.smtp', []);
+        $port = (int) ($settings['smtp_port'] ?? $defaultConfig['port'] ?? 587);
+        
+        // Auto-detect encryption based on port
+        $encryption = $settings['smtp_encryption'] ?? null;
+        if ($port === 465 && ($encryption === 'tls' || !$encryption)) {
+            $encryption = 'ssl';
+        } elseif ($port === 587 && ($encryption === 'ssl' || !$encryption)) {
+            $encryption = 'tls';
+        } elseif (!$encryption) {
+            $encryption = 'tls';
+        }
+
+        return [
+            'transport' => 'smtp',
+            'host' => $settings['smtp_host'] ?? $defaultConfig['host'] ?? '127.0.0.1',
+            'port' => $port,
+            'username' => $settings['smtp_username'] ?? $defaultConfig['username'] ?? null,
+            'password' => $settings['smtp_password'] ?? $defaultConfig['password'] ?? null,
+            'encryption' => $encryption,
+            'timeout' => $defaultConfig['timeout'] ?? null,
+            'local_domain' => $defaultConfig['local_domain'] ?? parse_url(config('app.url'), PHP_URL_HOST),
+        ];
+    }
+
+    /**
+     * Send email synchronously with custom config.
+     *
+     * @param string $to
+     * @param \Illuminate\Mail\Mailable $mailable
+     * @param array $customSmtpConfig
+     * @param string|null $customFromAddress
+     * @param string|null $customFromName
+     * @return void
+     */
+    private function sendSynchronously(
+        string $to,
+        $mailable,
+        array $customSmtpConfig,
+        ?string $customFromAddress = null,
+        ?string $customFromName = null
+    ): void {
+        $originalSmtpConfig = config('mail.mailers.smtp');
+        $originalFromAddress = config('mail.from.address');
+        $originalFromName = config('mail.from.name');
+
+        try {
+            Config::set('mail.mailers.smtp', $customSmtpConfig);
+            if ($customFromAddress) {
+                Config::set('mail.from.address', $customFromAddress);
+            }
+            if ($customFromName) {
+                Config::set('mail.from.name', $customFromName);
+            }
+
+            app('mail.manager')->forgetMailers();
+            Mail::mailer('smtp')->to($to)->send($mailable);
+        } catch (\Exception $e) {
+            Log::error('Failed to send email', [
+                'to' => $to,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            throw $e;
+        } finally {
+            Config::set('mail.mailers.smtp', $originalSmtpConfig);
+            Config::set('mail.from.address', $originalFromAddress);
+            Config::set('mail.from.name', $originalFromName);
+            app('mail.manager')->forgetMailers();
+        }
     }
 }
 
