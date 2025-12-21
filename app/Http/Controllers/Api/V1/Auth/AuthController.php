@@ -9,17 +9,23 @@ use App\Http\Requests\V1\Auth\RefreshTokenRequest;
 use App\Http\Requests\V1\Auth\RegisterRequest;
 use App\Http\Requests\V1\Auth\ResetPasswordRequest;
 use App\Http\Requests\V1\Auth\VerifyEmailRequest;
+use App\Http\Requests\V1\Auth\VerifyOtpRequest;
 use App\Http\Resources\V1\Auth\UserResource;
 use App\Services\V1\Auth\AuthService;
+use App\Services\V1\Auth\OtpService;
+use App\Repositories\V1\Auth\Interfaces\UserRepositoryInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
     public function __construct(
-        private AuthService $authService
+        private AuthService $authService,
+        private OtpService $otpService,
+        private UserRepositoryInterface $userRepository
     ) {}
 
     /**
@@ -62,10 +68,68 @@ class AuthController extends Controller
     public function login(LoginRequest $request): JsonResponse
     {
         try {
-            $result = $this->authService->login(
-                $request->only(['email', 'phone', 'password']),
-                $request->input('device_name')
-            );
+            $phone = $request->input('phone');
+            $email = $request->input('email');
+            $password = $request->input('password');
+            $otp = $request->input('otp');
+            $sessionId = $request->input('session_id');
+
+            // If OTP is provided, verify and login with OTP
+            if ($otp && $sessionId) {
+                $identifier = $phone ?? $email;
+                if (!$identifier) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Phone or email is required for OTP login.',
+                    ], 422);
+                }
+
+                // Verify OTP
+                $verified = $this->otpService->verify(
+                    phone: $phone,
+                    email: $email,
+                    otp: $otp,
+                    purpose: 'login',
+                    sessionId: $sessionId
+                );
+
+                if (!$verified) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Invalid or expired OTP.',
+                    ], 401);
+                }
+
+                // Login with OTP (no password required)
+                $result = $this->authService->loginWithOtp(
+                    phone: $phone,
+                    email: $email,
+                    deviceName: $request->input('device_name')
+                );
+            }
+            // If phone is provided without password, send OTP instead
+            elseif ($phone && !$password) {
+                // Generate and send OTP
+                $result = $this->otpService->generateAndSend(
+                    phone: $phone,
+                    email: null,
+                    purpose: 'login'
+                );
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'OTP sent to your phone. Please verify to continue.',
+                    'data' => $result, // Contains session_id
+                    'requires_otp' => true,
+                ]);
+            }
+            // Normal login with password
+            else {
+                $result = $this->authService->login(
+                    $request->only(['email', 'phone', 'password']),
+                    $request->input('device_name')
+                );
+            }
             
             // Ensure refresh_token exists in result
             if (!isset($result['tokens']['refresh_token']) || empty($result['tokens']['refresh_token'])) {
@@ -294,61 +358,169 @@ class AuthController extends Controller
     }
 
     /**
-     * Send password reset link.
+     * Send password reset OTP via Email or SMS.
      */
     public function forgotPassword(ForgotPasswordRequest $request): JsonResponse
     {
         try {
-            $status = Password::sendResetLink(
-                $request->only('email')
+            $email = $request->input('email');
+            $phone = $request->input('phone');
+
+            // Generate and send OTP
+            $result = $this->otpService->generateAndSend(
+                phone: $phone,
+                email: $email,
+                purpose: 'forgot_password'
             );
 
-            if ($status !== Password::RESET_LINK_SENT) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Unable to send reset link.',
-                ], 400);
-            }
+            $message = $phone 
+                ? 'Password reset OTP sent to your phone.'
+                : 'Password reset OTP sent to your email.';
 
             return response()->json([
                 'success' => true,
-                'message' => 'Password reset link sent to your email.',
+                'message' => $message,
+                'data' => $result,
             ]);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed.',
+                'errors' => $e->errors(),
+            ], 422);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to send reset link.',
+                'message' => 'Failed to send OTP.',
                 'error' => $e->getMessage(),
             ], 500);
         }
     }
 
     /**
-     * Reset password.
+     * Verify OTP before allowing password reset or login.
      */
-    public function resetPassword(ResetPasswordRequest $request): JsonResponse
+    public function verifyOtp(VerifyOtpRequest $request): JsonResponse
     {
         try {
-            $status = Password::reset(
-                $request->only('email', 'password', 'password_confirmation', 'token'),
-                function ($user, $password) {
-                    $user->forceFill([
-                        'password' => \Illuminate\Support\Facades\Hash::make($password),
-                    ])->save();
-                }
+            $email = $request->input('email');
+            $phone = $request->input('phone');
+            $otp = $request->input('otp');
+            $sessionId = $request->input('session_id');
+            $purpose = $request->input('purpose', 'forgot_password'); // Default to forgot_password for backward compatibility
+
+            // Verify OTP
+            $verified = $this->otpService->verify(
+                phone: $phone,
+                email: $email,
+                otp: $otp,
+                purpose: $purpose,
+                sessionId: $sessionId
             );
 
-            if ($status !== Password::PASSWORD_RESET) {
+            if (!$verified) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Unable to reset password.',
-                ], 400);
+                    'message' => 'Invalid or expired OTP.',
+                ], 401);
             }
 
             return response()->json([
                 'success' => true,
-                'message' => 'Password reset successfully.',
+                'message' => 'OTP verified successfully.',
             ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'OTP verification failed.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Reset password using OTP or Token.
+     */
+    public function resetPassword(ResetPasswordRequest $request): JsonResponse
+    {
+        try {
+            $email = $request->input('email');
+            $phone = $request->input('phone');
+            $otp = $request->input('otp');
+            $token = $request->input('token');
+            $password = $request->input('password');
+            $sessionId = $request->input('session_id');
+
+            // OTP-based reset (new method)
+            if ($otp) {
+                // Verify OTP (allow already verified OTPs since it was verified in verifyOtp endpoint)
+                $verified = $this->otpService->verify(
+                    phone: $phone,
+                    email: $email,
+                    otp: $otp,
+                    purpose: 'forgot_password',
+                    sessionId: $sessionId,
+                    allowVerified: true
+                );
+
+                if (!$verified) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Invalid or expired OTP.',
+                    ], 401);
+                }
+
+                // Find user
+                $user = $phone 
+                    ? $this->userRepository->findByPhone($phone)
+                    : $this->userRepository->findByEmail($email);
+
+                if (!$user) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'User not found.',
+                    ], 404);
+                }
+
+                // Reset password
+                $user->forceFill([
+                    'password' => Hash::make($password),
+                ])->save();
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Password reset successfully.',
+                ]);
+            }
+
+            // Token-based reset (legacy email method)
+            if ($token && $email) {
+                $status = Password::reset(
+                    $request->only('email', 'password', 'password_confirmation', 'token'),
+                    function ($user, $password) {
+                        $user->forceFill([
+                            'password' => Hash::make($password),
+                        ])->save();
+                    }
+                );
+
+                if ($status !== Password::PASSWORD_RESET) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Unable to reset password.',
+                    ], 400);
+                }
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Password reset successfully.',
+                ]);
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Either OTP or token must be provided.',
+            ], 400);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,

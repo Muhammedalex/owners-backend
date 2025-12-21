@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Log;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
 
@@ -215,17 +216,33 @@ class User extends Authenticatable implements MustVerifyEmail
     public function getDefaultOwnership(): ?Ownership
     {
         // First, try to find mapping with default flag set to true
+        // Load ownership relationship explicitly to avoid lazy loading issues
         $mapping = $this->ownershipMappings()
+            ->with('ownership')
             ->where('default', true)
             ->first();
 
         // If no default mapping found, get the first mapping
         if (!$mapping) {
             $mapping = $this->ownershipMappings()
+                ->with('ownership')
                 ->first();
         }
 
-        return $mapping ? $mapping->ownership : null;
+        // Log for debugging
+        if (app()->environment(['local', 'testing'])) {
+            Log::info('getDefaultOwnership debug', [
+                'user_id' => $this->id,
+                'mapping_exists' => $mapping !== null,
+                'mapping_id' => $mapping?->id,
+                'ownership_id' => $mapping?->ownership_id,
+                'is_default' => $mapping?->default,
+                'ownership_loaded' => $mapping && $mapping->relationLoaded('ownership'),
+                'ownership_id_from_relation' => $mapping?->ownership?->id,
+            ]);
+        }
+
+        return $mapping?->ownership;
     }
 
     /**

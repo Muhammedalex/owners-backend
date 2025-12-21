@@ -15,11 +15,12 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::prefix('auth')->name('v1.auth.')->group(function () {
-    // Public routes
+    // Public routes (no authentication required)
     Route::post('/register', [AuthController::class, 'register'])->name('register');
     Route::post('/login', [AuthController::class, 'login'])->name('login');
     Route::post('/refresh', [AuthController::class, 'refresh'])->name('refresh');
     Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->name('forgot-password');
+    Route::post('/verify-otp', [AuthController::class, 'verifyOtp'])->name('verify-otp');
     Route::post('/reset-password', [AuthController::class, 'resetPassword'])->name('reset-password');
     Route::get('/verify-email/{id}/{hash}', [AuthController::class, 'verifyEmail'])
         ->name('verify-email');

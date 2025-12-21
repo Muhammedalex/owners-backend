@@ -4,7 +4,7 @@ namespace App\Http\Requests\V1\Auth;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class ForgotPasswordRequest extends FormRequest
+class VerifyOtpRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -22,8 +22,11 @@ class ForgotPasswordRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'email' => ['required_without:phone', 'nullable', 'email', 'exists:users,email'],
-            'phone' => ['required_without:email', 'nullable', 'string', new \App\Rules\SaudiPhoneNumber(), 'exists:users,phone'],
+            'email' => ['required_without:phone', 'nullable', 'email'],
+            'phone' => ['required_without:email', 'nullable', 'string', new \App\Rules\SaudiPhoneNumber()],
+            'otp' => ['required', 'string', 'size:6', 'regex:/^[0-9]{6}$/'],
+            'session_id' => ['required', 'string'],
+            'purpose' => ['nullable', 'string', 'in:login,forgot_password'], // Allow login or forgot_password
         ];
     }
 

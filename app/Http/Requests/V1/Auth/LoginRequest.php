@@ -34,7 +34,16 @@ class LoginRequest extends FormRequest
                 'nullable',
                 new SaudiPhoneNumber(),
             ],
-            'password' => ['required', 'string'],
+            // Password is required for email login, optional for phone login (OTP can be used instead)
+            'password' => [
+                'required_without_all:phone,otp',
+                'required_with:email',
+                'nullable',
+                'string',
+            ],
+            // OTP login fields
+            'otp' => ['required_with:session_id', 'nullable', 'string', 'size:6', 'regex:/^[0-9]{6}$/'],
+            'session_id' => ['required_with:otp', 'nullable', 'string'],
             'device_name' => ['nullable', 'string', 'max:255'],
         ];
     }
@@ -60,7 +69,8 @@ class LoginRequest extends FormRequest
         return [
             'email.required_without' => __('messages.validation.required', ['attribute' => __('messages.attributes.email')]),
             'phone.required_without' => __('messages.validation.required', ['attribute' => __('messages.attributes.phone')]),
-            'password.required' => __('messages.validation.required', ['attribute' => __('messages.attributes.password')]),
+            'password.required_without' => __('messages.validation.required', ['attribute' => __('messages.attributes.password')]),
+            'password.required_with' => __('messages.validation.required', ['attribute' => __('messages.attributes.password')]),
             'email.email' => __('messages.validation.email', ['attribute' => __('messages.attributes.email')]),
         ];
     }

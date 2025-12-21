@@ -112,6 +112,61 @@ class AuthService
     }
 
     /**
+     * Login user with OTP (no password required).
+     */
+    public function loginWithOtp(?string $phone = null, ?string $email = null, string $deviceName = null): array
+    {
+        $identifier = $phone ?? $email;
+
+        if (!$identifier) {
+            throw ValidationException::withMessages([
+                'identifier' => ['Phone or email is required.'],
+            ]);
+        }
+
+        // Find user by email or phone
+        $user = $phone 
+            ? $this->userRepository->findByPhone($phone)
+            : $this->userRepository->findByEmail($email);
+
+        if (!$user) {
+            throw new AuthenticationException('User not found.');
+        }
+
+        // Check if user is active
+        if (!$user->isActive()) {
+            throw new AuthenticationException('Your account has been deactivated.');
+        }
+
+        // Reset attempts and record login
+        $key = 'login:' . $identifier;
+        RateLimiter::clear($key);
+        $user->resetAttempts();
+        $user->recordLogin();
+
+        // Get default ownership UUID (if user is not Super Admin)
+        $defaultOwnershipUuid = null;
+        if (!$user->isSuperAdmin()) {
+            $defaultOwnership = $user->getDefaultOwnership();
+            if ($defaultOwnership) {
+                $defaultOwnershipUuid = $defaultOwnership->uuid;
+            } else {
+                // Non-Super Admin users must have at least one ownership
+                throw new AuthenticationException('Your account is not linked to any ownership. Please contact your administrator.');
+            }
+        }
+
+        // Generate tokens
+        $tokens = $user->generateTokens($deviceName);
+
+        return [
+            'user' => $user,
+            'tokens' => $tokens,
+            'default_ownership_uuid' => $defaultOwnershipUuid,
+        ];
+    }
+
+    /**
      * Refresh access token.
      */
     public function refreshToken(string $refreshToken): array

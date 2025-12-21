@@ -213,5 +213,96 @@ class OwnershipMailService
             app('mail.manager')->forgetMailers();
         }
     }
+
+    /**
+     * Send OTP email.
+     *
+     * @param string $email
+     * @param string $otp
+     * @param string $purpose
+     * @param int|null $ownershipId Optional ownership ID for logging purposes
+     * @return void
+     */
+    public function sendOtpEmail(string $email, string $otp, string $purpose, ?int $ownershipId = null): void
+    {
+        // Get setting source for logging
+        $settingsSource = $this->getEmailSettingSource($ownershipId);
+
+        // In local/testing environment, skip actual sending and just log
+        // if (app()->environment(['local', 'testing'])) {
+        //     Log::info('Email OTP (local environment - not sent)', [
+        //         'email' => $email,
+        //         'purpose' => $purpose,
+        //         'otp' => $otp,
+        //         'ownership_id' => $ownershipId,
+        //         'settings_source' => $settingsSource,
+        //         'environment' => app()->environment(),
+        //         'note' => 'In local environment, OTP is always 123456. Email is not sent.',
+        //     ]);
+        //     return;
+        // }
+
+        try {
+            $mailable = new \App\Mail\V1\Auth\ForgotPasswordOtpMail($otp, $purpose);
+            
+            // System emails use default mailer (no ownership)
+            Mail::to($email)->send($mailable);
+
+            // Log successful send with settings information
+            Log::info('Email OTP sent successfully', [
+                'email' => $email,
+                'purpose' => $purpose,
+                'ownership_id' => $ownershipId,
+                'settings_source' => $settingsSource,
+                'environment' => app()->environment(),
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to send OTP email', [
+                'email' => $email,
+                'purpose' => $purpose,
+                'ownership_id' => $ownershipId,
+                'settings_source' => $settingsSource,
+                'error' => $e->getMessage(),
+                'error_code' => $e->getCode(),
+            ]);
+            throw $e;
+        }
+    }
+
+    /**
+     * Check if email notifications are enabled.
+     * 
+     * @param int|null $ownershipId Optional ownership ID for ownership-specific settings
+     * @return bool
+     */
+    public function isEmailEnabled(?int $ownershipId = null): bool
+    {
+        // Check if email notifications are enabled (ownership-specific or system-wide)
+        // Default to true if setting doesn't exist (backward compatibility)
+        return (bool) $this->settingRepository->getValue('email_notifications_enabled', $ownershipId, true);
+    }
+
+    /**
+     * Get email setting source (ownership-specific or system-wide) for logging.
+     * 
+     * @param int|null $ownershipId Optional ownership ID
+     * @return string
+     */
+    private function getEmailSettingSource(?int $ownershipId = null): string
+    {
+        if ($ownershipId === null) {
+            return 'system-wide';
+        }
+
+        // Check if ownership-specific setting exists
+        $ownershipSetting = $this->settingRepository->findByKey('email_notifications_enabled', $ownershipId);
+        if ($ownershipSetting) {
+            return 'ownership-specific';
+        }
+
+        // Check if system-wide setting exists
+        $systemSetting = $this->settingRepository->findByKey('email_notifications_enabled', null);
+        return $systemSetting ? 'system-wide (fallback)' : 'system-wide (default)';
+    }
 }
 

@@ -93,6 +93,52 @@ class SystemSettingSeeder extends Seeder
                 'group' => 'system',
                 'description' => 'Phone verification required',
             ],
+
+            // Twilio SMS Settings (System-wide)
+            [
+                'key' => 'sms_enabled',
+                'value' => '1',
+                'value_type' => 'boolean',
+                'group' => 'notification',
+                'description' => 'Enable SMS notifications via Twilio',
+            ],
+            [
+                'key' => 'twilio_sid',
+                'value' => 'ACef98a3223f76c31b399cccc278862c69',
+                'value_type' => 'string',
+                'group' => 'notification',
+                'description' => 'Twilio Account SID',
+            ],
+            [
+                'key' => 'twilio_token',
+                'value' => '57484587944fc3b57ed4e59d66abaea2',
+                'value_type' => 'string',
+                'group' => 'notification',
+                'description' => 'Twilio Auth Token',
+            ],
+            [
+                'key' => 'twilio_phone',
+                'value' => '+19788133504',
+                'value_type' => 'string',
+                'group' => 'notification',
+                'description' => 'Twilio phone number for SMS',
+            ],
+
+            // Twilio WhatsApp Settings (System-wide)
+            [
+                'key' => 'whatsapp_enabled',
+                'value' => '0',
+                'value_type' => 'boolean',
+                'group' => 'notification',
+                'description' => 'Enable WhatsApp notifications via Twilio',
+            ],
+            [
+                'key' => 'twilio_whatsapp_phone',
+                'value' => null,
+                'value_type' => 'string',
+                'group' => 'notification',
+                'description' => 'Twilio WhatsApp phone number (leave empty to use twilio_phone)',
+            ],
         ];
 
         foreach ($systemSettings as $setting) {
@@ -613,7 +659,7 @@ class SystemSettingSeeder extends Seeder
             ],
             [
                 'key' => 'sms_notifications_enabled',
-                'value' => '0',
+                'value' => '1',
                 'value_type' => 'boolean',
                 'group' => 'notification',
                 'description' => 'Enable SMS notifications',
@@ -712,6 +758,10 @@ class SystemSettingSeeder extends Seeder
                 'group' => 'notification',
                 'description' => 'From name for ownership emails (leave empty to use system default)',
             ],
+
+            // Twilio SMS Settings (Optional - ownership can override system-wide settings)
+            // Note: System-wide Twilio settings are seeded in seedSystemWideSettings()
+            // Ownership-specific settings can be added here if needed
 
             // Document Settings
             [
