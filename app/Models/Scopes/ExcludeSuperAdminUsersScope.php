@@ -16,15 +16,15 @@ class ExcludeSuperAdminUsersScope implements Scope
     public function apply(Builder $builder, Model $model): void
     {
         // If current user is Super Admin, don't apply the scope (they can see all users)
-        $user = Auth::user();
-        if ($user && $user->isSuperAdmin()) {
-            return;
-        }
-
-        // For non-Super Admin users, exclude users who have the Super Admin role
-        $builder->whereDoesntHave('roles', function ($query) {
-            $query->where('name', 'Super Admin');
-        });
+        // $user = Auth::user();
+        // if ($user && $user->isSuperAdmin()) {
+        //     return;
+        // }
+        
+        // // For non-Super Admin users, exclude users who have the Super Admin role
+        // $builder->whereDoesntHave('roles', function ($query) {
+        //     $query->where('name', 'Super Admin');
+        // });
     }
 }
 
