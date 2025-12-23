@@ -76,19 +76,12 @@ class UserOwnershipMappingController extends Controller
         $data = $request->validated();
         
         // Determine ownership_id:
-        // 1. If Super Admin: must provide ownership_uuid or ownership_id in request
-        // 2. If non-Super Admin: get from middleware (current_ownership_id)
-        if ($isSuperAdmin) {
-            // Super Admin must provide ownership_id or ownership_uuid
-            if (!isset($data['ownership_id']) || empty($data['ownership_id'])) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Ownership ID or UUID is required for Super Admin.',
-                ], 400);
-            }
+        // 1. If ownership_id is provided in request body (from ownership_uuid conversion or direct), use it
+        // 2. Otherwise, get from middleware (current_ownership_id)
+        if (isset($data['ownership_id']) && !empty($data['ownership_id'])) {
             $ownershipId = $data['ownership_id'];
         } else {
-            // Non-Super Admin: get ownership_id from middleware
+            // Get ownership_id from middleware
             $ownershipId = $request->input('current_ownership_id');
             if (!$ownershipId) {
                 return response()->json([

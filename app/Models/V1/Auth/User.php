@@ -5,6 +5,7 @@ namespace App\Models\V1\Auth;
 use App\Models\V1\Ownership\Ownership;
 use App\Models\V1\Ownership\OwnershipBoardMember;
 use App\Models\V1\Ownership\UserOwnershipMapping;
+use App\Models\Scopes\ExcludeSuperAdminUsersScope;
 use App\Notifications\V1\Auth\VerifyEmail;
 use App\Traits\V1\Auth\GeneratesTokens;
 use App\Traits\V1\Auth\HasUuid;
@@ -38,6 +39,24 @@ class User extends Authenticatable implements MustVerifyEmail
     protected static function newFactory()
     {
         return \Database\Factories\UserFactory::new();
+    }
+
+    /**
+     * Apply global scopes.
+     * Excludes Super Admin users from queries for non-Super Admin users.
+     */
+    protected static function booted(): void
+    {
+        static::addGlobalScope(new ExcludeSuperAdminUsersScope());
+    }
+
+    /**
+     * Get users without the global scope (including Super Admin users).
+     * Use this only when you explicitly need to access Super Admin users (e.g., in seeders, admin operations).
+     */
+    public static function withSuperAdmins(): \Illuminate\Database\Eloquent\Builder
+    {
+        return static::withoutGlobalScope(ExcludeSuperAdminUsersScope::class);
     }
 
     /**
