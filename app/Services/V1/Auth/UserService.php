@@ -109,46 +109,69 @@ class UserService
      */
     protected function notifySuperAdminsOfNewUser(User $newUser): void
     {
-        // Get all users with Super Admin role
-        $superAdmins = User::role('Super Admin')->get();
+        try {
+            // Get all users with Super Admin role (bypass scope to ensure we can find Super Admins)
+            $superAdmins = User::withSuperAdmins()->role('Super Admin')->get();
 
-        if ($superAdmins->isEmpty()) {
-            return;
-        }
-
-        // Prepare notification data
-        $userName = trim(($newUser->first ?? '') . ' ' . ($newUser->last ?? ''));
-        $userName = !empty($userName) ? $userName : $newUser->email;
-        
-        $notificationData = [
-            'type' => 'info',
-            'title' => 'New User Registered',
-            'message' => "A new user has been registered: {$userName} ({$newUser->email})",
-            'category' => 'users',
-            'priority' => 1, // High priority
-            'icon' => 'user-plus',
-            'data' => [
-                'user_id' => $newUser->id,
-                'user_uuid' => $newUser->uuid,
-                'user_email' => $newUser->email,
-                'user_name' => $userName,
-                'user_type' => $newUser->type,
-            ],
-            'action_url' => "/users/{$newUser->uuid}",
-            'action_text' => 'View User',
-        ];
-
-        // Send notification to each Super Admin
-        foreach ($superAdmins as $superAdmin) {
-            // Skip if the new user is a Super Admin themselves
-            if ($superAdmin->id === $newUser->id) {
-                continue;
+            if ($superAdmins->isEmpty()) {
+                return;
             }
 
-            $this->notificationService->create([
-                ...$notificationData,
-                'user_id' => $superAdmin->id,
-            ]);
+            // Prepare notification data
+            $userName = trim(($newUser->first ?? '') . ' ' . ($newUser->last ?? ''));
+            $userName = !empty($userName) ? $userName : $newUser->email;
+            
+            $notificationData = [
+                'type' => 'info',
+                'title' => 'New User Registered',
+                'message' => "A new user has been registered: {$userName} ({$newUser->email})",
+                'category' => 'users',
+                'priority' => 1, // High priority
+                'icon' => 'user-plus',
+                'data' => [
+                    'user_id' => $newUser->id,
+                    'user_uuid' => $newUser->uuid,
+                    'user_email' => $newUser->email,
+                    'user_name' => $userName,
+                    'user_type' => $newUser->type,
+                ],
+                'action_url' => "/users/{$newUser->uuid}",
+                'action_text' => 'View User',
+            ];
+
+            // Send notification to each Super Admin
+            foreach ($superAdmins as $superAdmin) {
+                // Skip if the new user is a Super Admin themselves
+                if ($superAdmin->id === $newUser->id) {
+                    continue;
+                }
+
+                try {
+                    $this->notificationService->create([
+                        ...$notificationData,
+                        'user_id' => $superAdmin->id,
+                    ]);
+                } catch (\Throwable $e) {
+                    // Ignore any notification errors - don't let notification failures break user creation
+                    // Log error in development/testing environments only
+                    if (app()->environment(['local', 'testing'])) {
+                        \Illuminate\Support\Facades\Log::warning('Failed to send notification to Super Admin', [
+                            'super_admin_id' => $superAdmin->id,
+                            'new_user_id' => $newUser->id,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            // Ignore any errors in notification process - don't let notification failures break user creation
+            // Log error in development/testing environments only
+            if (app()->environment(['local', 'testing'])) {
+                \Illuminate\Support\Facades\Log::warning('Failed to notify Super Admins of new user', [
+                    'new_user_id' => $newUser->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
         }
     }
 
