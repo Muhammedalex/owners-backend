@@ -273,6 +273,7 @@ class UserService
             'property_manager' => 'Property Manager',
             'maintenance_manager' => 'Maintenance Manager',
             'facility_manager' => 'Facility Manager',
+            'collector' => 'Collector',
         ];
 
         return $typeToRoleMap[$userType] ?? null;

@@ -57,6 +57,7 @@ class UpdateUserRequest extends FormRequest
                     'property_manager',
                     'maintenance_manager',
                     'facility_manager',
+                    'collector',
                 ]),
             ],
             'active' => ['sometimes', 'nullable', 'boolean'],

@@ -41,6 +41,7 @@ class StoreUserRequest extends FormRequest
                     'property_manager',
                     'maintenance_manager',
                     'facility_manager',
+                    'collector',
                 ]),
             ],
             'active' => ['nullable', 'boolean'],
