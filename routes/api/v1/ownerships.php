@@ -21,14 +21,14 @@ use Illuminate\Support\Facades\Route;
 
 // Ownership store route (without ownership.scope middleware)
 Route::prefix('ownerships')->name('v1.ownerships.')->middleware('auth:sanctum')->group(function () {
-    Route::get('/', [OwnershipController::class, 'index'])->name('index');
-
-    Route::post('/', [OwnershipController::class, 'store'])->name('store');
+    
 });
 
 Route::prefix('ownerships')->name('v1.ownerships.')->middleware(['auth:sanctum', 'ownership.scope'])->group(function () {
     // Ownership CRUD
-    
+    Route::get('/', [OwnershipController::class, 'index'])->name('index');
+
+    Route::post('/', [OwnershipController::class, 'store'])->name('store');
     // Board Members (ownership comes from cookie scope) - MUST come before {ownership:uuid} routes
     Route::prefix('board-members')->name('board-members.')->group(function () {
         Route::get('/', [OwnershipBoardMemberController::class, 'index'])->name('index');

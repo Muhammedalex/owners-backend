@@ -56,7 +56,8 @@ class OwnershipService
 
     /**
      * Create a new ownership.
-     * Automatically creates default portfolio and building, and seeds default settings.
+     * Automatically creates default portfolio and building, seeds default settings,
+     * and links all Super Admin users to the ownership.
      */
     public function create(array $data): Ownership
     {
@@ -73,8 +74,44 @@ class OwnershipService
             // Seed default settings for this ownership
             $this->seedDefaultSettings($ownership);
 
+            // Link all Super Admin users to this ownership
+            $this->linkSuperAdminsToOwnership($ownership);
+
             return $ownership;
         });
+    }
+
+    /**
+     * Link all Super Admin users to the ownership.
+     */
+    private function linkSuperAdminsToOwnership(Ownership $ownership): void
+    {
+        $mappingService = app(\App\Services\V1\Ownership\UserOwnershipMappingService::class);
+        $superAdmins = \App\Models\V1\Auth\User::role('Super Admin')->get();
+
+        foreach ($superAdmins as $superAdmin) {
+            try {
+                // Check if mapping already exists
+                $existingMapping = $mappingService->findByUserAndOwnership(
+                    $superAdmin->id,
+                    $ownership->id
+                );
+
+                if (!$existingMapping) {
+                    // Link Super Admin to ownership (set as default if it's their first ownership)
+                    $isFirstOwnership = $superAdmin->ownerships()->count() === 0;
+                    $mappingService->create([
+                        'user_id' => $superAdmin->id,
+                        'ownership_id' => $ownership->id,
+                        'default' => $isFirstOwnership,
+                    ]);
+                }
+            } catch (\Exception $e) {
+                // If mapping already exists or other error, ignore
+                // This can happen if user is already linked to this ownership
+                continue;
+            }
+        }
     }
 
     /**

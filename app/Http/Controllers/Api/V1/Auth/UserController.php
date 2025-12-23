@@ -77,7 +77,7 @@ class UserController extends Controller
 
         $currentUser = $request->user();
         $ownershipId = $request->input('current_ownership_id'); // From ownership.scope middleware
-
+        
         $user = $this->userService->create(
             $request->validated(),
             $currentUser,

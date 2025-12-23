@@ -6,6 +6,7 @@ use App\Models\V1\Auth\Role;
 use App\Repositories\V1\Auth\Interfaces\UserRepositoryInterface;
 use Database\Seeders\V1\Auth\PermissionSeeder;
 use Database\Seeders\V1\Auth\RoleSeeder;
+use Database\Seeders\V1\Ownership\DefaultOwnershipSeeder;
 use Database\Seeders\V1\Setting\SettingModuleSeeder;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -51,6 +52,11 @@ class DatabaseSeeder extends Seeder
         // Step 4: Seed Settings (System-wide settings)
         $this->command->info('Step 4: Seeding settings...');
         $this->call(SettingModuleSeeder::class);
+        $this->command->info('');
+
+        // Step 5: Create Default Ownership and link Super Admin
+        $this->command->info('Step 5: Creating default ownership...');
+        $this->call(DefaultOwnershipSeeder::class);
         $this->command->info('');
 
         $this->command->info('✅ Essential seeding completed!');
