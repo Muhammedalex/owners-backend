@@ -11,6 +11,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class Tenant extends Model
 {
@@ -120,6 +122,33 @@ class Tenant extends Model
     public function scopeWithEmployment($query, string $employment)
     {
         return $query->where('employment', $employment);
+    }
+
+    /**
+     * Scope a query to filter tenants visible to a collector.
+     * Collectors can only see tenants they are assigned to.
+     * If no tenants assigned, collector sees all tenants.
+     */
+    public function scopeForCollector($query, User $collector, int $ownershipId)
+    {
+        $invoiceSettings = app(\App\Services\V1\Invoice\InvoiceSettingService::class);
+        
+        // Check if collector system is enabled
+        if (!$invoiceSettings->isCollectorSystemEnabled($ownershipId)) {
+            return $query->whereRaw('1 = 0'); // Return empty if disabled
+        }
+        
+        // Get assigned tenant IDs
+        $tenantIds = $collector->assignedTenants($ownershipId)->select('tenants.id')->pluck('id');
+        
+        // If no tenants assigned, show all tenants (fallback behavior)
+        if ($tenantIds->isEmpty()) {
+            return $query->where('ownership_id', $ownershipId);
+        }
+        
+        // Filter tenants for assigned tenants only
+        return $query->where('ownership_id', $ownershipId)
+            ->whereIn('id', $tenantIds);
     }
 
     /**

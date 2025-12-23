@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\V1\Invoice\CollectorController;
 use App\Http\Controllers\Api\V1\Invoice\InvoiceController;
 use App\Http\Controllers\Api\V1\Invoice\InvoiceItemController;
 use Illuminate\Support\Facades\Route;
@@ -13,6 +14,16 @@ use Illuminate\Support\Facades\Route;
 | All routes use UUID in route parameters
 |
 */
+
+// Collector routes (MUST come before invoices routes to avoid route conflict)
+// Note: collectorId is a simple integer parameter, not a model binding
+Route::prefix('collectors')->name('v1.collectors.')->middleware(['auth:sanctum', 'ownership.scope'])->group(function () {
+    Route::get('/', [CollectorController::class, 'index'])->name('index');
+    Route::get('/{collectorId}', [CollectorController::class, 'show'])->where('collectorId', '[0-9]+')->name('show');
+    Route::post('/{collectorId}/assign-tenants', [CollectorController::class, 'assignTenants'])->where('collectorId', '[0-9]+')->name('assign-tenants');
+    Route::post('/{collectorId}/unassign-tenants', [CollectorController::class, 'unassignTenants'])->where('collectorId', '[0-9]+')->name('unassign-tenants');
+    Route::get('/{collectorId}/tenants', [CollectorController::class, 'assignedTenants'])->where('collectorId', '[0-9]+')->name('tenants');
+});
 
 Route::prefix('invoices')->name('v1.invoices.')->middleware(['auth:sanctum', 'ownership.scope'])->group(function () {
     // Invoice Items (MUST come before {invoice:uuid} routes to avoid route conflict)
@@ -34,5 +45,6 @@ Route::prefix('invoices')->name('v1.invoices.')->middleware(['auth:sanctum', 'ow
     Route::delete('/{invoice:uuid}', [InvoiceController::class, 'destroy'])->name('destroy');
     Route::post('/{invoice:uuid}/mark-as-paid', [InvoiceController::class, 'markAsPaid'])->name('mark-as-paid');
     Route::post('/{invoice:uuid}/mark-as-sent', [InvoiceController::class, 'markAsSent'])->name('mark-as-sent');
+    Route::post('/{invoice:uuid}/update-status', [InvoiceController::class, 'updateStatus'])->name('update-status');
 });
 

@@ -6,6 +6,7 @@ use App\Models\V1\Auth\Role;
 use App\Models\V1\Auth\User;
 use App\Models\V1\Contract\Contract;
 use App\Models\V1\Contract\ContractTerm;
+use App\Enums\V1\Invoice\InvoiceStatus;
 use App\Models\V1\Invoice\Invoice;
 use App\Models\V1\Invoice\InvoiceItem;
 use App\Models\V1\Ownership\Building;
@@ -17,6 +18,8 @@ use App\Models\V1\Ownership\Unit;
 use App\Models\V1\Ownership\UnitSpecification;
 use App\Models\V1\Payment\Payment;
 use App\Models\V1\Tenant\Tenant;
+use App\Services\V1\Invoice\ContractInvoiceService;
+use Carbon\Carbon;
 use App\Repositories\V1\Auth\Interfaces\UserRepositoryInterface;
 use App\Repositories\V1\Ownership\Interfaces\OwnershipBoardMemberRepositoryInterface;
 use App\Repositories\V1\Ownership\Interfaces\OwnershipRepositoryInterface;
@@ -42,23 +45,39 @@ class BumahrizCenterSeeder extends Seeder
             // Step 1: Get or create Super Admin
             $superAdmin = $this->getOrCreateSuperAdmin();
 
-            // Step 2: Create Ownership (مركز بامحرز)
+            // Step 2: Create Shared Users (if not already created)
+            $sharedUsersSeeder = new SharedUsersSeeder();
+            $sharedUsersSeeder->setCommand($this->command);
+            $sharedUsersSeeder->run();
+
+            // Step 3: Get shared users
+            $userRepository = app(UserRepositoryInterface::class);
+            $owner = $userRepository->findByEmail('salem@owners.com');
+            // Use first 2 tenants for Bumahriz (as originally designed)
+            $tenants = [];
+            for ($i = 1; $i <= 2; $i++) {
+                $tenant = $userRepository->findByEmail("tenant{$i}@owners.com");
+                if ($tenant) {
+                    $tenants[] = $tenant;
+                }
+            }
+
+            // Step 4: Create Ownership (مركز بامحرز)
             $ownership = $this->createOwnership($superAdmin);
 
-            // Step 3: Create Users (1 Owner + 2 Tenants)
-            $owner = $this->createOwner($ownership);
-            $tenants = $this->createTenants($ownership);
+            // Step 5: Map all shared users to this ownership
+            $this->mapUsersToOwnership($ownership, $owner, $tenants);
 
-            // Step 4: Create Property Structure (Portfolio, Building, Floors, Units)
+            // Step 6: Create Property Structure (Portfolio, Building, Floors, Units)
             $this->createPropertyStructure($ownership);
 
-            // Step 5: Create Tenant Records
+            // Step 7: Create Tenant Records
             $this->createTenantRecords($ownership, $tenants);
 
-            // Step 6: Create Contracts
+            // Step 8: Create Contracts
             $this->createContracts($ownership, $tenants);
 
-            // Step 7: Create Invoices and Payments
+            // Step 9: Create Invoices and Payments
             $this->createInvoicesAndPayments($ownership);
 
             $this->command->info('');
@@ -142,58 +161,26 @@ class BumahrizCenterSeeder extends Seeder
     }
 
     /**
-     * Create Owner user (salem@owners.com).
+     * Map all shared users to ownership.
      */
-    private function createOwner(Ownership $ownership): User
+    private function mapUsersToOwnership(Ownership $ownership, User $owner, array $tenants): void
     {
-        $userRepository = app(UserRepositoryInterface::class);
         $mappingRepository = app(UserOwnershipMappingRepositoryInterface::class);
         $boardMemberRepository = app(OwnershipBoardMemberRepositoryInterface::class);
-        $ownerRole = Role::withSystemRoles()->where('name', 'Owner')->first();
+        $userRepository = app(UserRepositoryInterface::class);
 
-        if (!$ownerRole) {
-            $this->command->error('Owner role not found. Please run RoleSeeder first.');
-            throw new \Exception('Owner role not found');
-        }
-
-        // Check if owner already exists
-        $owner = $userRepository->findByEmail('salem@owners.com');
-        if (!$owner) {
-            $owner = $userRepository->create([
-                'uuid' => '550e8400-e29b-41d4-a736-446655440010',
-                'email' => 'salem@owners.com',
-                'password' => 'password',
-                'first' => 'سالم',
-                'last' => 'بامحرز',
-                'company' => 'مركز بامحرز',
-                'phone' => '+966501234567',
-                'type' => 'owner',
-                'active' => true,
-                'email_verified_at' => now(),
-                'timezone' => 'Asia/Riyadh',
-                'locale' => 'ar',
-            ]);
-            $owner->assignRole('Owner');
-            $this->command->info('✓ Created owner: salem@owners.com');
-        } else {
-            if (!$owner->hasRole('Owner')) {
-                $owner->assignRole('Owner');
-            }
-            $this->command->info('✓ Owner already exists: salem@owners.com');
-        }
-
-        // Map owner to ownership
+        // Map owner
         $mapping = $mappingRepository->findByUserAndOwnership($owner->id, $ownership->id);
         if (!$mapping) {
             $mappingRepository->create([
                 'user_id' => $owner->id,
                 'ownership_id' => $ownership->id,
-                'default' => true,
+                'default' => true, // Default for Bumahriz
             ]);
             $this->command->info('  → Mapped owner to ownership');
         }
 
-        // Add as board member
+        // Add owner as board member
         $boardMember = $boardMemberRepository->findByOwnershipAndUser($ownership->id, $owner->id);
         if (!$boardMember) {
             $boardMemberRepository->create([
@@ -206,70 +193,48 @@ class BumahrizCenterSeeder extends Seeder
             $this->command->info('  → Added owner as board member (Chairman)');
         }
 
-        return $owner;
-    }
-
-    /**
-     * Create Tenant users (2 tenants).
-     */
-    private function createTenants(Ownership $ownership): array
-    {
-        $userRepository = app(UserRepositoryInterface::class);
-        $mappingRepository = app(UserOwnershipMappingRepositoryInterface::class);
-
-        $tenantsData = [
-            [
-                'uuid' => '550e8400-e29b-41d4-a716-446655440020',
-                'email' => 'tenant1@bumahriz.com',
-                'first' => 'أحمد',
-                'last' => 'المالكي',
-                'phone' => '+966502345678',
-            ],
-            [
-                'uuid' => '550e8400-e29b-41d4-a716-446655440021',
-                'email' => 'tenant2@bumahriz.com',
-                'first' => 'محمد',
-                'last' => 'الغامدي',
-                'phone' => '+966503456789',
-            ],
+        // Map all role users
+        $roleUsers = [
+            'board.member@owners.com',
+            'moderator@owners.com',
+            'accountant@owners.com',
+            'property.manager@owners.com',
+            'maintenance.manager@owners.com',
+            'facility.manager@owners.com',
+            'collector1@owners.com',
+            'collector2@owners.com',
+            'collector3@owners.com',
         ];
 
-        $tenants = [];
-        foreach ($tenantsData as $index => $tenantData) {
-            $tenant = $userRepository->findByEmail($tenantData['email']);
-            if (!$tenant) {
-                $tenant = $userRepository->create([
-                    'uuid' => $tenantData['uuid'],
-                    'email' => $tenantData['email'],
-                    'password' => 'password',
-                    'first' => $tenantData['first'],
-                    'last' => $tenantData['last'],
-                    'phone' => $tenantData['phone'],
-                    'type' => 'tenant',
-                    'active' => true,
-                    'email_verified_at' => now(),
-                    'timezone' => 'Asia/Riyadh',
-                    'locale' => 'ar',
-                ]);
-                $this->command->info('✓ Created tenant user: ' . $tenantData['email']);
-            } else {
-                $this->command->info('✓ Tenant user already exists: ' . $tenantData['email']);
+        foreach ($roleUsers as $email) {
+            $user = $userRepository->findByEmail($email);
+            if ($user) {
+                $mapping = $mappingRepository->findByUserAndOwnership($user->id, $ownership->id);
+                if (!$mapping) {
+                    $mappingRepository->create([
+                        'user_id' => $user->id,
+                        'ownership_id' => $ownership->id,
+                        'default' => false,
+                    ]);
+                }
             }
-
-            // Map tenant to ownership
-            $mapping = $mappingRepository->findByUserAndOwnership($tenant->id, $ownership->id);
-            if (!$mapping) {
-                $mappingRepository->create([
-                    'user_id' => $tenant->id,
-                    'ownership_id' => $ownership->id,
-                    'default' => false,
-                ]);
-            }
-
-            $tenants[] = $tenant;
         }
 
-        return $tenants;
+        // Map tenants
+        foreach ($tenants as $tenant) {
+            if ($tenant) {
+                $mapping = $mappingRepository->findByUserAndOwnership($tenant->id, $ownership->id);
+                if (!$mapping) {
+                    $mappingRepository->create([
+                        'user_id' => $tenant->id,
+                        'ownership_id' => $ownership->id,
+                        'default' => false,
+                    ]);
+                }
+            }
+        }
+
+        $this->command->info('  → Mapped all shared users to ownership');
     }
 
     /**
@@ -507,10 +472,24 @@ class BumahrizCenterSeeder extends Seeder
 
         foreach ($selectedUnits as $index => $unit) {
             $tenant = $selectedTenants[$index];
-            $startDate = now()->subMonths(rand(1, 6));
-            $endDate = $startDate->copy()->addYears(rand(1, 2));
+            
+            // Contract dates: Start from 2025-01-01 or earlier, end by 2025-12-31 or later
+            $startDate = Carbon::create(2025, 1, 1)->subMonths(rand(0, 3)); // Can start before 2025
+            $endDate = Carbon::create(2025, 12, 31)->addMonths(rand(0, 6)); // Can end after 2025
+            
             $baseRent = $unit->price_monthly ?? rand(5000, 15000);
             $deposit = $baseRent * 3; // 3 months deposit
+            
+            // Calculate total_rent based on contract duration
+            $contractMonths = $startDate->diffInMonths($endDate);
+            $totalRent = round(($baseRent * 12) * ($contractMonths / 12), 2);
+            $vatAmount = round($totalRent * 0.15, 2); // 15% VAT
+            $totalRentWithVat = $totalRent + $vatAmount;
+
+            // Random payment frequency (weighted towards monthly)
+            $frequencies = ['monthly', 'quarterly', 'yearly'];
+            $weights = ['monthly' => 6, 'quarterly' => 3, 'yearly' => 1];
+            $paymentFrequency = $this->getWeightedRandom($frequencies, $weights);
 
             // Check if contract already exists for this unit and tenant
             $existingContract = Contract::whereHas('units', function ($query) use ($unit) {
@@ -533,7 +512,10 @@ class BumahrizCenterSeeder extends Seeder
                     'start' => $startDate->format('Y-m-d'),
                     'end' => $endDate->format('Y-m-d'),
                     'base_rent' => $baseRent,
-                    'payment_frequency' => 'monthly',
+                    'rent_fees' => 0,
+                    'vat_amount' => $vatAmount,
+                    'total_rent' => $totalRentWithVat,
+                    'payment_frequency' => $paymentFrequency,
                     'deposit' => $deposit,
                     'deposit_status' => 'paid',
                     'created_by' => $ownership->created_by,
@@ -607,6 +589,8 @@ class BumahrizCenterSeeder extends Seeder
 
     /**
      * Create Invoices and Payments.
+     * Creates realistic invoices from 2025-01-01 to 2025-12-31
+     * Based on contract payment_frequency with various statuses and payments.
      */
     private function createInvoicesAndPayments(Ownership $ownership): void
     {
@@ -622,88 +606,389 @@ class BumahrizCenterSeeder extends Seeder
             return;
         }
 
+        $contractInvoiceService = app(ContractInvoiceService::class);
         $invoiceCounter = 1;
+        $now = Carbon::now();
+        $yearStart = Carbon::create(2025, 1, 1)->startOfDay();
+        $yearEnd = Carbon::create(2025, 12, 31)->endOfDay();
+
         foreach ($contracts as $contract) {
-            // Create 1-3 invoices per contract
-            $invoicesCount = rand(1, 3);
+            $this->command->info("    Processing contract: {$contract->number} (Frequency: {$contract->payment_frequency})");
 
-            for ($i = 0; $i < $invoicesCount; $i++) {
-                $periodStart = now()->subMonths($invoicesCount - $i)->startOfMonth();
-                $periodEnd = $periodStart->copy()->endOfMonth();
-                $due = $periodEnd->copy()->addDays(7);
+            // Get contract period (intersect with 2025)
+            $contractStart = Carbon::parse($contract->start);
+            $contractEnd = Carbon::parse($contract->end);
+            
+            // Start from max(contract_start, year_start)
+            $periodStart = $contractStart->gt($yearStart) ? $contractStart : $yearStart;
+            
+            // Don't create invoices if contract starts after year end
+            if ($periodStart->gt($yearEnd)) {
+                $this->command->warn("      Contract starts after 2025, skipping...");
+                continue;
+            }
 
-                $invoiceNumber = $this->generateInvoiceNumber($ownership->id, $invoiceCounter++);
+            // Get period increment based on payment_frequency
+            $monthsPerPeriod = $this->getMonthsForFrequency($contract->payment_frequency);
+            
+            // Generate invoices for the entire year (or contract period if shorter)
+            $currentPeriodStart = $periodStart->copy();
 
-                $invoice = Invoice::where('contract_id', $contract->id)
-                    ->where('number', $invoiceNumber)
+            while ($currentPeriodStart->lte($yearEnd) && $currentPeriodStart->lte($contractEnd)) {
+                // Calculate period end based on frequency
+                if ($contract->payment_frequency === 'weekly') {
+                    // Weekly: 4 weeks per period
+                    $currentPeriodEnd = $currentPeriodStart->copy()->addWeeks(4)->subDay();
+                } else {
+                    // Monthly, quarterly, yearly, etc.
+                    $currentPeriodEnd = $currentPeriodStart->copy()->addMonths($monthsPerPeriod)->subDay();
+                }
+                
+                // Cap by contract end and year end
+                if ($currentPeriodEnd->gt($contractEnd)) {
+                    $currentPeriodEnd = $contractEnd->copy();
+                }
+                if ($currentPeriodEnd->gt($yearEnd)) {
+                    $currentPeriodEnd = $yearEnd->copy();
+                }
+
+                // Skip if period is invalid
+                if ($currentPeriodStart->gte($currentPeriodEnd)) {
+                    break;
+                }
+
+                // Check if invoice already exists for this period
+                $existingInvoice = Invoice::where('contract_id', $contract->id)
+                    ->where('period_start', $currentPeriodStart->format('Y-m-d'))
+                    ->where('period_end', $currentPeriodEnd->format('Y-m-d'))
                     ->first();
 
-                if (!$invoice) {
-                    // Use base_rent or total_rent instead of legacy rent field
-                    $amount = $contract->base_rent ?? $contract->total_rent ?? 0;
-                    if ($amount === 0) {
-                        // Fallback: calculate from units if base_rent is not set
-                        $contract->load('units');
-                        $amount = $contract->units->sum(function ($unit) {
-                            return $unit->pivot->rent_amount ?? $unit->price_monthly ?? 0;
-                        });
-                    }
-                    $taxRate = 15.00;
-                    $tax = $amount * ($taxRate / 100);
-                    $total = $amount + $tax;
-
-                    $invoice = Invoice::create([
-                        'uuid' => (string) Str::uuid(),
-                        'contract_id' => $contract->id,
-                        'ownership_id' => $ownership->id,
-                        'number' => $invoiceNumber,
-                        'period_start' => $periodStart->format('Y-m-d'),
-                        'period_end' => $periodEnd->format('Y-m-d'),
-                        'due' => $due->format('Y-m-d'),
-                        'amount' => $amount,
-                        'tax' => $tax,
-                        'tax_rate' => $taxRate,
-                        'total' => $total,
-                        'status' => $due->isPast() && $i < $invoicesCount - 1 ? 'paid' : 'sent',
-                        'notes' => 'فاتورة إيجار محل تجاري',
-                        'generated_by' => $ownership->created_by,
-                        'generated_at' => $periodStart,
-                        'paid_at' => $due->isPast() && $i < $invoicesCount - 1 ? $due->copy()->addDays(rand(1, 5)) : null,
-                    ]);
-
-                    // Create invoice items
-                    InvoiceItem::create([
-                        'invoice_id' => $invoice->id,
-                        'type' => 'rent',
-                        'description' => 'إيجار محل تجاري - ' . $periodStart->format('Y-m'),
-                        'quantity' => 1,
-                        'unit_price' => $amount,
-                        'total' => $amount,
-                    ]);
-
-                    // Create payment if invoice is paid
-                    if ($invoice->status === 'paid' && $invoice->paid_at) {
-                        Payment::create([
-                            'uuid' => (string) Str::uuid(),
-                            'invoice_id' => $invoice->id,
-                            'ownership_id' => $ownership->id,
-                            'method' => rand(0, 1) ? 'cash' : 'bank_transfer',
-                            'transaction_id' => 'TXN-' . strtoupper(Str::random(10)),
-                            'amount' => $total,
-                            'currency' => 'SAR',
-                            'status' => 'paid',
-                            'paid_at' => $invoice->paid_at,
-                            'confirmed_by' => $ownership->created_by,
-                            'notes' => 'دفعة إيجار محل تجاري',
-                        ]);
-                    }
-
-                    $this->command->info("    ✓ Created invoice: {$invoice->number} (Status: {$invoice->status})");
+                if ($existingInvoice) {
+                    $this->command->info("      ✓ Invoice already exists for period {$currentPeriodStart->format('Y-m-d')} to {$currentPeriodEnd->format('Y-m-d')}");
+                    $currentPeriodStart = $currentPeriodEnd->copy()->addDay();
+                    continue;
                 }
+
+                // Calculate due date (7-15 days after period end)
+                $dueDate = $currentPeriodEnd->copy()->addDays(rand(7, 15));
+
+                // Generate invoice number
+                $invoiceNumber = $this->generateInvoiceNumber($ownership->id, $invoiceCounter++);
+
+                // Calculate amount from contract
+                $amount = $contractInvoiceService->calculateAmountFromContract($contract, [
+                    'start' => $currentPeriodStart->format('Y-m-d'),
+                    'end' => $currentPeriodEnd->format('Y-m-d'),
+                ]);
+
+                // Determine invoice status based on dates and randomness
+                $status = $this->determineInvoiceStatus($dueDate, $now);
+
+                // Create invoice
+                $invoice = Invoice::create([
+                    'uuid' => (string) Str::uuid(),
+                    'contract_id' => $contract->id,
+                    'ownership_id' => $ownership->id,
+                    'number' => $invoiceNumber,
+                    'period_start' => $currentPeriodStart->format('Y-m-d'),
+                    'period_end' => $currentPeriodEnd->format('Y-m-d'),
+                    'due' => $dueDate->format('Y-m-d'),
+                    'amount' => $amount,
+                    'tax_from_contract' => true, // Contract invoices include tax in total_rent
+                    'tax' => null,
+                    'tax_rate' => null,
+                    'total' => $amount,
+                    'status' => $status->value,
+                    'notes' => $this->getRandomInvoiceNotes($contract->payment_frequency),
+                    'generated_by' => $ownership->created_by,
+                    'generated_at' => $currentPeriodStart->copy()->subDays(rand(0, 5)), // Generated a few days before period start
+                    'paid_at' => ($status === InvoiceStatus::PAID || $status === InvoiceStatus::PARTIAL) 
+                        ? $this->getPaidAtDate($dueDate, $now) 
+                        : null,
+                ]);
+
+                // Create invoice items
+                $this->createInvoiceItemsForContract($invoice, $contract);
+
+                // Create payments based on invoice status
+                if ($status === InvoiceStatus::PAID || $status === InvoiceStatus::PARTIAL) {
+                    $this->createPaymentsForInvoice($invoice, $ownership, $status);
+                }
+
+                $this->command->info("      ✓ Created invoice: {$invoice->number} ({$status->value}) - {$currentPeriodStart->format('Y-m-d')} to {$currentPeriodEnd->format('Y-m-d')}");
+
+                // Move to next period (always start from day after period end)
+                $currentPeriodStart = $currentPeriodEnd->copy()->addDay();
             }
         }
 
         $this->command->info('  ✓ Invoices and payments completed');
+    }
+
+    /**
+     * Get months for payment frequency.
+     */
+    private function getMonthsForFrequency(string $frequency): int
+    {
+        return match ($frequency) {
+            'monthly' => 1,
+            'quarterly' => 3,
+            'semi_annually' => 6,
+            'yearly' => 12,
+            'weekly' => 0, // Weekly is handled separately (4 weeks)
+            default => 1,
+        };
+    }
+
+    /**
+     * Determine invoice status based on dates and realistic scenarios.
+     */
+    private function determineInvoiceStatus(Carbon $dueDate, Carbon $now): InvoiceStatus
+    {
+        $daysPastDue = $now->diffInDays($dueDate, false);
+
+        // Future invoices (due date in future)
+        if ($daysPastDue > 0) {
+            // 70% sent, 20% draft, 10% pending
+            $rand = rand(1, 10);
+            if ($rand <= 7) {
+                return InvoiceStatus::SENT;
+            } elseif ($rand <= 9) {
+                return InvoiceStatus::DRAFT;
+            } else {
+                return InvoiceStatus::PENDING;
+            }
+        }
+
+        // Past due invoices
+        if ($daysPastDue < 0) {
+            $daysOverdue = abs($daysPastDue);
+            
+            // Very overdue (> 30 days) - more likely to be overdue
+            if ($daysOverdue > 30) {
+                $rand = rand(1, 10);
+                if ($rand <= 6) {
+                    return InvoiceStatus::OVERDUE;
+                } elseif ($rand <= 8) {
+                    return InvoiceStatus::PARTIAL; // Some payment made
+                } else {
+                    return InvoiceStatus::PAID; // Finally paid
+                }
+            }
+            
+            // Recently overdue (1-30 days)
+            $rand = rand(1, 10);
+            if ($rand <= 4) {
+                return InvoiceStatus::PAID; // Paid on time or slightly late
+            } elseif ($rand <= 6) {
+                return InvoiceStatus::PARTIAL; // Partial payment
+            } elseif ($rand <= 8) {
+                return InvoiceStatus::OVERDUE; // Overdue
+            } else {
+                return InvoiceStatus::SENT; // Still sent, not yet overdue
+            }
+        }
+
+        // Due today
+        $rand = rand(1, 10);
+        if ($rand <= 5) {
+            return InvoiceStatus::PAID; // Paid on time
+        } elseif ($rand <= 7) {
+            return InvoiceStatus::SENT; // Still sent
+        } else {
+            return InvoiceStatus::VIEWED; // Viewed but not paid yet
+        }
+    }
+
+    /**
+     * Get paid_at date for invoice.
+     */
+    private function getPaidAtDate(Carbon $dueDate, Carbon $now): ?Carbon
+    {
+        if ($dueDate->isPast()) {
+            // Paid after due date (1-45 days late, or on time)
+            $daysLate = rand(-5, 45); // Can be up to 5 days early or 45 days late
+            return $dueDate->copy()->addDays($daysLate);
+        } else {
+            // Paid before due date (early payment)
+            $daysEarly = rand(0, 10);
+            return $dueDate->copy()->subDays($daysEarly);
+        }
+    }
+
+    /**
+     * Create invoice items for contract.
+     */
+    private function createInvoiceItemsForContract(Invoice $invoice, Contract $contract): void
+    {
+        $contract->loadMissing('units');
+
+        if ($contract->units->isEmpty()) {
+            // Single item based on contract
+            InvoiceItem::create([
+                'invoice_id' => $invoice->id,
+                'type' => 'rent',
+                'description' => 'إيجار - ' . $invoice->period_start . ' إلى ' . $invoice->period_end,
+                'quantity' => 1,
+                'unit_price' => $invoice->amount,
+                'total' => $invoice->amount,
+            ]);
+        } else {
+            // One item per unit
+            $totalAmount = 0;
+            foreach ($contract->units as $unit) {
+                $pivotRent = $unit->pivot?->rent_amount;
+                $unitRent = $pivotRent !== null 
+                    ? (float) $pivotRent 
+                    : (float) ($invoice->amount / max($contract->units->count(), 1));
+
+                InvoiceItem::create([
+                    'invoice_id' => $invoice->id,
+                    'type' => 'rent',
+                    'description' => 'إيجار الوحدة ' . ($unit->number ?? $unit->id) . ' - ' . $invoice->period_start . ' إلى ' . $invoice->period_end,
+                    'quantity' => 1,
+                    'unit_price' => $unitRent,
+                    'total' => $unitRent,
+                ]);
+                
+                $totalAmount += $unitRent;
+            }
+
+            // Sometimes add service fee (30% chance)
+            if (rand(1, 10) <= 3) {
+                $serviceFee = round($invoice->amount * 0.05, 2); // 5% of rent
+                InvoiceItem::create([
+                    'invoice_id' => $invoice->id,
+                    'type' => 'service_fee',
+                    'description' => 'رسوم صيانة وإدارة',
+                    'quantity' => 1,
+                    'unit_price' => $serviceFee,
+                    'total' => $serviceFee,
+                ]);
+                
+                // Update invoice total
+                $invoice->update([
+                    'amount' => $invoice->amount + $serviceFee,
+                    'total' => $invoice->total + $serviceFee,
+                ]);
+            }
+        }
+    }
+
+    /**
+     * Create payments for invoice based on status.
+     */
+    private function createPaymentsForInvoice(Invoice $invoice, Ownership $ownership, InvoiceStatus $status): void
+    {
+        if ($status === InvoiceStatus::PAID) {
+            // Full payment
+            $this->createPayment($invoice, $ownership, $invoice->total, 'paid', $invoice->paid_at);
+        } elseif ($status === InvoiceStatus::PARTIAL) {
+            // Partial payment (50-90% of total)
+            $paymentAmount = round($invoice->total * (rand(50, 90) / 100), 2);
+            $this->createPayment($invoice, $ownership, $paymentAmount, 'paid', $invoice->paid_at);
+            
+            // Sometimes add second partial payment (20% chance)
+            if (rand(1, 10) <= 2) {
+                $remainingAmount = $invoice->total - $paymentAmount;
+                $secondPaymentAmount = round($remainingAmount * (rand(30, 80) / 100), 2);
+                $secondPaidAt = $invoice->paid_at 
+                    ? Carbon::parse($invoice->paid_at)->addDays(rand(5, 20))
+                    : null;
+                $this->createPayment($invoice, $ownership, $secondPaymentAmount, 'paid', $secondPaidAt);
+            }
+        }
+    }
+
+    /**
+     * Create a payment record.
+     */
+    private function createPayment(Invoice $invoice, Ownership $ownership, float $amount, string $status, ?Carbon $paidAt = null): void
+    {
+        $methods = ['cash', 'bank_transfer', 'check', 'visa', 'other'];
+        $weights = ['bank_transfer' => 5, 'cash' => 3, 'check' => 1, 'visa' => 3, 'other' => 1];
+        $method = $this->getWeightedRandom($methods, $weights);
+
+        Payment::create([
+            'uuid' => (string) Str::uuid(),
+            'invoice_id' => $invoice->id,
+            'ownership_id' => $ownership->id,
+            'method' => $method,
+            'transaction_id' => rand(1, 10) <= 8 ? 'TXN' . date('Ymd') . rand(100000, 999999) : null,
+            'amount' => $amount,
+            'currency' => 'SAR',
+            'status' => $status,
+            'paid_at' => $paidAt?->format('Y-m-d H:i:s'),
+            'confirmed_by' => $ownership->created_by,
+            'notes' => $this->getRandomPaymentNotes(),
+        ]);
+    }
+
+    /**
+     * Get weighted random value.
+     */
+    private function getWeightedRandom(array $values, array $weights): string
+    {
+        $total = array_sum($weights);
+        $rand = rand(1, $total);
+        
+        $current = 0;
+        foreach ($values as $index => $value) {
+            $weight = $weights[$value] ?? 1;
+            $current += $weight;
+            if ($rand <= $current) {
+                return $value;
+            }
+        }
+        
+        return $values[0];
+    }
+
+    /**
+     * Get random invoice notes.
+     */
+    private function getRandomInvoiceNotes(string $frequency): ?string
+    {
+        $notes = [
+            'فاتورة إيجار ' . $this->getFrequencyLabel($frequency),
+            'فاتورة إيجار محل تجاري',
+            'فاتورة إيجار - ' . $this->getFrequencyLabel($frequency),
+            null,
+            null,
+        ];
+        
+        return $notes[array_rand($notes)];
+    }
+
+    /**
+     * Get frequency label in Arabic.
+     */
+    private function getFrequencyLabel(string $frequency): string
+    {
+        return match ($frequency) {
+            'monthly' => 'شهرية',
+            'quarterly' => 'ربع سنوية',
+            'semi_annually' => 'نصف سنوية',
+            'yearly' => 'سنوية',
+            'weekly' => 'أسبوعية',
+            default => 'شهرية',
+        };
+    }
+
+    /**
+     * Get random payment notes.
+     */
+    private function getRandomPaymentNotes(): ?string
+    {
+        $notes = [
+            'دفعة إيجار',
+            'تحويل بنكي',
+            'دفع نقدي',
+            null,
+            null,
+        ];
+        
+        return $notes[array_rand($notes)];
     }
 
     /**

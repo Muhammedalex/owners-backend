@@ -35,11 +35,19 @@ class TenantController extends Controller
             return $this->errorResponse('messages.errors.ownership_required', 400);
         }
 
+        $user = $request->user();
         $perPage = (int) $request->input('per_page', 15);
         $filters = array_merge(
             ['ownership_id' => $ownershipId], // MANDATORY
             $request->only(['search', 'rating', 'employment'])
         );
+
+        // If user is collector, apply collector scope
+        // This will filter by assigned tenants, or show all if no tenants assigned
+        if ($user->isCollector()) {
+            $filters['collector_id'] = $user->id;
+            $filters['collector_ownership_id'] = $ownershipId;
+        }
 
         if ($perPage === -1) {
             $tenants = $this->tenantService->all($filters);

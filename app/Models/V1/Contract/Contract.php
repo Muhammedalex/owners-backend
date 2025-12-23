@@ -215,6 +215,38 @@ class Contract extends Model
     }
 
     /**
+     * Scope a query to filter contracts visible to a collector.
+     * Collectors can only see contracts for their assigned tenants.
+     * If no tenants assigned, collector sees all contracts.
+     */
+    public function scopeForCollector($query, User $collector, int $ownershipId)
+    {
+        $invoiceSettings = app(\App\Services\V1\Invoice\InvoiceSettingService::class);
+        
+        // Check if collector system is enabled
+        if (!$invoiceSettings->isCollectorSystemEnabled($ownershipId)) {
+            return $query->whereRaw('1 = 0'); // Return empty if disabled
+        }
+        
+        // If collector can see all tenants, return all contracts
+        if ($invoiceSettings->collectorsCanSeeAllTenants($ownershipId)) {
+            return $query->where('ownership_id', $ownershipId);
+        }
+        
+        // Get assigned tenant IDs
+        $tenantIds = $collector->assignedTenants($ownershipId)->select('tenants.id')->pluck('id');
+        
+        // If no tenants assigned, show all contracts (fallback behavior)
+        if ($tenantIds->isEmpty()) {
+            return $query->where('ownership_id', $ownershipId);
+        }
+        
+        // Filter contracts for assigned tenants
+        return $query->where('ownership_id', $ownershipId)
+            ->whereIn('tenant_id', $tenantIds);
+    }
+
+    /**
      * Check if contract has multiple units.
      */
     public function hasMultipleUnits(): bool

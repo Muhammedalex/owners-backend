@@ -163,5 +163,25 @@ class UserRepository implements UserRepositoryInterface
 
         return $user->fresh();
     }
+
+    /**
+     * Get users by ownership ID, excluding users already mapped to another ownership.
+     *
+     * @param int $ownershipId Source ownership ID
+     * @param array $excludeUserIds User IDs to exclude (users already in target ownership)
+     * @return Collection
+     */
+    public function getUsersByOwnership(int $ownershipId, array $excludeUserIds = []): Collection
+    {
+        $query = User::whereHas('ownershipMappings', function ($q) use ($ownershipId) {
+            $q->where('ownership_id', $ownershipId);
+        });
+
+        if (!empty($excludeUserIds)) {
+            $query->whereNotIn('id', $excludeUserIds);
+        }
+
+        return $query->with('roles')->latest()->get();
+    }
 }
 

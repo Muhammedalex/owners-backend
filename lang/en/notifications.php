@@ -31,4 +31,10 @@ return [
         ],
         'view_contract' => 'View Contract',
     ],
+    'invoice' => [
+        'sent' => [
+            'title' => 'New Invoice :number',
+            'message' => 'A new invoice :number has been issued for your contract. Amount: :total SAR. Due date: :due_date. Please review and make payment before the due date.',
+        ],
+    ],
 ];

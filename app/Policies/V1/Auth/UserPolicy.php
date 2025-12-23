@@ -153,5 +153,19 @@ class UserPolicy
 
         return $user->can('auth.permissions.manage');
     }
+
+    /**
+     * Determine whether the user can import users from other ownerships.
+     */
+    public function import(User $user): bool
+    {
+        // Super Admin can import users
+        if ($user->isSuperAdmin()) {
+            return true;
+        }
+
+        // User must have either auth.users.view or ownerships.users.assign permission
+        return $user->can('auth.users.view') || $user->can('ownerships.users.assign');
+    }
 }
 

@@ -25,7 +25,7 @@ class StoreSystemSettingRequest extends FormRequest
     {
         $ownershipId = $this->input('ownership_id');
 
-        return [
+        $rules = [
             'key' => [
                 'required',
                 'string',
@@ -63,6 +63,18 @@ class StoreSystemSettingRequest extends FormRequest
             'description' => ['nullable', 'string'],
             'ownership_id' => ['nullable', 'integer', 'exists:ownerships,id'],
         ];
+
+        // Add custom validation for invoice_default_status
+        if ($this->input('key') === 'invoice_default_status') {
+            // Only allow draft, pending, or sent for default status
+            $rules['value'] = [
+                'required',
+                'string',
+                Rule::in(['draft', 'pending', 'sent']),
+            ];
+        }
+
+        return $rules;
     }
 
     /**

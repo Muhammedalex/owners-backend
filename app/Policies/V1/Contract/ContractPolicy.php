@@ -17,6 +17,11 @@ class ContractPolicy
             return $user->can('contracts.view');
         }
 
+        // Collectors can view if they have contracts.viewOwn permission
+        if ($user->isCollector()) {
+            return $user->can('contracts.viewOwn') || $user->can('contracts.view');
+        }
+
         // Regular users can view if they have permission and access to ownerships
         return $user->can('contracts.view') && $user->ownershipMappings()->exists();
     }
@@ -29,6 +34,18 @@ class ContractPolicy
         // Super Admin can view all
         if ($user->isSuperAdmin()) {
             return $user->can('contracts.view');
+        }
+
+        // Collectors can view contracts for assigned tenants only
+        if ($user->isCollector()) {
+            $ownershipId = request()->input('current_ownership_id');
+            if (!$ownershipId) {
+                return false;
+            }
+
+            // Check if collector can see the tenant
+            $collectorService = app(\App\Services\V1\Invoice\CollectorService::class);
+            return $collectorService->canSeeTenant($user, $contract->tenant_id, $ownershipId);
         }
 
         // Check permission and ownership access

@@ -26,6 +26,7 @@ class TenantResource extends JsonResource
             'ownership' => $this->whenLoaded('ownership', function () {
                 return new OwnershipResource($this->ownership);
             }),
+            'ownership_id' => $this->ownership_id,
             'national_id' => $this->national_id,
             'id_type' => $this->id_type,
             'id_document' => $this->id_document,

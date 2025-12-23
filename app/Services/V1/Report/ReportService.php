@@ -99,7 +99,7 @@ class ReportService
 
         $totalRent = Contract::where('ownership_id', $ownershipId)
             ->where('status', 'active')
-            ->sum('rent');
+            ->sum('total_rent');
 
         $totalDeposits = Contract::where('ownership_id', $ownershipId)
             ->sum('deposit');
@@ -219,6 +219,10 @@ class ReportService
                     'count' => $methodCounts['check'] ?? 0,
                     'amount' => (float) ($methodAmounts['check'] ?? 0),
                 ],
+                'visa' => [
+                    'count' => $methodCounts['visa'] ?? 0,
+                    'amount' => (float) ($methodAmounts['visa'] ?? 0),
+                ],
                 'other' => [
                     'count' => $methodCounts['other'] ?? 0,
                     'amount' => (float) ($methodAmounts['other'] ?? 0),
@@ -229,30 +233,43 @@ class ReportService
 
     /**
      * Get revenue summary
+     * Revenue = Actual payments received (paid status)
+     * Receivables = Invoices total (what is owed)
      */
     public function getRevenueSummary(int $ownershipId, Carbon $startDate, Carbon $endDate): array
     {
-        $thisMonth = Invoice::where('ownership_id', $ownershipId)
+        // Actual Revenue = Payments received (paid status)
+        $thisMonth = Payment::where('ownership_id', $ownershipId)
             ->where('status', 'paid')
             ->whereBetween('paid_at', [
                 now()->startOfMonth(),
                 now()->endOfMonth()
             ])
-            ->sum('total');
+            ->sum('amount');
 
-        $lastMonth = Invoice::where('ownership_id', $ownershipId)
+        $lastMonth = Payment::where('ownership_id', $ownershipId)
             ->where('status', 'paid')
             ->whereBetween('paid_at', [
                 now()->subMonth()->startOfMonth(),
                 now()->subMonth()->endOfMonth()
             ])
-            ->sum('total');
+            ->sum('amount');
 
         $growth = $lastMonth > 0 
             ? (($thisMonth - $lastMonth) / $lastMonth) * 100 
             : 0;
 
-        $periodRevenue = Invoice::where('ownership_id', $ownershipId)
+        $periodRevenue = Payment::where('ownership_id', $ownershipId)
+            ->where('status', 'paid')
+            ->whereBetween('paid_at', [$startDate, $endDate])
+            ->sum('amount');
+
+        // Receivables = Total invoices amount (what is owed)
+        $periodReceivables = Invoice::where('ownership_id', $ownershipId)
+            ->whereBetween('period_start', [$startDate, $endDate])
+            ->sum('total');
+
+        $periodPaidReceivables = Invoice::where('ownership_id', $ownershipId)
             ->where('status', 'paid')
             ->whereBetween('paid_at', [$startDate, $endDate])
             ->sum('total');
@@ -262,6 +279,8 @@ class ReportService
             'last_month' => (float) $lastMonth,
             'growth' => round($growth, 2),
             'period_revenue' => (float) $periodRevenue,
+            'period_receivables' => (float) $periodReceivables,
+            'period_paid_receivables' => (float) $periodPaidReceivables,
         ];
     }
 
@@ -319,21 +338,28 @@ class ReportService
                 $monthStart = $startDate->copy()->addMonths($i)->startOfMonth();
                 $monthEnd = $monthStart->copy()->endOfMonth();
 
-                $revenue = Invoice::where('ownership_id', $ownershipId)
-                    ->where('status', 'paid')
-                    ->whereBetween('paid_at', [$monthStart, $monthEnd])
-                    ->sum('total');
-
-                $payments = Payment::where('ownership_id', $ownershipId)
+                // Revenue = Actual payments received
+                $revenue = Payment::where('ownership_id', $ownershipId)
                     ->where('status', 'paid')
                     ->whereBetween('paid_at', [$monthStart, $monthEnd])
                     ->sum('amount');
+
+                // Receivables = Invoices total (what is owed)
+                $receivables = Invoice::where('ownership_id', $ownershipId)
+                    ->whereBetween('period_start', [$monthStart, $monthEnd])
+                    ->sum('total');
+
+                $paidReceivables = Invoice::where('ownership_id', $ownershipId)
+                    ->where('status', 'paid')
+                    ->whereBetween('paid_at', [$monthStart, $monthEnd])
+                    ->sum('total');
 
                 $data[] = [
                     'month' => $monthStart->format('Y-m'),
                     'month_name' => $monthStart->format('F Y'),
                     'revenue' => (float) $revenue,
-                    'payments' => (float) $payments,
+                    'receivables' => (float) $receivables,
+                    'paid_receivables' => (float) $paidReceivables,
                 ];
             }
 
@@ -524,6 +550,11 @@ class ReportService
                     'amount' => (float) ($methods['check']['amount'] ?? 0),
                     'percentage' => $totalCount > 0 ? round((($methods['check']['count'] ?? 0) / $totalCount) * 100, 2) : 0,
                 ],
+                'visa' => [
+                    'count' => $methods['visa']['count'] ?? 0,
+                    'amount' => (float) ($methods['visa']['amount'] ?? 0),
+                    'percentage' => $totalCount > 0 ? round((($methods['visa']['count'] ?? 0) / $totalCount) * 100, 2) : 0,
+                ],
                 'other' => [
                     'count' => $methods['other']['count'] ?? 0,
                     'amount' => (float) ($methods['other']['amount'] ?? 0),
@@ -658,10 +689,10 @@ class ReportService
                 ->where('status', 'active')
                 ->get();
 
-            $totalRent = $activeContracts->sum('rent');
-            $avgRent = $activeContracts->avg('rent');
-            $minRent = $activeContracts->min('rent');
-            $maxRent = $activeContracts->max('rent');
+            $totalRent = $activeContracts->sum('total_rent');
+            $avgRent = $activeContracts->avg('total_rent');
+            $minRent = $activeContracts->min('total_rent');
+            $maxRent = $activeContracts->max('total_rent');
 
             $depositStatus = Contract::where('ownership_id', $ownershipId)
                 ->select('deposit_status', DB::raw('sum(deposit) as total'))
@@ -730,7 +761,18 @@ class ReportService
                     $label = $periodStart->format('F Y');
                 }
 
-                $revenue = Invoice::where('ownership_id', $ownershipId)
+                // Revenue = Actual payments received
+                $revenue = Payment::where('ownership_id', $ownershipId)
+                    ->where('status', 'paid')
+                    ->whereBetween('paid_at', [$periodStart, $periodEnd])
+                    ->sum('amount');
+
+                // Receivables = Invoices total (what is owed)
+                $receivables = Invoice::where('ownership_id', $ownershipId)
+                    ->whereBetween('period_start', [$periodStart, $periodEnd])
+                    ->sum('total');
+
+                $paidReceivables = Invoice::where('ownership_id', $ownershipId)
                     ->where('status', 'paid')
                     ->whereBetween('paid_at', [$periodStart, $periodEnd])
                     ->sum('total');
@@ -749,9 +791,11 @@ class ReportService
                     'period_start' => $periodStart->format('Y-m-d'),
                     'period_end' => $periodEnd->format('Y-m-d'),
                     'revenue' => (float) $revenue,
+                    'receivables' => (float) $receivables,
+                    'paid_receivables' => (float) $paidReceivables,
                     'invoices' => $invoices,
                     'paid_invoices' => $paidInvoices,
-                    'collection_rate' => $invoices > 0 ? round(($paidInvoices / $invoices) * 100, 2) : 0,
+                    'collection_rate' => $receivables > 0 ? round(($paidReceivables / $receivables) * 100, 2) : 0,
                 ];
             }
 
@@ -923,7 +967,7 @@ class ReportService
             ->whereBetween('end', [now(), now()->addDays(30)])
             ->count();
 
-        $totalRent = Contract::where('status', 'active')->sum('rent');
+        $totalRent = Contract::where('status', 'active')->sum('total_rent');
         $totalDeposits = Contract::sum('deposit');
 
         return [
@@ -1038,6 +1082,10 @@ class ReportService
                 'check' => [
                     'count' => $methodCounts['check'] ?? 0,
                     'amount' => (float) ($methodAmounts['check'] ?? 0),
+                ],
+                'visa' => [
+                    'count' => $methodCounts['visa'] ?? 0,
+                    'amount' => (float) ($methodAmounts['visa'] ?? 0),
                 ],
                 'other' => [
                     'count' => $methodCounts['other'] ?? 0,
@@ -1292,6 +1340,11 @@ class ReportService
                     'amount' => (float) ($methods['check']['amount'] ?? 0),
                     'percentage' => $totalCount > 0 ? round((($methods['check']['count'] ?? 0) / $totalCount) * 100, 2) : 0,
                 ],
+                'visa' => [
+                    'count' => $methods['visa']['count'] ?? 0,
+                    'amount' => (float) ($methods['visa']['amount'] ?? 0),
+                    'percentage' => $totalCount > 0 ? round((($methods['visa']['count'] ?? 0) / $totalCount) * 100, 2) : 0,
+                ],
                 'other' => [
                     'count' => $methods['other']['count'] ?? 0,
                     'amount' => (float) ($methods['other']['amount'] ?? 0),
@@ -1421,10 +1474,10 @@ class ReportService
         return Cache::remember($cacheKey, now()->addMinutes(self::CACHE_DURATION), function () {
             $activeContracts = Contract::where('status', 'active')->get();
 
-            $totalRent = $activeContracts->sum('rent');
-            $avgRent = $activeContracts->avg('rent');
-            $minRent = $activeContracts->min('rent');
-            $maxRent = $activeContracts->max('rent');
+            $totalRent = $activeContracts->sum('total_rent');
+            $avgRent = $activeContracts->avg('total_rent');
+            $minRent = $activeContracts->min('total_rent');
+            $maxRent = $activeContracts->max('total_rent');
 
             $depositStatus = Contract::select('deposit_status', DB::raw('sum(deposit) as total'))
                 ->groupBy('deposit_status')
@@ -1491,7 +1544,16 @@ class ReportService
                     $label = $periodStart->format('F Y');
                 }
 
-                $revenue = Invoice::where('status', 'paid')
+                // Revenue = Actual payments received
+                $revenue = Payment::where('status', 'paid')
+                    ->whereBetween('paid_at', [$periodStart, $periodEnd])
+                    ->sum('amount');
+
+                // Receivables = Invoices total (what is owed)
+                $receivables = Invoice::whereBetween('period_start', [$periodStart, $periodEnd])
+                    ->sum('total');
+
+                $paidReceivables = Invoice::where('status', 'paid')
                     ->whereBetween('paid_at', [$periodStart, $periodEnd])
                     ->sum('total');
 
@@ -1505,9 +1567,11 @@ class ReportService
                     'period_start' => $periodStart->format('Y-m-d'),
                     'period_end' => $periodEnd->format('Y-m-d'),
                     'revenue' => (float) $revenue,
+                    'receivables' => (float) $receivables,
+                    'paid_receivables' => (float) $paidReceivables,
                     'invoices' => $invoices,
                     'paid_invoices' => $paidInvoices,
-                    'collection_rate' => $invoices > 0 ? round(($paidInvoices / $invoices) * 100, 2) : 0,
+                    'collection_rate' => $receivables > 0 ? round(($paidReceivables / $receivables) * 100, 2) : 0,
                 ];
             }
 
@@ -1530,19 +1594,25 @@ class ReportService
                 $monthStart = $startDate->copy()->addMonths($i)->startOfMonth();
                 $monthEnd = $monthStart->copy()->endOfMonth();
 
-                $revenue = Invoice::where('status', 'paid')
-                    ->whereBetween('paid_at', [$monthStart, $monthEnd])
-                    ->sum('total');
-
-                $payments = Payment::where('status', 'paid')
+                // Revenue = Actual payments received
+                $revenue = Payment::where('status', 'paid')
                     ->whereBetween('paid_at', [$monthStart, $monthEnd])
                     ->sum('amount');
+
+                // Receivables = Invoices total (what is owed)
+                $receivables = Invoice::whereBetween('period_start', [$monthStart, $monthEnd])
+                    ->sum('total');
+
+                $paidReceivables = Invoice::where('status', 'paid')
+                    ->whereBetween('paid_at', [$monthStart, $monthEnd])
+                    ->sum('total');
 
                 $data[] = [
                     'month' => $monthStart->format('Y-m'),
                     'month_name' => $monthStart->format('F Y'),
                     'revenue' => (float) $revenue,
-                    'payments' => (float) $payments,
+                    'receivables' => (float) $receivables,
+                    'paid_receivables' => (float) $paidReceivables,
                 ];
             }
 

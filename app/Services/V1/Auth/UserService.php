@@ -277,5 +277,17 @@ class UserService
 
         return $typeToRoleMap[$userType] ?? null;
     }
+
+    /**
+     * Get users by ownership ID.
+     *
+     * @param int $ownershipId
+     * @param array $excludeUserIds User IDs to exclude
+     * @return Collection
+     */
+    public function getUsersByOwnership(int $ownershipId, array $excludeUserIds = []): Collection
+    {
+        return $this->userRepository->getUsersByOwnership($ownershipId, $excludeUserIds);
+    }
 }
 

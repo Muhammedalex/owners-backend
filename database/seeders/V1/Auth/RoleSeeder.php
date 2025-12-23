@@ -46,6 +46,9 @@ class RoleSeeder extends Seeder
             // Own profile & manage user permissions inside ownership
             'auth.users.view.own',
             'auth.users.update.own',
+            'auth.users.create',
+            'auth.users.activate',
+            'auth.users.deactivate',
             'auth.permissions.manage',
 
             // Ownership management
@@ -104,15 +107,26 @@ class RoleSeeder extends Seeder
 
             // Invoice Module (full access)
             'invoices.view',
+            'invoices.viewAll',
             'invoices.create',
             'invoices.update',
             'invoices.delete',
+            'invoices.send',
+            'invoices.cancel',
+            'invoices.approve',
+            'invoices.autoGenerate',
+            'invoices.manualCreate',
+            'invoices.editSent',
+            'invoices.editDraft',
             
             // Payment Module (full access)
             'payments.view',
             'payments.create',
             'payments.update',
             'payments.delete',
+            'payments.confirm',
+            'payments.markAsPaid',
+            'payments.markAsUnpaid',
 
             // Reports Module
             'reports.view',
@@ -365,13 +379,19 @@ class RoleSeeder extends Seeder
 
             // Invoice (view, update, delete - no create)
             'invoices.view',
+            'invoices.viewAll',
             'invoices.update',
             'invoices.delete',
+            'invoices.send',
+            'invoices.cancel',
+            'invoices.editSent',
+            'invoices.editDraft',
             
             // Payment (view, update, delete - no create)
             'payments.view',
             'payments.update',
             'payments.delete',
+            'payments.confirm',
 
             // Reports (view only)
             'reports.view',
@@ -701,6 +721,81 @@ class RoleSeeder extends Seeder
             Permission::whereIn('name', $facilityManagerPermissions)->get()
         );
         $this->command->info('✓ Facility Manager role created with facility management permissions.');
+
+        // ============================================
+        // 10. COLLECTOR ROLE
+        // ============================================
+        // Collects payments from assigned tenants
+        $collector = Role::withSystemRoles()->firstOrCreate(
+            ['name' => 'Collector'],
+            ['guard_name' => 'web']
+        );
+
+        $collectorPermissions = [
+            // Own profile
+            // 'auth.users.view.own',
+            // 'auth.users.update.own',
+            
+            // Contracts (view only - limited to assigned tenants)
+            'contracts.view',
+            'contracts.viewOwn', // View contracts for assigned tenants only
+            
+            // Invoices (view only - limited to assigned tenants)
+            'invoices.view',
+            'invoices.viewOwn', // View invoices for assigned tenants only
+            
+            // Payments (view, create, update - limited to assigned tenants)
+            'payments.view',
+            'payments.viewAssigned', // View payments for assigned tenants only
+            'payments.create', // Create payments
+            'payments.update', // Edit/update payments
+            
+            // Tenants (view only - limited to assigned tenants)
+            'tenants.view',
+            'tenants.viewAssigned', // View assigned tenants only
+            
+            // Units (view only - to see units related to contracts)
+            'properties.units.view', // View units
+        ];
+
+        $collector->syncPermissions(
+            Permission::whereIn('name', $collectorPermissions)->get()
+        );
+        $this->command->info('✓ Collector role created with collection permissions.');
+
+        // ============================================
+        // Update Owner, Moderator, Accountant roles with collector management permissions
+        // ============================================
+        
+        // Owner role - add collector management
+        $ownerCollectorPermissions = [
+            'invoices.collectors.view',
+            'invoices.collectors.manage',
+            'invoices.collectors.assign',
+        ];
+        $owner->givePermissionTo(
+            Permission::whereIn('name', $ownerCollectorPermissions)->get()
+        );
+        
+        // Moderator role - add collector management
+        $moderatorCollectorPermissions = [
+            'invoices.collectors.view',
+            'invoices.collectors.manage',
+            'invoices.collectors.assign',
+        ];
+        $moderator->givePermissionTo(
+            Permission::whereIn('name', $moderatorCollectorPermissions)->get()
+        );
+        
+        // Accountant role - add collector management
+        $accountantCollectorPermissions = [
+            'invoices.collectors.view',
+            'invoices.collectors.manage',
+            'invoices.collectors.assign',
+        ];
+        $accountant->givePermissionTo(
+            Permission::whereIn('name', $accountantCollectorPermissions)->get()
+        );
 
         $this->command->info('');
         $this->command->info('✅ All roles seeded successfully!');

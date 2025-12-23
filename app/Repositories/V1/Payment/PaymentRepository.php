@@ -16,6 +16,20 @@ class PaymentRepository implements PaymentRepositoryInterface
     {
         $query = Payment::query();
 
+        // Apply collector scope if collector_id is provided
+        if (isset($filters['collector_id']) && isset($filters['collector_ownership_id'])) {
+            $collector = \App\Models\V1\Auth\User::find($filters['collector_id']);
+            if ($collector && $collector->isCollector()) {
+                $query->forCollector($collector, $filters['collector_ownership_id']);
+            }
+            unset($filters['collector_id'], $filters['collector_ownership_id']);
+        } else {
+            // Apply ownership filter for regular users
+            if (isset($filters['ownership_id'])) {
+                $query->forOwnership($filters['ownership_id']);
+            }
+        }
+
         // Apply filters
         if (isset($filters['search'])) {
             $search = $filters['search'];
@@ -64,6 +78,20 @@ class PaymentRepository implements PaymentRepositoryInterface
     public function all(array $filters = []): Collection
     {
         $query = Payment::query();
+
+        // Apply collector scope if collector_id is provided
+        if (isset($filters['collector_id']) && isset($filters['collector_ownership_id'])) {
+            $collector = \App\Models\V1\Auth\User::find($filters['collector_id']);
+            if ($collector && $collector->isCollector()) {
+                $query->forCollector($collector, $filters['collector_ownership_id']);
+            }
+            unset($filters['collector_id'], $filters['collector_ownership_id']);
+        } else {
+            // Apply ownership filter for regular users
+            if (isset($filters['ownership_id'])) {
+                $query->forOwnership($filters['ownership_id']);
+            }
+        }
 
         // Apply filters (same as paginate)
         if (isset($filters['search'])) {

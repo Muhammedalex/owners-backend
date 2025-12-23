@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests\V1\Invoice;
 
+use App\Models\V1\Contract\Contract;
+use App\Services\V1\Invoice\ContractInvoiceService;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -29,7 +31,7 @@ class StoreInvoiceRequest extends FormRequest
 
         return [
             'contract_id' => [
-                'required',
+                'nullable',
                 'integer',
                 Rule::exists('contracts', 'id')->where(function ($query) use ($ownershipId) {
                     return $query->where('ownership_id', $ownershipId);
@@ -45,11 +47,47 @@ class StoreInvoiceRequest extends FormRequest
                 }),
             ],
             'period_start' => ['required', 'date'],
-            'period_end' => ['required', 'date', 'after_or_equal:period_start'],
+            'period_end' => [
+                'required',
+                'date',
+                'after_or_equal:period_start',
+                function ($attribute, $value, $fail) use ($ownershipId) {
+                    // Custom validation: if contract_id exists, validate period
+                    $contractId = request()->input('contract_id');
+                    if ($contractId) {
+                        $contract = Contract::where('id', $contractId)
+                            ->where('ownership_id', $ownershipId)
+                            ->first();
+                            
+                        if ($contract) {
+                            try {
+                                $contractInvoiceService = app(ContractInvoiceService::class);
+                                $contractInvoiceService->validatePeriod($contract, [
+                                    'start' => request()->input('period_start'),
+                                    'end' => $value,
+                                ], null); // No invoice to exclude for new invoices
+                            } catch (\Exception $e) {
+                                $fail($e->getMessage());
+                            }
+                        }
+                    }
+                },
+            ],
             'due' => ['required', 'date', 'after_or_equal:period_start'],
-            'amount' => ['required', 'numeric', 'min:0', 'max:9999999999.99'],
+            'amount' => [
+                'required_if:contract_id,null', // مطلوب إذا لم يكن هناك عقد
+                'nullable',
+                'numeric',
+                'min:0',
+                'max:9999999999.99',
+            ],
             'tax' => ['nullable', 'numeric', 'min:0', 'max:9999999999.99'],
-            'tax_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'tax_rate' => [
+                'nullable',
+                'numeric',
+                'min:0',
+                'max:100',
+            ],
             'total' => ['nullable', 'numeric', 'min:0', 'max:9999999999.99'],
             'status' => ['nullable', 'string', 'max:50', Rule::in(['draft', 'sent', 'paid', 'overdue', 'cancelled'])],
             'notes' => ['nullable', 'string'],

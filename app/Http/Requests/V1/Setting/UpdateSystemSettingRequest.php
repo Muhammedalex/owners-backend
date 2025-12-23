@@ -24,8 +24,7 @@ class UpdateSystemSettingRequest extends FormRequest
     public function rules(): array
     {
         // Setting will be loaded in controller
-
-        return [
+        $rules = [
             'value' => ['nullable'],
             'value_type' => [
                 'sometimes',
@@ -54,6 +53,23 @@ class UpdateSystemSettingRequest extends FormRequest
             ],
             'description' => ['nullable', 'string'],
         ];
+
+        // Add custom validation for invoice_default_status
+        // Get setting key from route parameter or request
+        $settingId = $this->route('setting');
+        if ($settingId) {
+            $setting = \App\Models\V1\Setting\SystemSetting::find($settingId);
+            if ($setting && $setting->key === 'invoice_default_status') {
+                // Only allow draft, pending, or sent for default status
+                $rules['value'] = [
+                    'required',
+                    'string',
+                    Rule::in(['draft', 'pending', 'sent']),
+                ];
+            }
+        }
+
+        return $rules;
     }
 
     /**
@@ -105,6 +121,8 @@ class UpdateSystemSettingRequest extends FormRequest
         return [
             'value_type.in' => __('messages.validation.in', ['attribute' => __('messages.attributes.value_type')]),
             'group.in' => __('messages.validation.in', ['attribute' => __('messages.attributes.group')]),
+            'value.in' => __('settings.invoice_default_status_invalid', ['allowed' => 'draft, pending, sent']),
+            'value.required' => __('messages.validation.required', ['attribute' => __('messages.attributes.value')]),
         ];
     }
 }

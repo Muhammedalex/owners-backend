@@ -111,8 +111,8 @@ class PaymentSeeder extends Seeder
      */
     private function getRandomPaymentMethod(): string
     {
-        $methods = ['cash', 'bank_transfer', 'check', 'other'];
-        $weights = ['bank_transfer' => 5, 'cash' => 2, 'check' => 2, 'other' => 1];
+        $methods = ['cash', 'bank_transfer', 'check', 'visa', 'other'];
+        $weights = ['bank_transfer' => 5, 'cash' => 2, 'check' => 2, 'visa' => 3, 'other' => 1];
         return $this->getWeightedRandom($weights);
     }
 

@@ -34,11 +34,19 @@ class PaymentController extends Controller
             return $this->errorResponse('messages.errors.ownership_required', 400);
         }
 
+        $user = $request->user();
         $perPage = (int) $request->input('per_page', 15);
         $filters = array_merge(
             ['ownership_id' => $ownershipId], // MANDATORY
             $request->only(['search', 'status', 'invoice_id', 'method'])
         );
+
+        // If user is collector, apply collector scope
+        // This will filter by assigned tenants, or show all if no tenants assigned
+        if ($user->isCollector()) {
+            $filters['collector_id'] = $user->id;
+            $filters['collector_ownership_id'] = $ownershipId;
+        }
 
         if ($perPage === -1) {
             $payments = $this->paymentService->all($filters);
@@ -69,6 +77,8 @@ class PaymentController extends Controller
      */
     public function store(StorePaymentRequest $request): JsonResponse
     {
+        $this->authorize('create', Payment::class);
+
         // Get ownership ID from middleware (MANDATORY)
         $ownershipId = $request->input('current_ownership_id');
         if (!$ownershipId) {
@@ -129,6 +139,8 @@ class PaymentController extends Controller
      */
     public function update(UpdatePaymentRequest $request, Payment $payment): JsonResponse
     {
+        $this->authorize('update', $payment);
+
         // Verify ownership scope (MANDATORY)
         $ownershipId = $request->input('current_ownership_id');
         if (!$ownershipId || $payment->ownership_id != $ownershipId) {

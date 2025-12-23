@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1\Invoice;
 
+use App\Enums\V1\Invoice\InvoiceStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\V1\Invoice\StoreInvoiceRequest;
 use App\Http\Requests\V1\Invoice\UpdateInvoiceRequest;
@@ -33,11 +34,42 @@ class InvoiceController extends Controller
             return $this->errorResponse('messages.errors.ownership_required', 400);
         }
 
+        $user = $request->user();
         $perPage = (int) $request->input('per_page', 15);
         $filters = array_merge(
             ['ownership_id' => $ownershipId], // MANDATORY
-            $request->only(['search', 'status', 'contract_id', 'overdue', 'start_date', 'end_date'])
+            $request->only(['search', 'status', 'contract_id', 'tenant_id', 'unit_id', 'start_date', 'end_date'])
         );
+        
+        // Add boolean filters if provided
+        if ($request->has('standalone')) {
+            $filters['standalone'] = $request->boolean('standalone');
+        }
+        if ($request->has('linked_to_contracts')) {
+            $filters['linked_to_contracts'] = $request->boolean('linked_to_contracts');
+        }
+        if ($request->has('overdue')) {
+            $overdueValue = $request->input('overdue');
+            // Handle both string ('true'/'false') and boolean values
+            if (is_string($overdueValue)) {
+                $filters['overdue'] = filter_var($overdueValue, FILTER_VALIDATE_BOOLEAN);
+            } else {
+                $filters['overdue'] = (bool) $overdueValue;
+            }
+        }
+        
+        // Add sorting if provided
+        if ($request->has('sort')) {
+            $filters['sort'] = $request->input('sort');
+            $filters['order'] = $request->input('order', 'asc'); // default to 'asc'
+        }
+
+        // If user is collector, apply collector scope
+        // This will filter by assigned tenants, or show all if no tenants assigned
+        if ($user->isCollector()) {
+            $filters['collector_id'] = $user->id;
+            $filters['collector_ownership_id'] = $ownershipId;
+        }
 
         if ($perPage === -1) {
             $invoices = $this->invoiceService->all($filters);
@@ -90,6 +122,8 @@ class InvoiceController extends Controller
     /**
      * Display the specified resource.
      * Ownership scope is mandatory from middleware.
+     * 
+     * If the user is the tenant associated with this invoice, mark it as VIEWED.
      */
     public function show(Request $request, Invoice $invoice): JsonResponse
     {
@@ -105,6 +139,29 @@ class InvoiceController extends Controller
 
         if (!$invoice) {
             return $this->notFoundResponse('invoices.not_found');
+        }
+
+        // Load contract and tenant relationship to check if user is the tenant
+        $invoice->load([
+            'contract.tenant.user',
+        ]);
+
+        // Check if current user is the tenant for this invoice
+        // Only mark as VIEWED if:
+        // 1. Invoice is linked to a contract
+        // 2. Contract has a tenant
+        // 3. Tenant has a user
+        // 4. Current user is that tenant user
+        // 5. Invoice status is SENT (can only transition from SENT to VIEWED)
+        $user = $request->user();
+        if ($invoice->contract_id && 
+            $invoice->contract && 
+            $invoice->contract->tenant && 
+            $invoice->contract->tenant->user_id &&
+            $invoice->contract->tenant->user_id === $user->id &&
+            $invoice->status === \App\Enums\V1\Invoice\InvoiceStatus::SENT) {
+            // Mark as viewed - this will transition status from SENT to VIEWED
+            $invoice->markAsViewed();
         }
 
         // Load all related data
@@ -137,7 +194,7 @@ class InvoiceController extends Controller
         // Ownership ID cannot be changed via update
         unset($data['ownership_id']);
 
-        $invoice = $this->invoiceService->update($invoice, $data);
+        $invoice = $this->invoiceService->update($invoice, $data, $request->user());
 
         return $this->successResponse(
             new InvoiceResource($invoice->load(['contract.tenant.user', 'ownership', 'generatedBy', 'items'])),
@@ -177,6 +234,47 @@ class InvoiceController extends Controller
             new InvoiceResource($invoice->load(['contract.tenant.user', 'ownership', 'generatedBy', 'items'])),
             'invoices.marked_paid'
         );
+    }
+
+    /**
+     * Update invoice status.
+     * Ownership scope is mandatory from middleware.
+     */
+    public function updateStatus(Request $request, Invoice $invoice): JsonResponse
+    {
+        $this->authorize('update', $invoice);
+
+        // Verify ownership scope (MANDATORY)
+        $ownershipId = $request->input('current_ownership_id');
+        if (!$ownershipId || $invoice->ownership_id != $ownershipId) {
+            return $this->notFoundResponse('invoices.not_found');
+        }
+
+        $request->validate([
+            'status' => ['required', 'string', 'in:' . implode(',', InvoiceStatus::all())],
+            'reason' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $newStatus = InvoiceStatus::fromString($request->input('status'));
+        if (!$newStatus) {
+            return $this->errorResponse('messages.errors.invalid_status', 400);
+        }
+
+        try {
+            $invoice = $this->invoiceService->updateStatus(
+                $invoice,
+                $newStatus,
+                $request->input('reason'),
+                $request->user()->id
+            );
+
+            return $this->successResponse(
+                new InvoiceResource($invoice->load(['contract.tenant.user', 'ownership', 'generatedBy', 'items'])),
+                'invoices.status_updated'
+            );
+        } catch (\Exception $e) {
+            return $this->errorResponse($e->getMessage(), 400);
+        }
     }
 
     /**

@@ -173,6 +173,15 @@ return [
         'password_confirmation' => 'تأكيد كلمة المرور',
         'expires_in_days' => 'أيام الانتهاء',
         'invitations' => 'الدعوات',
+        'users' => 'المستخدمين',
     ],
+    'payment_methods' => [
+        'cash' => 'نقدي',
+        'bank_transfer' => 'تحويل بنكي',
+        'check' => 'شيك',
+        'visa' => 'فيزا',
+        'other' => 'أخرى',
+    ],
+    'currency' => 'SAR',
 ];
 

@@ -69,6 +69,8 @@ class PermissionSeeder extends Seeder
 
             // Tenant Management Module (for future)
             'tenants.view',
+            'tenants.viewAssigned', // View assigned tenants only (for collectors)
+            'tenants.viewAll', // View all tenants (not just assigned)
             'tenants.create',
             'tenants.update',
             'tenants.delete',
@@ -87,6 +89,8 @@ class PermissionSeeder extends Seeder
 
             // Contract Management Module (for future)
             'contracts.view',
+            'contracts.viewOwn', // View contracts for assigned tenants only (for collectors)
+            'contracts.viewAll', // View all contracts (not just assigned)
             'contracts.create',
             'contracts.update',
             'contracts.delete',
@@ -95,17 +99,38 @@ class PermissionSeeder extends Seeder
             'contracts.terminate',
             'contracts.notifications', // Receive notifications about contracts
 
-            // Invoice Module
+            // Invoice Module - Basic
             'invoices.view',
+            'invoices.viewOwn', // View own invoices (for collectors)
+            'invoices.viewAll', // View all invoices (not just assigned)
             'invoices.create',
             'invoices.update',
             'invoices.delete',
             
-            // Payment Module
+            // Invoice Module - Advanced
+            'invoices.send', // Send invoices to tenants
+            'invoices.cancel', // Cancel invoices
+            'invoices.approve', // Approve invoices (if approval required)
+            'invoices.autoGenerate', // Enable/disable auto-generation
+            'invoices.manualCreate', // Create manual invoices when auto is enabled
+            'invoices.editSent', // Edit sent invoices
+            'invoices.editDraft', // Edit draft invoices
+            
+            // Invoice Collector Module
+            'invoices.collectors.view',
+            'invoices.collectors.manage',
+            'invoices.collectors.assign',
+            'invoices.collectors.view_assigned',
+            'invoices.collectors.viewAll', // View all tenants (if setting enabled)
+            
+            // Payment Module - Basic
             'payments.view',
+            'payments.viewAssigned', // View payments for assigned tenants (collectors)
             'payments.create',
             'payments.update',
             'payments.delete',
+            'payments.confirm', // Confirm payments
+            'payments.collect', // Add payments (collector permission)
 
             // Reports Module
             'reports.view',

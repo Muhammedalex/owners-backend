@@ -134,6 +134,14 @@ return [
             'replace_placeholders' => true,
         ],
 
+        'invoices' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/invoices.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'days' => env('LOG_INVOICES_DAYS', 30),
+            'replace_placeholders' => true,
+        ],
+
     ],
 
 ];

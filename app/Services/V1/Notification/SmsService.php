@@ -230,6 +230,93 @@ class SmsService
     }
 
     /**
+     * Send general SMS message.
+     *
+     * @param string $phone
+     * @param string $message
+     * @param int|null $ownershipId Optional ownership ID for ownership-specific settings
+     * @return bool
+     */
+    public function sendMessage(string $phone, string $message, ?int $ownershipId = null): bool
+    {
+        // Get setting source for logging
+        $settingsSource = $this->getSettingSource('sms_enabled', $ownershipId);
+
+        // In local/testing environment, skip actual sending and just log
+        if (app()->environment(['local', 'testing'])) {
+            Log::info('SMS Message (local environment - not sent)', [
+                'phone' => $phone,
+                'message' => $message,
+                'ownership_id' => $ownershipId,
+                'settings_source' => $settingsSource,
+                'environment' => app()->environment(),
+            ]);
+            return true;
+        }
+
+        // Check if SMS is enabled (ownership-specific or system-wide)
+        if (!$this->isSmsEnabled($ownershipId)) {
+            Log::warning('SMS is disabled, skipping message send', [
+                'phone' => $phone,
+                'ownership_id' => $ownershipId,
+                'settings_source' => $settingsSource,
+            ]);
+            return false;
+        }
+
+        // Get Twilio client
+        $client = $this->getTwilioClient($ownershipId);
+        if (!$client) {
+            Log::error('Twilio client not configured', [
+                'phone' => $phone,
+                'ownership_id' => $ownershipId,
+            ]);
+            return false;
+        }
+
+        // Get Twilio phone number
+        $fromNumber = $this->getTwilioPhoneNumber($ownershipId);
+        if (!$fromNumber) {
+            Log::error('Twilio phone number not configured', [
+                'ownership_id' => $ownershipId,
+            ]);
+            return false;
+        }
+
+        try {
+            // Send SMS via Twilio
+            $twilioResponse = $client->messages->create(
+                $phone,
+                [
+                    'from' => $fromNumber,
+                    'body' => $message,
+                ]
+            );
+
+            // Log Twilio response
+            Log::info('Twilio SMS sent successfully', [
+                'phone' => $phone,
+                'ownership_id' => $ownershipId,
+                'settings_source' => $settingsSource,
+                'twilio_sid' => $twilioResponse->sid,
+                'twilio_status' => $twilioResponse->status,
+                'message_length' => strlen($message),
+            ]);
+
+            return true;
+        } catch (\Exception $e) {
+            Log::error('Twilio SMS failed', [
+                'phone' => $phone,
+                'ownership_id' => $ownershipId,
+                'error' => $e->getMessage(),
+                'error_code' => $e->getCode(),
+            ]);
+
+            return false;
+        }
+    }
+
+    /**
      * Format OTP message.
      */
     private function formatOtpMessage(string $otp, string $purpose): string

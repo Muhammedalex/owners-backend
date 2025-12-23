@@ -16,6 +16,20 @@ class InvoiceRepository implements InvoiceRepositoryInterface
     {
         $query = Invoice::query();
 
+        // Apply collector scope if collector_id is provided
+        if (isset($filters['collector_id']) && isset($filters['collector_ownership_id'])) {
+            $collector = \App\Models\V1\Auth\User::find($filters['collector_id']);
+            if ($collector && $collector->isCollector()) {
+                $query->forCollector($collector, $filters['collector_ownership_id']);
+            }
+            unset($filters['collector_id'], $filters['collector_ownership_id']);
+        } else {
+            // Apply ownership filter for regular users
+            if (isset($filters['ownership_id'])) {
+                $query->forOwnership($filters['ownership_id']);
+            }
+        }
+
         // Apply filters
         if (isset($filters['search'])) {
             $search = $filters['search'];
@@ -44,12 +58,53 @@ class InvoiceRepository implements InvoiceRepositoryInterface
             $query->forContract($filters['contract_id']);
         }
 
-        if (isset($filters['overdue'])) {
+        // Filter by tenant ID
+        if (isset($filters['tenant_id']) && $filters['tenant_id']) {
+            $query->whereHas('contract', function ($q) use ($filters) {
+                $q->where('tenant_id', $filters['tenant_id']);
+            });
+        }
+
+        // Filter by unit ID
+        if (isset($filters['unit_id']) && $filters['unit_id']) {
+            $query->whereHas('contract.units', function ($q) use ($filters) {
+                $q->where('units.id', $filters['unit_id']);
+            });
+        }
+
+        // Filter standalone invoices
+        if (isset($filters['standalone']) && $filters['standalone'] === true) {
+            $query->standalone();
+        }
+
+        // Filter contract-linked invoices
+        if (isset($filters['linked_to_contracts']) && $filters['linked_to_contracts'] === true) {
+            $query->linkedToContracts();
+        }
+
+        // Filter overdue invoices (only if true)
+        if (isset($filters['overdue']) && $filters['overdue'] === true) {
             $query->overdue();
         }
 
-        if (isset($filters['start_date']) && isset($filters['end_date'])) {
-            $query->inPeriod($filters['start_date'], $filters['end_date']);
+        // Filter by date range
+        if (isset($filters['start_date']) || isset($filters['end_date'])) {
+            if (isset($filters['start_date']) && isset($filters['end_date'])) {
+                // Both dates provided - use inPeriod scope
+                $query->inPeriod($filters['start_date'], $filters['end_date']);
+            } elseif (isset($filters['start_date'])) {
+                // Only start date - filter from this date onwards
+                $query->where(function ($q) use ($filters) {
+                    $q->where('period_start', '>=', $filters['start_date'])
+                        ->orWhere('period_end', '>=', $filters['start_date']);
+                });
+            } elseif (isset($filters['end_date'])) {
+                // Only end date - filter up to this date
+                $query->where(function ($q) use ($filters) {
+                    $q->where('period_start', '<=', $filters['end_date'])
+                        ->orWhere('period_end', '<=', $filters['end_date']);
+                });
+            }
         }
 
         // Filter by ownership IDs (for non-Super Admin users)
@@ -57,8 +112,40 @@ class InvoiceRepository implements InvoiceRepositoryInterface
             $query->whereIn('ownership_id', $filters['ownership_ids']);
         }
 
-        return $query->with(['contract.tenant.user', 'ownership', 'generatedBy', 'items'])
-            ->latest()
+        // Filter by tenant IDs (for collectors - invoices.viewOwn)
+        if (isset($filters['tenant_ids']) && is_array($filters['tenant_ids']) && !empty($filters['tenant_ids'])) {
+            $query->whereHas('contract', function ($q) use ($filters) {
+                $q->whereIn('tenant_id', $filters['tenant_ids']);
+            });
+        }
+
+        // Apply sorting
+        if (isset($filters['sort'])) {
+            $sortField = $filters['sort'];
+            $sortOrder = isset($filters['order']) && strtolower($filters['order']) === 'desc' ? 'desc' : 'asc';
+            
+            // Map frontend field names to database columns
+            $fieldMap = [
+                'number' => 'number',
+                'contract' => 'contract_id',
+                'total' => 'total',
+                'due' => 'due',
+                'dueDate' => 'due',
+                'status' => 'status',
+                'period_start' => 'period_start',
+                'period_end' => 'period_end',
+                'created_at' => 'created_at',
+                'updated_at' => 'updated_at',
+            ];
+            
+            $dbField = $fieldMap[$sortField] ?? $sortField;
+            $query->orderBy($dbField, $sortOrder);
+        } else {
+            // Default sorting
+            $query->latest();
+        }
+
+        return $query->with(['contract.tenant.user', 'ownership', 'generatedBy', 'items', 'payments'])
             ->paginate($perPage);
     }
 
@@ -68,6 +155,20 @@ class InvoiceRepository implements InvoiceRepositoryInterface
     public function all(array $filters = []): Collection
     {
         $query = Invoice::query();
+
+        // Apply collector scope if collector_id is provided
+        if (isset($filters['collector_id']) && isset($filters['collector_ownership_id'])) {
+            $collector = \App\Models\V1\Auth\User::find($filters['collector_id']);
+            if ($collector && $collector->isCollector()) {
+                $query->forCollector($collector, $filters['collector_ownership_id']);
+            }
+            unset($filters['collector_id'], $filters['collector_ownership_id']);
+        } else {
+            // Apply ownership filter for regular users
+            if (isset($filters['ownership_id'])) {
+                $query->forOwnership($filters['ownership_id']);
+            }
+        }
 
         // Apply filters (same as paginate)
         if (isset($filters['search'])) {
@@ -97,12 +198,53 @@ class InvoiceRepository implements InvoiceRepositoryInterface
             $query->forContract($filters['contract_id']);
         }
 
-        if (isset($filters['overdue'])) {
+        // Filter by tenant ID
+        if (isset($filters['tenant_id']) && $filters['tenant_id']) {
+            $query->whereHas('contract', function ($q) use ($filters) {
+                $q->where('tenant_id', $filters['tenant_id']);
+            });
+        }
+
+        // Filter by unit ID
+        if (isset($filters['unit_id']) && $filters['unit_id']) {
+            $query->whereHas('contract.units', function ($q) use ($filters) {
+                $q->where('units.id', $filters['unit_id']);
+            });
+        }
+
+        // Filter standalone invoices
+        if (isset($filters['standalone']) && $filters['standalone'] === true) {
+            $query->standalone();
+        }
+
+        // Filter contract-linked invoices
+        if (isset($filters['linked_to_contracts']) && $filters['linked_to_contracts'] === true) {
+            $query->linkedToContracts();
+        }
+
+        // Filter overdue invoices (only if true)
+        if (isset($filters['overdue']) && $filters['overdue'] === true) {
             $query->overdue();
         }
 
-        if (isset($filters['start_date']) && isset($filters['end_date'])) {
-            $query->inPeriod($filters['start_date'], $filters['end_date']);
+        // Filter by date range
+        if (isset($filters['start_date']) || isset($filters['end_date'])) {
+            if (isset($filters['start_date']) && isset($filters['end_date'])) {
+                // Both dates provided - use inPeriod scope
+                $query->inPeriod($filters['start_date'], $filters['end_date']);
+            } elseif (isset($filters['start_date'])) {
+                // Only start date - filter from this date onwards
+                $query->where(function ($q) use ($filters) {
+                    $q->where('period_start', '>=', $filters['start_date'])
+                        ->orWhere('period_end', '>=', $filters['start_date']);
+                });
+            } elseif (isset($filters['end_date'])) {
+                // Only end date - filter up to this date
+                $query->where(function ($q) use ($filters) {
+                    $q->where('period_start', '<=', $filters['end_date'])
+                        ->orWhere('period_end', '<=', $filters['end_date']);
+                });
+            }
         }
 
         // Filter by ownership IDs (for non-Super Admin users)
@@ -110,8 +252,40 @@ class InvoiceRepository implements InvoiceRepositoryInterface
             $query->whereIn('ownership_id', $filters['ownership_ids']);
         }
 
-        return $query->with(['contract.tenant.user', 'ownership', 'generatedBy', 'items'])
-            ->latest()
+        // Filter by tenant IDs (for collectors - invoices.viewOwn)
+        if (isset($filters['tenant_ids']) && is_array($filters['tenant_ids']) && !empty($filters['tenant_ids'])) {
+            $query->whereHas('contract', function ($q) use ($filters) {
+                $q->whereIn('tenant_id', $filters['tenant_ids']);
+            });
+        }
+
+        // Apply sorting
+        if (isset($filters['sort'])) {
+            $sortField = $filters['sort'];
+            $sortOrder = isset($filters['order']) && strtolower($filters['order']) === 'desc' ? 'desc' : 'asc';
+            
+            // Map frontend field names to database columns
+            $fieldMap = [
+                'number' => 'number',
+                'contract' => 'contract_id',
+                'total' => 'total',
+                'due' => 'due',
+                'dueDate' => 'due',
+                'status' => 'status',
+                'period_start' => 'period_start',
+                'period_end' => 'period_end',
+                'created_at' => 'created_at',
+                'updated_at' => 'updated_at',
+            ];
+            
+            $dbField = $fieldMap[$sortField] ?? $sortField;
+            $query->orderBy($dbField, $sortOrder);
+        } else {
+            // Default sorting
+            $query->latest();
+        }
+
+        return $query->with(['contract.tenant.user', 'ownership', 'generatedBy', 'items', 'payments'])
             ->get();
     }
 
@@ -120,7 +294,7 @@ class InvoiceRepository implements InvoiceRepositoryInterface
      */
     public function find(int $id): ?Invoice
     {
-        return Invoice::with(['contract.tenant.user', 'ownership', 'generatedBy', 'items'])
+        return Invoice::with(['contract.tenant.user', 'ownership', 'generatedBy', 'items', 'payments'])
             ->find($id);
     }
 
@@ -130,7 +304,7 @@ class InvoiceRepository implements InvoiceRepositoryInterface
     public function findByUuid(string $uuid): ?Invoice
     {
         return Invoice::where('uuid', $uuid)
-            ->with(['contract.tenant.user', 'ownership', 'generatedBy', 'items'])
+            ->with(['contract.tenant.user', 'ownership', 'generatedBy', 'items', 'payments'])
             ->first();
     }
 
@@ -140,7 +314,7 @@ class InvoiceRepository implements InvoiceRepositoryInterface
     public function findByNumber(string $number): ?Invoice
     {
         return Invoice::where('number', $number)
-            ->with(['contract.tenant.user', 'ownership', 'generatedBy', 'items'])
+            ->with(['contract.tenant.user', 'ownership', 'generatedBy', 'items', 'payments'])
             ->first();
     }
 

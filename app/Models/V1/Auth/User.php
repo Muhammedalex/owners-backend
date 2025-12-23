@@ -292,6 +292,40 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
+     * Check if user is a collector.
+     * Uses the Collector role from Spatie Permission.
+     */
+    public function isCollector(): bool
+    {
+        return $this->hasRole('Collector');
+    }
+
+    /**
+     * Get assigned tenants for collector.
+     */
+    public function assignedTenants(int $ownershipId): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(
+            \App\Models\V1\Tenant\Tenant::class,
+            'collector_tenant_assignments',
+            'collector_id',
+            'tenant_id'
+        )
+        ->wherePivot('ownership_id', $ownershipId)
+        ->wherePivot('is_active', true)
+        ->withPivot('assigned_at', 'notes')
+        ->withTimestamps();
+    }
+
+    /**
+     * Get all collector assignments.
+     */
+    public function collectorAssignments(): HasMany
+    {
+        return $this->hasMany(\App\Models\V1\Invoice\CollectorTenantAssignment::class, 'collector_id');
+    }
+
+    /**
      * Send the email verification notification.
      *
      * @return void

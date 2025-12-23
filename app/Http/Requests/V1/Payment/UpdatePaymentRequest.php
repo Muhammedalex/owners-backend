@@ -37,7 +37,7 @@ class UpdatePaymentRequest extends FormRequest
                 }),
             ],
             // ownership_id cannot be changed via update (taken from middleware scope)
-            'method' => ['sometimes', 'string', 'max:50', Rule::in(['cash', 'bank_transfer', 'check', 'other'])],
+            'method' => ['sometimes', 'string', 'max:50', Rule::in(['cash', 'bank_transfer', 'check', 'visa', 'other'])],
             'transaction_id' => ['nullable', 'string', 'max:255', Rule::unique('payments', 'transaction_id')->ignore($paymentId)],
             'amount' => ['sometimes', 'numeric', 'min:0', 'max:9999999999.99'],
             'currency' => ['nullable', 'string', 'max:3'],

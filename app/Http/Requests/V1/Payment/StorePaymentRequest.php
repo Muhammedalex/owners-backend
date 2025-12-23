@@ -36,7 +36,7 @@ class StorePaymentRequest extends FormRequest
                 }),
             ],
             // ownership_id is taken from middleware (current_ownership_id), not from request
-            'method' => ['required', 'string', 'max:50', Rule::in(['cash', 'bank_transfer', 'check', 'other'])],
+            'method' => ['required', 'string', 'max:50', Rule::in(['cash', 'bank_transfer', 'check', 'visa', 'other'])],
             'transaction_id' => ['nullable', 'string', 'max:255', 'unique:payments,transaction_id'],
             'amount' => ['required', 'numeric', 'min:0', 'max:9999999999.99'],
             'currency' => ['nullable', 'string', 'max:3'],

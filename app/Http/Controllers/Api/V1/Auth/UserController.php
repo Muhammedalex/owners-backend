@@ -3,11 +3,13 @@
 namespace App\Http\Controllers\Api\V1\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\V1\Auth\ImportUsersRequest;
 use App\Http\Requests\V1\Auth\StoreUserRequest;
 use App\Http\Requests\V1\Auth\SyncUserRolesRequest;
 use App\Http\Requests\V1\Auth\UpdateUserRequest;
 use App\Http\Resources\V1\Auth\UserResource;
 use App\Models\V1\Auth\User;
+use App\Services\V1\Auth\UserImportService;
 use App\Services\V1\Auth\UserService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -15,7 +17,8 @@ use Illuminate\Http\Request;
 class UserController extends Controller
 {
     public function __construct(
-        private UserService $userService
+        private UserService $userService,
+        private UserImportService $userImportService
     ) {}
 
     /**
@@ -226,6 +229,103 @@ class UserController extends Controller
             'success' => true,
             'message' => 'Role removed successfully.',
             'data' => new UserResource($user),
+        ]);
+    }
+
+    /**
+     * Get users from a specific ownership (for import modal).
+     */
+    public function getUsersFromOwnership(Request $request): JsonResponse
+    {
+        $this->authorize('import', User::class);
+
+        $currentUser = $request->user();
+        $sourceOwnershipId = $request->input('source_ownership_id');
+        $targetOwnershipId = $request->input('current_ownership_id');
+
+        if (!$sourceOwnershipId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Source ownership ID is required.',
+            ], 400);
+        }
+
+        // Validate user has access to source ownership
+        if (!$currentUser->isSuperAdmin() && !$currentUser->hasOwnership($sourceOwnershipId)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You do not have access to the source ownership.',
+            ], 403);
+        }
+
+        // Get users from source ownership
+        $users = $this->userService->getUsersByOwnership($sourceOwnershipId);
+
+        // If target ownership is provided, filter out users already mapped to it
+        if ($targetOwnershipId) {
+            $users = $users->filter(function ($user) use ($targetOwnershipId) {
+                return !$user->hasOwnership($targetOwnershipId);
+            });
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => UserResource::collection($users->values()),
+        ]);
+    }
+
+    /**
+     * Import users from another ownership.
+     */
+    public function import(ImportUsersRequest $request): JsonResponse
+    {
+        $this->authorize('import', User::class);
+
+        $currentUser = $request->user();
+        $sourceOwnershipId = $request->input('source_ownership_id');
+        $userIds = $request->input('user_ids');
+        $targetOwnershipId = $request->input('current_ownership_id');
+        $createTenantIfNeeded = $request->input('create_tenant_if_needed', true);
+
+        if (!$targetOwnershipId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Ownership scope is required to import users.',
+            ], 400);
+        }
+
+        $result = $this->userImportService->importUsers(
+            $sourceOwnershipId,
+            $userIds,
+            $targetOwnershipId,
+            $currentUser,
+            $createTenantIfNeeded
+        );
+
+        // Build success message
+        $message = "Successfully imported {$result['imported']} user(s).";
+        if ($result['skipped'] > 0) {
+            $message .= " {$result['skipped']} user(s) skipped (already exist).";
+        }
+        if ($result['tenants_created'] > 0) {
+            $message .= " {$result['tenants_created']} tenant record(s) created.";
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => $message,
+            'data' => [
+                'imported' => $result['imported'],
+                'skipped' => $result['skipped'],
+                'tenants_created' => $result['tenants_created'],
+                'imported_users' => UserResource::collection($result['imported_users']),
+                'skipped_users' => array_map(function ($item) {
+                    return [
+                        'user' => new UserResource($item['user']),
+                        'reason' => $item['reason'],
+                    ];
+                }, $result['skipped_users']),
+            ],
         ]);
     }
 }

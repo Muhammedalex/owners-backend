@@ -148,7 +148,7 @@ return [
         'deposit_status' => 'deposit status',
         'document' => 'document',
         'signature' => 'signature',
-        'currency' => 'currency',
+        'currency' => 'SAR',
         'company' => 'company',
         'active' => 'active',
         'timezone' => 'timezone',
@@ -173,6 +173,14 @@ return [
         'password_confirmation' => 'password confirmation',
         'expires_in_days' => 'expiration days',
         'invitations' => 'invitations',
+        'users' => 'users',
+    ],
+    'payment_methods' => [
+        'cash' => 'Cash',
+        'bank_transfer' => 'Bank Transfer',
+        'check' => 'Check',
+        'visa' => 'Visa',
+        'other' => 'Other',
     ],
 ];
 

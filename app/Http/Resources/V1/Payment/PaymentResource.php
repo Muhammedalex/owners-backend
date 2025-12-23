@@ -27,6 +27,7 @@ class PaymentResource extends JsonResource
                 return new OwnershipResource($this->ownership);
             }),
             'method' => $this->method,
+            'method_label' => __("messages.payment_methods.{$this->method}") ?: $this->method,
             'transaction_id' => $this->transaction_id,
             'amount' => (float) $this->amount,
             'currency' => $this->currency,
