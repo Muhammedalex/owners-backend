@@ -6,6 +6,7 @@ use App\Models\V1\Auth\Role;
 use App\Repositories\V1\Auth\Interfaces\UserRepositoryInterface;
 use Database\Seeders\V1\Auth\PermissionSeeder;
 use Database\Seeders\V1\Auth\RoleSeeder;
+use Database\Seeders\V1\Setting\SettingModuleSeeder;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -20,11 +21,11 @@ class DatabaseSeeder extends Seeder
      * - Permissions
      * - Roles (including Super Admin)
      * - Super Admin User
+     * - Settings (System-wide settings)
      * 
-     * Other seeders (Users, Ownerships, Settings, etc.) are kept but must be run explicitly:
+     * Other seeders (Users, Ownerships, etc.) are kept but must be run explicitly:
      * - php artisan db:seed --class="Database\Seeders\V1\Auth\AuthModuleSeeder"
      * - php artisan db:seed --class="Database\Seeders\V1\Ownership\OwnershipModuleSeeder"
-     * - php artisan db:seed --class="Database\Seeders\V1\Setting\SettingModuleSeeder"
      * etc.
      */
     public function run(): void
@@ -47,12 +48,16 @@ class DatabaseSeeder extends Seeder
         $this->createSuperAdmin();
         $this->command->info('');
 
+        // Step 4: Seed Settings (System-wide settings)
+        $this->command->info('Step 4: Seeding settings...');
+        $this->call(SettingModuleSeeder::class);
+        $this->command->info('');
+
         $this->command->info('✅ Essential seeding completed!');
         $this->command->info('');
         $this->command->info('💡 To run other seeders, use:');
         $this->command->info('   - Auth Module: php artisan db:seed --class="Database\Seeders\V1\Auth\AuthModuleSeeder"');
         $this->command->info('   - Ownership Module: php artisan db:seed --class="Database\Seeders\V1\Ownership\OwnershipModuleSeeder"');
-        $this->command->info('   - Settings Module: php artisan db:seed --class="Database\Seeders\V1\Setting\SettingModuleSeeder"');
         $this->command->info('   - Phase 1 Module: php artisan db:seed --class="Database\Seeders\V1\Phase1\Phase1ModuleSeeder"');
         $this->command->info('   - Notification Module: php artisan db:seed --class="Database\Seeders\V1\Notification\NotificationModuleSeeder"');
     }
