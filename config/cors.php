@@ -19,21 +19,37 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => [
-        'http://localhost:3000/',
-        'http://localhost:5173',
-        'http://127.0.0.1:3000/',
-        'http://127.0.0.1:5173',
-        'https://owner.iv-erp.com'
-    ],
+    'allowed_origins' => array_filter([
+        // Development origins (without trailing slashes)
+        ...(config('app.env') === 'production' ? [] : [
+            'http://localhost:3000',
+            'http://localhost:5173',
+            'http://127.0.0.1:3000',
+            'http://127.0.0.1:5173',
+        ]),
+        // Production origins from environment
+        env('FRONTEND_URL'),
+        env('FRONTEND_URL_ALT'),
+        // Fallback production origins (without trailing slashes)
+        'https://owner.iv-erp.com',
+        'https://aljanoubia.com',
+    ]),
 
-    'allowed_origins_patterns' => [],
+    'allowed_origins_patterns' => [
+        // Allow any subdomain of iv-erp.com
+        '#^https://[a-z0-9-]+\.iv-erp\.com$#',
+        // Allow any subdomain of aljanoubia.com
+        '#^https://[a-z0-9-]+\.aljanoubia\.com$#',
+    ],
 
     'allowed_headers' => ['*'],
 
-    'exposed_headers' => [],
+    'exposed_headers' => [
+        'Authorization',
+        'X-Requested-With',
+    ],
 
-    'max_age' => 0,
+    'max_age' => 86400, // 24 hours - cache preflight requests
 
     'supports_credentials' => true,
 
