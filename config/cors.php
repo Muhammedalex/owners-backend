@@ -36,12 +36,12 @@ return [
         'https://amazingwill.sa'
     ]),
 
-    'allowed_origins_patterns' => [
-        // Allow any subdomain of iv-erp.com
-        '#^https://[a-z0-9-]+\.iv-erp\.com$#',
-        // Allow any subdomain of aljanoubia.com
-        '#^https://[a-z0-9-]+\.aljanoubia\.com$#',
-    ],
+    // 'allowed_origins_patterns' => [
+    //     // Allow any subdomain of iv-erp.com
+    //     '#^https://[a-z0-9-]+\.iv-erp\.com$#',
+    //     // Allow any subdomain of aljanoubia.com
+    //     '#^https://[a-z0-9-]+\.aljanoubia\.com$#',
+    // ],
 
     'allowed_headers' => ['*'],
 

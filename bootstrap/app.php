@@ -13,10 +13,6 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        // Add CORS debug middleware (only in development)
-        // This should run first to catch any output buffering or header issues
-       
-        
         // Exclude refresh_token and ownership_uuid cookies from encryption
         // This allows the cookies to be readable by the server without decryption
         $middleware->encryptCookies(except: [
@@ -25,7 +21,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
         
         // Add security headers to all responses (API and web)
-        // $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
+        $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
         
         // Add ownership scope middleware to API routes
         // This middleware should run after authentication

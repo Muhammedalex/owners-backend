@@ -19,9 +19,7 @@ class SecurityHeaders
     public function handle(Request $request, Closure $next): Response
     {
         // Skip security headers for API routes to avoid interfering with CORS
-        if ($request->is('api/*')) {
-            return $next($request);
-        }
+      
         $response = $next($request);
 
         // X-Content-Type-Options: Prevents MIME type sniffing attacks

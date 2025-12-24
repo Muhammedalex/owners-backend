@@ -62,5 +62,14 @@ interface UserRepositoryInterface
      * Deactivate user.
      */
     public function deactivate(User $user): User;
+
+    /**
+     * Get users by ownership ID, excluding users already mapped to another ownership.
+     *
+     * @param int $ownershipId Source ownership ID
+     * @param array $excludeUserIds User IDs to exclude (users already in target ownership)
+     * @return Collection
+     */
+    public function getUsersByOwnership(int $ownershipId, array $excludeUserIds = []): Collection;
 }
 
