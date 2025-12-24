@@ -24,11 +24,11 @@ return Application::configure(basePath: dirname(__DIR__))
         // Ensure CORS middleware runs first (before SecurityHeaders)
         // Explicitly add HandleCors middleware to handle CORS requests
         // This is critical for preflight OPTIONS requests
-        // $middleware->prepend(HandleCors::class);
+        $middleware->prepend(HandleCors::class);
         
         // Add security headers to all responses (API and web)
         // This runs after CORS, so it won't interfere with CORS headers
-        // $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
+        $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
         
         // Add ownership scope middleware to API routes
         // This middleware should run after authentication
