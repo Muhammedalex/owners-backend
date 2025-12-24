@@ -11,63 +11,30 @@ return [
     | or "CORS". This determines what cross-origin operations may execute
     | in web browsers. You are free to adjust these settings as needed.
     |
+    | To learn more: https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS
+    |
     */
 
-    'paths' => [
-        'api/*',
-        'sanctum/csrf-cookie',
-        // Note: Reverb WebSocket has its own CORS config in config/reverb.php
-        // Reverb runs on a separate port (usually 8080) and doesn't use Laravel's CORS middleware
-    ],
+    'paths' => ['api/*', 'sanctum/csrf-cookie'],
 
-    'allowed_methods' => ['*'], // All HTTP methods
+    'allowed_methods' => ['*'],
 
-    'allowed_origins' => array_filter([
-        // Development origins
+    'allowed_origins' => [
         'http://localhost:3000',
         'http://localhost:5173',
         'http://127.0.0.1:3000',
         'http://127.0.0.1:5173',
-        // Production origins
-        'https://amazingwill.sa',
-        'https://www.amazingwill.sa',
-        // Production origins from environment
-        env('FRONTEND_URL'),
-        env('FRONTEND_URL_ALT'),
-        // Fallback production origins
-        'https://owner.iv-erp.com',
-        'https://aljanoubia.com',
-    ]),
-
-    'allowed_origins_patterns' => [
-        // Allow localhost with any port
-        '#^http://localhost:\d+$#',
-        '#^http://127\.0\.0\.1:\d+$#',
+        'https://owner.iv-erp.com'
     ],
 
-    'allowed_headers' => [
-        'Accept',
-        'Authorization',
-        'Content-Type',
-        'X-Requested-With',
-        'X-CSRF-TOKEN',
-        'X-XSRF-TOKEN',
-        'Origin',
-        'Cache-Control',
-        'Pragma',
-        'Accept-Language',
-        'Accept-Encoding',
-    ],
+    'allowed_origins_patterns' => [],
 
-    'exposed_headers' => [
-        'Authorization',
-        'Content-Type',
-        'X-Total-Count',
-        'X-Requested-With',
-    ],
+    'allowed_headers' => ['*'],
 
-    'max_age' => 86400, // Cache preflight for 24 hours
+    'exposed_headers' => [],
 
-    // Enable credentials if using cookies or auth headers
+    'max_age' => 0,
+
     'supports_credentials' => true,
+
 ];
