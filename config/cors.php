@@ -28,7 +28,9 @@ return [
         'http://localhost:5173',
         'http://127.0.0.1:3000',
         'http://127.0.0.1:5173',
-        'https://amazingwill.sa/',
+        // Production origins
+        'https://amazingwill.sa',
+        'https://www.amazingwill.sa',
         // Production origins from environment
         env('FRONTEND_URL'),
         env('FRONTEND_URL_ALT'),
@@ -53,6 +55,8 @@ return [
         'Origin',
         'Cache-Control',
         'Pragma',
+        'Accept-Language',
+        'Accept-Encoding',
     ],
 
     'exposed_headers' => [

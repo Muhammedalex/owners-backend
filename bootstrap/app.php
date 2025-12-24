@@ -3,6 +3,7 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Middleware\HandleCors;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -21,8 +22,9 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
         
         // Ensure CORS middleware runs first (before SecurityHeaders)
-        // HandleCors is automatically registered by Laravel when config/cors.php exists
-        // But we ensure it runs in the global middleware stack for API routes
+        // Explicitly add HandleCors middleware to handle CORS requests
+        // This is critical for preflight OPTIONS requests
+        $middleware->prepend(HandleCors::class);
         
         // Add security headers to all responses (API and web)
         // This runs after CORS, so it won't interfere with CORS headers
