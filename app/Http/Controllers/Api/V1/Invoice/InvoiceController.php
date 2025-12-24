@@ -298,5 +298,24 @@ class InvoiceController extends Controller
             'invoices.marked_sent'
         );
     }
+
+    /**
+     * Download invoice as PDF.
+     * Ownership scope is mandatory from middleware.
+     */
+    public function downloadPdf(Request $request, Invoice $invoice): \Symfony\Component\HttpFoundation\Response
+    {
+        $this->authorize('view', $invoice);
+
+        // Verify ownership scope (MANDATORY)
+        $ownershipId = $request->input('current_ownership_id');
+        if (!$ownershipId || $invoice->ownership_id != $ownershipId) {
+            abort(404, 'Invoice not found');
+        }
+
+        $pdfService = app(\App\Services\V1\Invoice\InvoicePdfService::class);
+        
+        return $pdfService->downloadPdf($invoice);
+    }
 }
 

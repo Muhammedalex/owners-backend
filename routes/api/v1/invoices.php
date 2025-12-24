@@ -46,5 +46,6 @@ Route::prefix('invoices')->name('v1.invoices.')->middleware(['auth:sanctum', 'ow
     Route::post('/{invoice:uuid}/mark-as-paid', [InvoiceController::class, 'markAsPaid'])->name('mark-as-paid');
     Route::post('/{invoice:uuid}/mark-as-sent', [InvoiceController::class, 'markAsSent'])->name('mark-as-sent');
     Route::post('/{invoice:uuid}/update-status', [InvoiceController::class, 'updateStatus'])->name('update-status');
+    Route::get('/{invoice:uuid}/download', [InvoiceController::class, 'downloadPdf'])->name('download');
 });
 

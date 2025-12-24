@@ -13,6 +13,8 @@
         "laravel/reverb": "^1.6",
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^2.10.1",
+        "maatwebsite/excel": "^3.1",
+        "mpdf/mpdf": "^8.2",
         "spatie/laravel-permission": "^6.23",
         "twilio/sdk": "^8.10"
     },

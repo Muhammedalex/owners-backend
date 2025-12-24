@@ -1,0 +1,142 @@
+========================================
+Laravel Supervisor Setup (VPS)
+Queue + Scheduler + Reverb
+========================================
+
+1) تثبيت Supervisor (Ubuntu / Debian)
+
+sudo apt update
+sudo apt install supervisor -y
+
+تفعيل الخدمة:
+
+sudo systemctl enable supervisor
+sudo systemctl start supervisor
+
+
+----------------------------------------
+2) إعداد Supervisor لتشغيل Laravel Queue
+----------------------------------------
+
+إنشاء ملف الإعداد:
+
+sudo nano /etc/supervisor/conf.d/laravel-queue.conf
+
+المحتوى:
+
+[program:laravel-queue]
+process_name=%(program_name)s_%(process_num)02d
+command=php /path/to/project/artisan queue:work --sleep=3 --tries=3
+autostart=true
+autorestart=true
+user=www-data
+numprocs=1
+redirect_stderr=true
+stdout_logfile=/path/to/project/storage/logs/queue-worker.log
+stopwaitsecs=3600
+
+ملاحظات:
+- عدّل /path/to/project للمسار الحقيقي
+- user غالباً www-data أو ubuntu
+
+
+----------------------------------------
+3) إعداد Supervisor لتشغيل Laravel Scheduler
+----------------------------------------
+
+إنشاء الملف:
+
+sudo nano /etc/supervisor/conf.d/laravel-schedule.conf
+
+المحتوى:
+
+[program:laravel-schedule]
+command=php /path/to/project/artisan schedule:run
+autostart=true
+autorestart=true
+user=www-data
+stdout_logfile=/path/to/project/storage/logs/schedule.log
+stderr_logfile=/path/to/project/storage/logs/schedule-error.log
+startsecs=0
+
+
+ملاحظة:
+الطريقة الرسمية للـ Scheduler هي cron كل دقيقة:
+
+* * * * * cd /path/to/project && php artisan schedule:run >> /dev/null 2>&1
+
+
+----------------------------------------
+4) (اختياري) تشغيل Laravel Reverb
+----------------------------------------
+
+إنشاء ملف:
+
+sudo nano /etc/supervisor/conf.d/laravel-reverb.conf
+
+المحتوى:
+
+[program:laravel-reverb]
+command=php /path/to/project/artisan reverb:start
+autostart=true
+autorestart=true
+user=www-data
+redirect_stderr=true
+stdout_logfile=/path/to/project/storage/logs/reverb.log
+
+
+----------------------------------------
+5) تحميل الإعدادات وتشغيلها
+----------------------------------------
+
+sudo supervisorctl reread
+sudo supervisorctl update
+
+التحقق من الحالة:
+
+sudo supervisorctl status
+
+
+----------------------------------------
+6) أوامر إدارة Supervisor
+----------------------------------------
+
+إعادة تشغيل Queue:
+sudo supervisorctl restart laravel-queue
+
+إعادة تشغيل Scheduler:
+sudo supervisorctl restart laravel-schedule
+
+إعادة تشغيل Reverb:
+sudo supervisorctl restart laravel-reverb
+
+إعادة تحميل الكل:
+sudo supervisorctl reload
+
+
+----------------------------------------
+7) متابعة اللوجات
+----------------------------------------
+
+Queue:
+tail -f storage/logs/queue-worker.log
+
+Scheduler:
+tail -f storage/logs/schedule.log
+
+Reverb:
+tail -f storage/logs/reverb.log
+
+
+----------------------------------------
+Best Practices
+----------------------------------------
+
+- استخدم numprocs > 1 لزيادة عدد الـ queue workers
+- راقب اللوجات باستمرار
+- لا تشغّل schedule:run بدون cron إلا لو فاهم التأثير
+- Supervisor مسؤول عن الاستمرارية وليس التوقيت
+
+========================================
+END OF FILE
+========================================

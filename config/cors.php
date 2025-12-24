@@ -15,7 +15,7 @@ return [
     |
     */
 
-    'paths' => ['api/*', 'sanctum/csrf-cookie'],
+    'paths' => ['api/*', 'sanctum/csrf-cookie', 'reverb/*'],
 
     'allowed_methods' => ['*'],
 
@@ -24,7 +24,8 @@ return [
         'http://localhost:5173',
         'http://127.0.0.1:3000',
         'http://127.0.0.1:5173',
-        'https://owner.iv-erp.com'
+        'https://owner.iv-erp.com',
+        'https://aljanoubia.com',
     ],
 
     'allowed_origins_patterns' => [],

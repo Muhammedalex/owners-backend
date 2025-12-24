@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\V1\Ownership\OwnershipBoardMemberController;
 use App\Http\Controllers\Api\V1\Ownership\OwnershipController;
 use App\Http\Controllers\Api\V1\Ownership\PortfolioController;
 use App\Http\Controllers\Api\V1\Ownership\UnitController;
+use App\Http\Controllers\Api\V1\Ownership\UnitImportExportController;
 use App\Http\Controllers\Api\V1\Ownership\UserOwnershipMappingController;
 use Illuminate\Support\Facades\Route;
 
@@ -88,12 +89,19 @@ Route::prefix('ownerships')->name('v1.ownerships.')->middleware(['auth:sanctum',
     Route::prefix('units')->name('units.')->group(function () {
         Route::get('/', [UnitController::class, 'index'])->name('index');
         Route::post('/', [UnitController::class, 'store'])->name('store');
+        Route::get('/import/template', [UnitImportExportController::class, 'downloadTemplate'])->name('import.template');
+        Route::get('/import/template/{building:uuid}', [UnitImportExportController::class, 'downloadTemplateForBuilding'])->name('import.template.building');
+        Route::post('/import', [UnitImportExportController::class, 'import'])->name('import');
+        Route::get('/export', [UnitImportExportController::class, 'export'])->name('export');
         Route::get('/{unit:uuid}', [UnitController::class, 'show'])->name('show');
         Route::put('/{unit:uuid}', [UnitController::class, 'update'])->name('update');
         Route::patch('/{unit:uuid}', [UnitController::class, 'update'])->name('update.patch');
         Route::delete('/{unit:uuid}', [UnitController::class, 'destroy'])->name('destroy');
         Route::post('/{unit:uuid}/activate', [UnitController::class, 'activate'])->name('activate');
         Route::post('/{unit:uuid}/deactivate', [UnitController::class, 'deactivate'])->name('deactivate');
+        
+        // Import/Export routes
+        
     });
     
     // Ownership actions with UUID (must come after specific routes)
