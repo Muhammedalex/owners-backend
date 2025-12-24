@@ -11,30 +11,53 @@ return [
     | or "CORS". This determines what cross-origin operations may execute
     | in web browsers. You are free to adjust these settings as needed.
     |
-    | To learn more: https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS
-    |
     */
 
-    'paths' => ['api/*', 'sanctum/csrf-cookie'],
+    'paths' => [
+        'api/*',
+        'sanctum/csrf-cookie',
+        // Note: Reverb WebSocket has its own CORS config in config/reverb.php
+        // Reverb runs on a separate port (usually 8080) and doesn't use Laravel's CORS middleware
+    ],
 
-    'allowed_methods' => ['*'],
+    'allowed_methods' => ['*'], // All HTTP methods
 
-    'allowed_origins' => [
+    'allowed_origins' => array_filter([
+        // Development origins
         'http://localhost:3000',
         'http://localhost:5173',
         'http://127.0.0.1:3000',
         'http://127.0.0.1:5173',
-        'https://owner.iv-erp.com'
+        // Production origins
+        'https://amazingwill.sa',
+        'https://www.amazingwill.sa',
+        // Production origins from environment
+        env('FRONTEND_URL'),
+        env('FRONTEND_URL_ALT'),
+        // Fallback production origins
+        'https://owner.iv-erp.com',
+        'https://aljanoubia.com',
+    ]),
+
+    'allowed_origins_patterns' => [
+        // Allow localhost with any port
+        '#^http://localhost:\d+$#',
+        '#^http://127\.0\.0\.1:\d+$#',
     ],
 
-    'allowed_origins_patterns' => [],
+    'allowed_headers' => [
+       '*',
+    ],
 
-    'allowed_headers' => ['*'],
+    'exposed_headers' => [
+        'Authorization',
+        'Content-Type',
+        'X-Total-Count',
+        'X-Requested-With',
+    ],
 
-    'exposed_headers' => [],
+    'max_age' => 86400, // Cache preflight for 24 hours
 
-    'max_age' => 0,
-
+    // Enable credentials if using cookies or auth headers
     'supports_credentials' => true,
-
 ];
