@@ -14,7 +14,9 @@ use Illuminate\Support\Facades\Broadcast;
 | be assigned to the "api" middleware group. Make something great!
 |
 */
-
+Route::options('{any}', function () {
+    return response()->json([], 200);
+})->where('any', '.*');
 // V1 API Routes
 Route::prefix('v1')->group(function () {
     // Broadcasting authentication route - /api/v1/broadcasting/auth
