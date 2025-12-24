@@ -15,9 +15,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         // Add CORS debug middleware (only in development)
         // This should run first to catch any output buffering or header issues
-        if (config('app.env') !== 'production') {
-            $middleware->prepend(\App\Http\Middleware\CorsDebugMiddleware::class);
-        }
+       
         
         // Exclude refresh_token and ownership_uuid cookies from encryption
         // This allows the cookies to be readable by the server without decryption
