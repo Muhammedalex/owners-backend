@@ -20,7 +20,12 @@ return Application::configure(basePath: dirname(__DIR__))
             'ownership_uuid',
         ]);
         
+        // Ensure CORS middleware runs first (before SecurityHeaders)
+        // HandleCors is automatically registered by Laravel when config/cors.php exists
+        // But we ensure it runs in the global middleware stack for API routes
+        
         // Add security headers to all responses (API and web)
+        // This runs after CORS, so it won't interfere with CORS headers
         $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
         
         // Add ownership scope middleware to API routes

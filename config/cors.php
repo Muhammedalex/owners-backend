@@ -21,26 +21,46 @@ return [
 
     'allowed_methods' => ['*'], // All HTTP methods
 
-    'allowed_origins' => [
-        'http://localhost:3000',   // React dev server
-        'http://localhost:5173',   // Vite dev server
+    'allowed_origins' => array_filter([
+        // Development origins
+        'http://localhost:3000',
+        'http://localhost:5173',
         'http://127.0.0.1:3000',
         'http://127.0.0.1:5173',
-        'https://owner.iv-erp.com', // Production backend
-        'https://aljanoubia.com',   // Production frontend if used
+        // Production origins from environment
+        env('FRONTEND_URL'),
+        env('FRONTEND_URL_ALT'),
+        // Fallback production origins
+        'https://owner.iv-erp.com',
+        'https://aljanoubia.com',
+    ]),
+
+    'allowed_origins_patterns' => [
+        // Allow localhost with any port
+        '#^http://localhost:\d+$#',
+        '#^http://127\.0\.0\.1:\d+$#',
     ],
 
-    'allowed_origins_patterns' => [],
-
-    'allowed_headers' => ['*'], // Allow all headers
+    'allowed_headers' => [
+        'Accept',
+        'Authorization',
+        'Content-Type',
+        'X-Requested-With',
+        'X-CSRF-TOKEN',
+        'X-XSRF-TOKEN',
+        'Origin',
+        'Cache-Control',
+        'Pragma',
+    ],
 
     'exposed_headers' => [
         'Authorization',
         'Content-Type',
-        'X-Total-Count', // if you return custom headers from API
+        'X-Total-Count',
+        'X-Requested-With',
     ],
 
-    'max_age' => 0,
+    'max_age' => 86400, // Cache preflight for 24 hours
 
     // Enable credentials if using cookies or auth headers
     'supports_credentials' => true,
