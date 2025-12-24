@@ -11,31 +11,37 @@ return [
     | or "CORS". This determines what cross-origin operations may execute
     | in web browsers. You are free to adjust these settings as needed.
     |
-    | To learn more: https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS
-    |
     */
 
-    'paths' => ['api/*', 'sanctum/csrf-cookie', 'reverb/*'],
+    'paths' => [
+        'api/*',
+        'sanctum/csrf-cookie',
+        'reverb/*',
+    ],
 
-    'allowed_methods' => ['*'],
+    'allowed_methods' => ['*'], // All HTTP methods
 
     'allowed_origins' => [
-        'http://localhost:3000',
-        'http://localhost:5173',
+        'http://localhost:3000',   // React dev server
+        'http://localhost:5173',   // Vite dev server
         'http://127.0.0.1:3000',
         'http://127.0.0.1:5173',
-        'https://owner.iv-erp.com',
-        'https://aljanoubia.com',
+        'https://owner.iv-erp.com', // Production backend
+        'https://aljanoubia.com',   // Production frontend if used
     ],
 
     'allowed_origins_patterns' => [],
 
-    'allowed_headers' => ['*'],
+    'allowed_headers' => ['*'], // Allow all headers
 
-    'exposed_headers' => [],
+    'exposed_headers' => [
+        'Authorization',
+        'Content-Type',
+        'X-Total-Count', // if you return custom headers from API
+    ],
 
     'max_age' => 0,
 
+    // Enable credentials if using cookies or auth headers
     'supports_credentials' => true,
-
 ];
