@@ -1,26 +1,13 @@
 <?php
 
 return [
-
-    /*
-    |--------------------------------------------------------------------------
-    | Cross-Origin Resource Sharing (CORS) Configuration
-    |--------------------------------------------------------------------------
-    |
-    | Here you may configure your settings for cross-origin resource sharing
-    | or "CORS". This determines what cross-origin operations may execute
-    | in web browsers. You are free to adjust these settings as needed.
-    |
-    */
-
     'paths' => [
         'api/*',
         'sanctum/csrf-cookie',
-        // Note: Reverb WebSocket has its own CORS config in config/reverb.php
-        // Reverb runs on a separate port (usually 8080) and doesn't use Laravel's CORS middleware
+        'reverb/*',
     ],
 
-    'allowed_methods' => ['*'], // All HTTP methods
+    'allowed_methods' => ['*'],
 
     'allowed_origins' => array_filter([
         // Development origins
@@ -40,14 +27,11 @@ return [
     ]),
 
     'allowed_origins_patterns' => [
-        // Allow localhost with any port
         '#^http://localhost:\d+$#',
         '#^http://127\.0\.0\.1:\d+$#',
     ],
 
-    'allowed_headers' => [
-       '*',
-    ],
+    'allowed_headers' => ['*'],
 
     'exposed_headers' => [
         'Authorization',
@@ -56,8 +40,8 @@ return [
         'X-Requested-With',
     ],
 
-    'max_age' => 86400, // Cache preflight for 24 hours
+    'max_age' => 86400,
 
-    // Enable credentials if using cookies or auth headers
+    // ⚠️ هذا هو السبب! يجب أن يكون true للسماح بالكوكيز
     'supports_credentials' => true,
 ];

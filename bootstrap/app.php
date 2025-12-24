@@ -28,7 +28,7 @@ return Application::configure(basePath: dirname(__DIR__))
         
         // Add security headers to all responses (API and web)
         // This runs after CORS, so it won't interfere with CORS headers
-        $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
+        // $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
         
         // Add ownership scope middleware to API routes
         // This middleware should run after authentication
