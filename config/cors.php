@@ -16,7 +16,8 @@ return [
     'paths' => [
         'api/*',
         'sanctum/csrf-cookie',
-        'reverb/*',
+        // Note: Reverb WebSocket has its own CORS config in config/reverb.php
+        // Reverb runs on a separate port (usually 8080) and doesn't use Laravel's CORS middleware
     ],
 
     'allowed_methods' => ['*'], // All HTTP methods

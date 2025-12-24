@@ -82,7 +82,19 @@ return [
                     'scheme' => env('REVERB_SCHEME', 'https'),
                     'useTLS' => env('REVERB_SCHEME', 'https') === 'https',
                 ],
-                'allowed_origins' => ['*'],
+                'allowed_origins' => array_filter([
+                    // Development origins
+                    'http://localhost:3000',
+                    'http://localhost:5173',
+                    'http://127.0.0.1:3000',
+                    'http://127.0.0.1:5173',
+                    // Production origins from environment
+                    env('FRONTEND_URL'),
+                    env('FRONTEND_URL_ALT'),
+                    // Fallback production origins
+                    'https://owner.iv-erp.com',
+                    'https://aljanoubia.com',
+                ]) ?: ['*'], // Fallback to ['*'] if array is empty
                 'ping_interval' => env('REVERB_APP_PING_INTERVAL', 60),
                 'activity_timeout' => env('REVERB_APP_ACTIVITY_TIMEOUT', 30),
                 'max_connections' => env('REVERB_APP_MAX_CONNECTIONS'),
