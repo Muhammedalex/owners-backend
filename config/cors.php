@@ -33,6 +33,7 @@ return [
         // Fallback production origins (without trailing slashes)
         'https://owner.iv-erp.com',
         'https://aljanoubia.com',
+        'https://amazingwill.sa'
     ]),
 
     'allowed_origins_patterns' => [
