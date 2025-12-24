@@ -4,7 +4,7 @@ return [
     'paths' => [
         'api/*',
         'sanctum/csrf-cookie',
-        'reverb/*',
+        // 'reverb/*',
     ],
 
     'allowed_methods' => ['*'],
