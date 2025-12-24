@@ -18,6 +18,10 @@ class SecurityHeaders
      */
     public function handle(Request $request, Closure $next): Response
     {
+        if ($request->is('api/*')) {
+            \Log::info('SecurityHeaders SKIPPED for API: ' . $request->path());
+            return $next($request);
+        }
         $response = $next($request);
 
         // X-Content-Type-Options: Prevents MIME type sniffing attacks
