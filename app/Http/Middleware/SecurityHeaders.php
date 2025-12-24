@@ -26,28 +26,28 @@ class SecurityHeaders
         // X-Content-Type-Options: Prevents MIME type sniffing attacks
         // Critical for APIs to prevent browsers from misinterpreting JSON as HTML/JS
         // This doesn't conflict with CORS
-        $response->headers->set('X-Content-Type-Options', 'nosniff');
+        // $response->headers->set('X-Content-Type-Options', 'nosniff');
 
-        // Strict-Transport-Security (HSTS): Forces HTTPS connections
-        // Only enable in production with HTTPS
-        // This doesn't conflict with CORS
-        if (config('app.env') === 'production' && $request->secure()) {
-            $response->headers->set(
-                'Strict-Transport-Security',
-                'max-age=31536000; includeSubDomains; preload'
-            );
-        }
+        // // Strict-Transport-Security (HSTS): Forces HTTPS connections
+        // // Only enable in production with HTTPS
+        // // This doesn't conflict with CORS
+        // if (config('app.env') === 'production' && $request->secure()) {
+        //     $response->headers->set(
+        //         'Strict-Transport-Security',
+        //         'max-age=31536000; includeSubDomains; preload'
+        //     );
+        // }
 
-        // Referrer-Policy: Controls referrer information sent with requests
-        // Protects sensitive data in URLs from being leaked
-        // This doesn't conflict with CORS
-        $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
+        // // Referrer-Policy: Controls referrer information sent with requests
+        // // Protects sensitive data in URLs from being leaked
+        // // This doesn't conflict with CORS
+        // $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
 
-        // Optional: X-Frame-Options (only needed if you serve HTML pages)
-        // $response->headers->set('X-Frame-Options', 'DENY');
+        // // Optional: X-Frame-Options (only needed if you serve HTML pages)
+        // // $response->headers->set('X-Frame-Options', 'DENY');
 
-        // Optional: Content-Security-Policy (only needed if you serve HTML pages)
-        // $response->headers->set('Content-Security-Policy', "default-src 'self'");
+        // // Optional: Content-Security-Policy (only needed if you serve HTML pages)
+        // // $response->headers->set('Content-Security-Policy', "default-src 'self'");
 
         return $response;
     }
