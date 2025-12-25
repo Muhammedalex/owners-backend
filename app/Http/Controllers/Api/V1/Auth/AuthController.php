@@ -18,6 +18,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
@@ -141,12 +142,14 @@ class AuthController extends Controller
             
             $refreshCookie = $this->authService->createRefreshTokenCookie($result['tokens']['refresh_token']);
 
+            $user = $result['user']->load('ownerships.settings');
             $response = response()->json([
                 'success' => true,
                 'message' => 'Login successful.',
                 'data' => [
-                    'user' => new UserResource($result['user']->load('ownerships.settings')),
+                    'user' => new UserResource($user),
                     'current_ownership_uuid' => $result['default_ownership_uuid'],
+                    'email_verified' => $user->hasVerifiedEmail(),
                     'tokens' => [
                         'access_token' => $result['tokens']['access_token'],
                         'token_type' => $result['tokens']['token_type'],
@@ -303,10 +306,53 @@ class AuthController extends Controller
 
     /**
      * Verify email.
+     * Validates signed route parameters (signature and expires) before verifying.
      */
     public function verifyEmail(Request $request, int $id, string $hash): JsonResponse
     {
         try {
+            // Validate signed route parameters
+            $signature = $request->query('signature');
+            $expires = $request->query('expires');
+            
+            if (!$signature || !$expires) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid verification link. Missing signature parameters.',
+                ], 400);
+            }
+            
+            // Check if link has expired
+            if ((int) $expires < time()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Verification link has expired. Please request a new one.',
+                ], 400);
+            }
+            
+            // Validate the signature
+            // Reconstruct the URL path that was signed
+            $urlPath = route('v1.auth.verify-email', [
+                'id' => $id,
+                'hash' => $hash,
+            ], false);
+            
+            // Build the full URL with query parameters for signature validation
+            $fullUrl = $request->schemeAndHttpHost() . $urlPath . '?' . http_build_query([
+                'signature' => $signature,
+                'expires' => $expires,
+            ]);
+            
+            // Validate signature using Laravel's URL validation
+            $validationRequest = Request::create($fullUrl, 'GET');
+            if (!URL::hasValidSignature($validationRequest)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid or expired verification link.',
+                ], 400);
+            }
+            
+            // Verify email
             $verified = $this->authService->verifyEmail($id, $hash);
 
             if (!$verified) {

@@ -47,6 +47,7 @@ class UserResource extends JsonResource
             'type' => $this->type,
             'active' => $this->active,
             'email_verified_at' => $this->email_verified_at?->toIso8601String(),
+            'email_verified' => $this->hasVerifiedEmail(),
             'last_login_at' => $this->last_login_at?->toIso8601String(),
             'timezone' => $this->timezone,
             'locale' => $this->locale,

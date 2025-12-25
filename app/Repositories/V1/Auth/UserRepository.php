@@ -12,9 +12,17 @@ class UserRepository implements UserRepositoryInterface
     /**
      * Get all users with pagination.
      */
-    public function paginate(int $perPage = 15, array $filters = []): LengthAwarePaginator
+    public function paginate(int $perPage = 15, array $filters = [], ?User $currentUser = null): LengthAwarePaginator
     {
         $query = User::query();
+
+        // If current user is not Super Admin, exclude Super Admin users
+        if ($currentUser && !$currentUser->isSuperAdmin()) {
+            $query->whereDoesntHave('roles', function ($q) {
+                $q->withoutGlobalScope(\App\Models\Scopes\ExcludeSystemRolesScope::class)
+                  ->where('name', 'Super Admin');
+            });
+        }
 
         // Apply filters
         if (isset($filters['type'])) {
@@ -56,9 +64,17 @@ class UserRepository implements UserRepositoryInterface
     /**
      * Get all users.
      */
-    public function all(array $filters = []): Collection
+    public function all(array $filters = [], ?User $currentUser = null): Collection
     {
         $query = User::query();
+
+        // If current user is not Super Admin, exclude Super Admin users
+        if ($currentUser && !$currentUser->isSuperAdmin()) {
+            $query->whereDoesntHave('roles', function ($q) {
+                $q->withoutGlobalScope(\App\Models\Scopes\ExcludeSystemRolesScope::class)
+                  ->where('name', 'Super Admin');
+            });
+        }
 
         if (isset($filters['type'])) {
             $query->ofType($filters['type']);

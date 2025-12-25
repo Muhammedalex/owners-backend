@@ -139,6 +139,57 @@ class SystemSettingSeeder extends Seeder
                 'group' => 'notification',
                 'description' => 'Twilio WhatsApp phone number (leave empty to use twilio_phone)',
             ],
+
+            // Mail/SMTP Settings (System-wide)
+            [
+                'key' => 'smtp_host',
+                'value' => 'smtp.gmail.com',
+                'value_type' => 'string',
+                'group' => 'notification',
+                'description' => 'SMTP server hostname',
+            ],
+            [
+                'key' => 'smtp_port',
+                'value' => '465',
+                'value_type' => 'integer',
+                'group' => 'notification',
+                'description' => 'SMTP server port',
+            ],
+            [
+                'key' => 'smtp_username',
+                'value' => 'm.ayman1924@gmail.com',
+                'value_type' => 'string',
+                'group' => 'notification',
+                'description' => 'SMTP username',
+            ],
+            [
+                'key' => 'smtp_password',
+                'value' => 'qsky zizl ylcf uzlt',
+                'value_type' => 'string',
+                'group' => 'notification',
+                'description' => 'SMTP password',
+            ],
+            [
+                'key' => 'smtp_encryption',
+                'value' => 'tls',
+                'value_type' => 'string',
+                'group' => 'notification',
+                'description' => 'SMTP encryption (tls or ssl)',
+            ],
+            [
+                'key' => 'email_from_address',
+                'value' => 'm.ayman1924@gmail.com',
+                'value_type' => 'string',
+                'group' => 'notification',
+                'description' => 'From email address for system emails',
+            ],
+            [
+                'key' => 'email_from_name',
+                'value' => null,
+                'value_type' => 'string',
+                'group' => 'notification',
+                'description' => 'From name for system emails',
+            ],
         ];
 
         foreach ($systemSettings as $setting) {
@@ -865,34 +916,34 @@ class SystemSettingSeeder extends Seeder
             ],
 
             // Mail/SMTP Settings (Ownership-specific)
-            // Note: These are optional - if not set, system default mail config is used
+            // Default values - ownerships can override these
             [
                 'key' => 'smtp_host',
-                'value' => null,
+                'value' => 'smtp.gmail.com',
                 'value_type' => 'string',
                 'group' => 'notification',
-                'description' => 'SMTP server hostname (leave empty to use system default)',
+                'description' => 'SMTP server hostname',
             ],
             [
                 'key' => 'smtp_port',
-                'value' => null,
+                'value' => '465',
                 'value_type' => 'integer',
                 'group' => 'notification',
-                'description' => 'SMTP server port (leave empty to use system default)',
+                'description' => 'SMTP server port',
             ],
             [
                 'key' => 'smtp_username',
-                'value' => null,
+                'value' => 'm.ayman1924@gmail.com',
                 'value_type' => 'string',
                 'group' => 'notification',
-                'description' => 'SMTP username (leave empty to use system default)',
+                'description' => 'SMTP username',
             ],
             [
                 'key' => 'smtp_password',
-                'value' => null,
+                'value' => 'qsky zizl ylcf uzlt',
                 'value_type' => 'string',
                 'group' => 'notification',
-                'description' => 'SMTP password (leave empty to use system default)',
+                'description' => 'SMTP password',
             ],
             [
                 'key' => 'smtp_encryption',
@@ -903,17 +954,17 @@ class SystemSettingSeeder extends Seeder
             ],
             [
                 'key' => 'email_from_address',
-                'value' => null,
+                'value' => 'm.ayman1924@gmail.com',
                 'value_type' => 'string',
                 'group' => 'notification',
-                'description' => 'From email address for ownership emails (leave empty to use system default)',
+                'description' => 'From email address for ownership emails',
             ],
             [
                 'key' => 'email_from_name',
                 'value' => null,
                 'value_type' => 'string',
                 'group' => 'notification',
-                'description' => 'From name for ownership emails (leave empty to use system default)',
+                'description' => 'From name for ownership emails',
             ],
 
             // Twilio SMS Settings (Optional - ownership can override system-wide settings)

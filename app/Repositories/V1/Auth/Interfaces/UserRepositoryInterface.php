@@ -10,13 +10,20 @@ interface UserRepositoryInterface
 {
     /**
      * Get all users with pagination.
+     * 
+     * @param int $perPage
+     * @param array $filters
+     * @param User|null $currentUser Current authenticated user (for filtering super admin users)
      */
-    public function paginate(int $perPage = 15, array $filters = []): LengthAwarePaginator;
+    public function paginate(int $perPage = 15, array $filters = [], ?User $currentUser = null): LengthAwarePaginator;
 
     /**
      * Get all users.
+     * 
+     * @param array $filters
+     * @param User|null $currentUser Current authenticated user (for filtering super admin users)
      */
-    public function all(array $filters = []): Collection;
+    public function all(array $filters = [], ?User $currentUser = null): Collection;
 
     /**
      * Find user by ID.

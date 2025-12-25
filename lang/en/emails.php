@@ -110,5 +110,19 @@ return [
             'copyright' => '© :year Property Management System. All rights reserved.',
         ],
     ],
+    'verify_email' => [
+        'subject' => 'Verify Your Email Address - :app',
+        'greeting' => 'Hello :name',
+        'intro' => 'Thank you for registering! Please verify your email address by clicking the button below.',
+        'button_text' => 'Verify Email Address',
+        'link_label' => 'Or copy and paste this link into your browser:',
+        'security_warning' => 'Security Notice',
+        'expiry_notice' => 'This verification link will expire in 60 minutes. If you did not request this email, please ignore it.',
+        'instructions_title' => 'How to verify your email:',
+        'instructions' => 'Click the "Verify Email Address" button above, or copy and paste the verification link into your browser. Once verified, you will have full access to your account.',
+        'ignore_message' => 'If you did not create an account, please ignore this email. Your account will not be activated.',
+        'footer' => 'This is an automated message. Please do not reply to this email.',
+        'copyright' => '© :year Property Management System. All rights reserved.',
+    ],
 ];
 

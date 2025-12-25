@@ -2,9 +2,11 @@
 
 namespace App\Services\V1\Auth;
 
+use App\Mail\V1\Auth\VerifyEmailMail;
 use App\Models\V1\Auth\PersonalAccessToken;
 use App\Models\V1\Auth\User;
 use App\Repositories\V1\Auth\Interfaces\UserRepositoryInterface;
+use App\Services\V1\Mail\OwnershipMailService;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -15,7 +17,8 @@ use Symfony\Component\HttpFoundation\Cookie;
 class AuthService
 {
     public function __construct(
-        private UserRepositoryInterface $userRepository
+        private UserRepositoryInterface $userRepository,
+        private OwnershipMailService $ownershipMailService
     ) {}
 
     /**
@@ -277,7 +280,19 @@ class AuthService
             ]);
         }
 
-        $user->sendEmailVerificationNotification();
+        // Generate verification URL
+        $verificationUrl = VerifyEmailMail::generateVerificationUrl($user);
+
+        // Get user's default ownership (if exists)
+        $ownershipId = null;
+        if (!$user->isSuperAdmin()) {
+            $defaultOwnership = $user->getDefaultOwnership();
+            $ownershipId = $defaultOwnership?->id;
+        }
+
+        // Send email using OwnershipMailService
+        $mailable = new VerifyEmailMail($user, $verificationUrl);
+        $this->ownershipMailService->sendForOwnership($ownershipId, $user->email, $mailable);
     }
 
     /**

@@ -22,17 +22,17 @@ class UserService
     /**
      * Get all users with pagination.
      */
-    public function paginate(int $perPage = 15, array $filters = []): LengthAwarePaginator
+    public function paginate(int $perPage = 15, array $filters = [], ?User $currentUser = null): LengthAwarePaginator
     {
-        return $this->userRepository->paginate($perPage, $filters);
+        return $this->userRepository->paginate($perPage, $filters, $currentUser);
     }
 
     /**
      * Get all users.
      */
-    public function all(array $filters = []): Collection
+    public function all(array $filters = [], ?User $currentUser = null): Collection
     {
-        return $this->userRepository->all($filters);
+        return $this->userRepository->all($filters, $currentUser);
     }
 
     /**

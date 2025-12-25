@@ -46,7 +46,7 @@ class UserController extends Controller
         }
 
         if ($perPage === -1) {
-            $users = $this->userService->all($filters);
+            $users = $this->userService->all($filters, $currentUser);
 
             return response()->json([
                 'success' => true,
@@ -54,7 +54,7 @@ class UserController extends Controller
             ]);
         }
 
-        $users = $this->userService->paginate($perPage, $filters);
+        $users = $this->userService->paginate($perPage, $filters, $currentUser);
 
         return response()->json([
             'success' => true,
