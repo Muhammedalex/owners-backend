@@ -21,8 +21,8 @@ return [
 
     'allowed_origins' => array_filter([
         // Development origins (without trailing slashes)
-        ...(config('app.env') === 'production' ? [] : [
-            // 'http://localhost:3000',
+        ...(config('app.env') === 'production' ? ['https://aljanoubia.com'] : [
+            'http://localhost:3000',
             'http://localhost:5173',
             'http://127.0.0.1:3000',
             'http://127.0.0.1:5173',
@@ -31,11 +31,9 @@ return [
         env('FRONTEND_URL'),
         env('FRONTEND_URL_ALT'),
         // Fallback production origins (without trailing slashes)
-        'https://owner.iv-erp.com',
         'https://aljanoubia.com',
         'https://amazingwill.sa'
     ]),
-
     // 'allowed_origins_patterns' => [
     //     // Allow any subdomain of iv-erp.com
     //     '#^https://[a-z0-9-]+\.iv-erp\.com$#',
