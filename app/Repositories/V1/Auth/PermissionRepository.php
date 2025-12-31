@@ -3,18 +3,35 @@
 namespace App\Repositories\V1\Auth;
 
 use App\Models\V1\Auth\Permission;
+use App\Models\V1\Auth\User;
 use App\Repositories\V1\Auth\Interfaces\PermissionRepositoryInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Auth;
 
 class PermissionRepository implements PermissionRepositoryInterface
 {
+    /**
+     * Permissions to temporarily exclude from API responses for non-superadmin users.
+     * TODO: Remove this when business needs change.
+     */
+    private const TEMPORARILY_HIDDEN_PERMISSIONS = [
+        'ownerships.create',
+        'ownerships.switch',
+    ];
+
     /**
      * Get all permissions with pagination.
      */
     public function paginate(int $perPage = 15, array $filters = []): LengthAwarePaginator
     {
         $query = Permission::query();
+
+        // If current user is not Super Admin, exclude temporarily hidden permissions
+        $currentUser = Auth::user();
+        if ($currentUser instanceof User && !$currentUser->isSuperAdmin()) {
+            $query->whereNotIn('name', self::TEMPORARILY_HIDDEN_PERMISSIONS);
+        }
 
         // Apply filters
         if (isset($filters['search'])) {
@@ -40,6 +57,12 @@ class PermissionRepository implements PermissionRepositoryInterface
     public function all(array $filters = []): Collection
     {
         $query = Permission::query();
+
+        // If current user is not Super Admin, exclude temporarily hidden permissions
+        $currentUser = Auth::user();
+        if ($currentUser instanceof User && !$currentUser->isSuperAdmin()) {
+            $query->whereNotIn('name', self::TEMPORARILY_HIDDEN_PERMISSIONS);
+        }
 
         // Apply filters
         if (isset($filters['search'])) {
@@ -85,7 +108,15 @@ class PermissionRepository implements PermissionRepositoryInterface
      */
     public function getGroupedByModule(): array
     {
-        $permissions = Permission::orderBy('name')->get();
+        $query = Permission::query();
+
+        // If current user is not Super Admin, exclude temporarily hidden permissions
+        $currentUser = Auth::user();
+        if ($currentUser instanceof User && !$currentUser->isSuperAdmin()) {
+            $query->whereNotIn('name', self::TEMPORARILY_HIDDEN_PERMISSIONS);
+        }
+
+        $permissions = $query->orderBy('name')->get();
         $grouped = [];
 
         foreach ($permissions as $permission) {
