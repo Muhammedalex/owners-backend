@@ -2,13 +2,48 @@
 
 namespace App\Repositories\V1\Ownership;
 
+use App\Models\V1\Auth\User;
 use App\Models\V1\Ownership\Ownership;
 use App\Repositories\V1\Ownership\Interfaces\OwnershipRepositoryInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class OwnershipRepository implements OwnershipRepositoryInterface
 {
+    /**
+     * Get eager loading relationships with Super Admin user filtering.
+     * 
+     * @return array
+     */
+    private function getEagerLoadRelations(): array
+    {
+        $currentUser = Auth::user();
+        $isSuperAdmin = $currentUser instanceof User && $currentUser->isSuperAdmin();
+
+        $eagerLoad = ['createdBy', 'boardMembers.user'];
+        
+        if ($isSuperAdmin) {
+            // Super Admin can see all users
+            $eagerLoad[] = 'userMappings.user';
+        } else {
+            // Non-Super Admin: filter out Super Admin users from userMappings
+            $eagerLoad['userMappings.user'] = function ($query) {
+                $query->whereNotExists(function ($subQuery) {
+                    $subQuery->select(DB::raw(1))
+                        ->from('model_has_roles')
+                        ->whereColumn('model_has_roles.model_id', 'users.id')
+                        ->where('model_has_roles.model_type', User::class)
+                        ->join('roles', 'model_has_roles.role_id', '=', 'roles.id')
+                        ->where('roles.name', 'Super Admin');
+                });
+            };
+        }
+
+        return $eagerLoad;
+    }
+
     /**
      * Get all ownerships with pagination.
      */
@@ -52,7 +87,7 @@ class OwnershipRepository implements OwnershipRepositoryInterface
             $query->whereIn('id', $filters['ownership_ids']);
         }
 
-        return $query->with(['createdBy', 'boardMembers.user', 'userMappings.user'])
+        return $query->with($this->getEagerLoadRelations())
             ->latest()
             ->paginate($perPage);
     }
@@ -100,7 +135,7 @@ class OwnershipRepository implements OwnershipRepositoryInterface
             $query->whereIn('id', $filters['ownership_ids']);
         }
 
-        return $query->with(['createdBy', 'boardMembers.user', 'userMappings.user'])
+        return $query->with($this->getEagerLoadRelations())
             ->latest()
             ->get();
     }
@@ -110,7 +145,7 @@ class OwnershipRepository implements OwnershipRepositoryInterface
      */
     public function find(int $id): ?Ownership
     {
-        return Ownership::with(['createdBy', 'boardMembers.user', 'userMappings.user'])
+        return Ownership::with($this->getEagerLoadRelations())
             ->find($id);
     }
 
@@ -120,7 +155,7 @@ class OwnershipRepository implements OwnershipRepositoryInterface
     public function findByUuid(string $uuid): ?Ownership
     {
         return Ownership::where('uuid', $uuid)
-            ->with(['createdBy', 'boardMembers.user', 'userMappings.user'])
+            ->with($this->getEagerLoadRelations())
             ->first();
     }
 
@@ -138,7 +173,7 @@ class OwnershipRepository implements OwnershipRepositoryInterface
     public function update(Ownership $ownership, array $data): Ownership
     {
         $ownership->update($data);
-        return $ownership->fresh(['createdBy', 'boardMembers.user', 'userMappings.user']);
+        return $ownership->fresh($this->getEagerLoadRelations());
     }
 
     /**
@@ -155,7 +190,7 @@ class OwnershipRepository implements OwnershipRepositoryInterface
     public function activate(Ownership $ownership): Ownership
     {
         $ownership->activate();
-        return $ownership->fresh(['createdBy', 'boardMembers.user', 'userMappings.user']);
+        return $ownership->fresh($this->getEagerLoadRelations());
     }
 
     /**
@@ -164,7 +199,7 @@ class OwnershipRepository implements OwnershipRepositoryInterface
     public function deactivate(Ownership $ownership): Ownership
     {
         $ownership->deactivate();
-        return $ownership->fresh(['createdBy', 'boardMembers.user', 'userMappings.user']);
+        return $ownership->fresh($this->getEagerLoadRelations());
     }
 }
 
