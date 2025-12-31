@@ -150,6 +150,23 @@ class UserOwnershipMappingRepository implements UserOwnershipMappingRepositoryIn
      */
     public function delete(UserOwnershipMapping $mapping): bool
     {
+        $currentUser = Auth::user();
+        
+        // If current user is not Super Admin, prevent deletion of Super Admin user mappings
+        if ($currentUser instanceof User && !$currentUser->isSuperAdmin()) {
+            // Load user relationship if not already loaded
+            if (!$mapping->relationLoaded('user')) {
+                $mapping->load('user');
+            }
+            
+            // Check if the user associated with this mapping is Super Admin
+            if ($mapping->user && $mapping->user->isSuperAdmin()) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'mapping' => ['Cannot delete mapping for Super Admin user.'],
+                ]);
+            }
+        }
+        
         return $mapping->delete();
     }
 

@@ -11,6 +11,7 @@ use App\Policies\V1\Ownership\UserOwnershipMappingPolicy;
 use App\Services\V1\Ownership\UserOwnershipMappingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class UserOwnershipMappingController extends Controller
 {
@@ -144,12 +145,20 @@ class UserOwnershipMappingController extends Controller
             ], 404);
         }
 
-        $this->mappingService->delete($mapping);
+        try {
+            $this->mappingService->delete($mapping);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'User removed from ownership successfully.',
-        ]);
+            return response()->json([
+                'success' => true,
+                'message' => 'User removed from ownership successfully.',
+            ]);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'errors' => $e->errors(),
+            ], 422);
+        }
     }
 
     /**
