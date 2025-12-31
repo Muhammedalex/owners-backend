@@ -3,6 +3,7 @@
 namespace App\Services\V1\Auth;
 
 use App\Models\V1\Auth\Role;
+use App\Models\V1\Auth\User;
 use App\Repositories\V1\Auth\Interfaces\RoleRepositoryInterface;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -15,18 +16,25 @@ class RoleService
 
     /**
      * Get all roles with pagination.
+     * 
+     * @param int $perPage
+     * @param array $filters
+     * @param User|null $currentUser Current authenticated user (for filtering super admin role)
      */
-    public function paginate(int $perPage = 15, array $filters = []): LengthAwarePaginator
+    public function paginate(int $perPage = 15, array $filters = [], ?User $currentUser = null): LengthAwarePaginator
     {
-        return $this->roleRepository->paginate($perPage, $filters);
+        return $this->roleRepository->paginate($perPage, $filters, $currentUser);
     }
 
     /**
      * Get all roles.
+     * 
+     * @param array $filters
+     * @param User|null $currentUser Current authenticated user (for filtering super admin role)
      */
-    public function all(array $filters = []): Collection
+    public function all(array $filters = [], ?User $currentUser = null): Collection
     {
-        return $this->roleRepository->all($filters);
+        return $this->roleRepository->all($filters, $currentUser);
     }
 
     /**

@@ -25,11 +25,12 @@ class RoleController extends Controller
     {
         $this->authorize('viewAny', Role::class);
 
+        $currentUser = $request->user();
         $perPage = (int) $request->input('per_page', 15);
         $filters = $request->only(['search', 'guard_name']);
 
         if ($perPage === -1) {
-            $roles = $this->roleService->all($filters);
+            $roles = $this->roleService->all($filters, $currentUser);
 
             return response()->json([
                 'success' => true,
@@ -37,7 +38,7 @@ class RoleController extends Controller
             ]);
         }
 
-        $roles = $this->roleService->paginate($perPage, $filters);
+        $roles = $this->roleService->paginate($perPage, $filters, $currentUser);
 
         return response()->json([
             'success' => true,

@@ -6,6 +6,7 @@ use App\Models\V1\Auth\User;
 use App\Repositories\V1\Auth\Interfaces\UserRepositoryInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\DB;
 
 class UserRepository implements UserRepositoryInterface
 {
@@ -18,9 +19,14 @@ class UserRepository implements UserRepositoryInterface
 
         // If current user is not Super Admin, exclude Super Admin users
         if ($currentUser && !$currentUser->isSuperAdmin()) {
-            $query->whereDoesntHave('roles', function ($q) {
-                $q->withoutGlobalScope(\App\Models\Scopes\ExcludeSystemRolesScope::class)
-                  ->where('name', 'Super Admin');
+            // Exclude users who have Super Admin role by querying pivot table directly
+            $query->whereNotExists(function ($subQuery) {
+                $subQuery->select(DB::raw(1))
+                    ->from('model_has_roles')
+                    ->whereColumn('model_has_roles.model_id', 'users.id')
+                    ->where('model_has_roles.model_type', User::class)
+                    ->join('roles', 'model_has_roles.role_id', '=', 'roles.id')
+                    ->where('roles.name', 'Super Admin');
             });
         }
 
@@ -70,9 +76,14 @@ class UserRepository implements UserRepositoryInterface
 
         // If current user is not Super Admin, exclude Super Admin users
         if ($currentUser && !$currentUser->isSuperAdmin()) {
-            $query->whereDoesntHave('roles', function ($q) {
-                $q->withoutGlobalScope(\App\Models\Scopes\ExcludeSystemRolesScope::class)
-                  ->where('name', 'Super Admin');
+            // Exclude users who have Super Admin role by querying pivot table directly
+            $query->whereNotExists(function ($subQuery) {
+                $subQuery->select(DB::raw(1))
+                    ->from('model_has_roles')
+                    ->whereColumn('model_has_roles.model_id', 'users.id')
+                    ->where('model_has_roles.model_type', User::class)
+                    ->join('roles', 'model_has_roles.role_id', '=', 'roles.id')
+                    ->where('roles.name', 'Super Admin');
             });
         }
 

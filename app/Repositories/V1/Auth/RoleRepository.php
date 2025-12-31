@@ -3,6 +3,7 @@
 namespace App\Repositories\V1\Auth;
 
 use App\Models\V1\Auth\Role;
+use App\Models\V1\Auth\User;
 use App\Repositories\V1\Auth\Interfaces\RoleRepositoryInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
@@ -12,9 +13,14 @@ class RoleRepository implements RoleRepositoryInterface
     /**
      * Get all roles with pagination.
      */
-    public function paginate(int $perPage = 15, array $filters = []): LengthAwarePaginator
+    public function paginate(int $perPage = 15, array $filters = [], ?User $currentUser = null): LengthAwarePaginator
     {
         $query = Role::query();
+
+        // If current user is not Super Admin, exclude Super Admin role
+        if ($currentUser && !$currentUser->isSuperAdmin()) {
+            $query->where('name', '!=', 'Super Admin');
+        }
 
         // Apply filters
         if (isset($filters['search'])) {
@@ -32,9 +38,14 @@ class RoleRepository implements RoleRepositoryInterface
     /**
      * Get all roles.
      */
-    public function all(array $filters = []): Collection
+    public function all(array $filters = [], ?User $currentUser = null): Collection
     {
         $query = Role::query();
+
+        // If current user is not Super Admin, exclude Super Admin role
+        if ($currentUser && !$currentUser->isSuperAdmin()) {
+            $query->where('name', '!=', 'Super Admin');
+        }
 
         // Apply filters
         if (isset($filters['search'])) {
