@@ -29,15 +29,16 @@ class OwnershipRepository implements OwnershipRepositoryInterface
             $eagerLoad[] = 'userMappings.user';
         } else {
             // Non-Super Admin: filter out Super Admin users from userMappings
-            $eagerLoad['userMappings.user'] = function ($query) {
+            // Filter userMappings where user_id doesn't have Super Admin role
+            $eagerLoad['userMappings'] = function ($query) {
                 $query->whereNotExists(function ($subQuery) {
                     $subQuery->select(DB::raw(1))
                         ->from('model_has_roles')
-                        ->whereColumn('model_has_roles.model_id', 'users.id')
+                        ->whereColumn('model_has_roles.model_id', 'user_ownership_mapping.user_id')
                         ->where('model_has_roles.model_type', User::class)
                         ->join('roles', 'model_has_roles.role_id', '=', 'roles.id')
                         ->where('roles.name', 'Super Admin');
-                });
+                })->with('user');
             };
         }
 
