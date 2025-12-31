@@ -2,18 +2,39 @@
 
 namespace App\Repositories\V1\Ownership;
 
+use App\Models\V1\Auth\User;
 use App\Models\V1\Ownership\UserOwnershipMapping;
 use App\Repositories\V1\Ownership\Interfaces\UserOwnershipMappingRepositoryInterface;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class UserOwnershipMappingRepository implements UserOwnershipMappingRepositoryInterface
 {
     /**
      * Get all mappings.
      */
-    public function all(array $filters = []): Collection
+    public function all(array $filters = [], ?User $currentUser = null): Collection
     {
         $query = UserOwnershipMapping::query();
+
+        // Get current user from Auth if not provided
+        if (!$currentUser) {
+            $currentUser = Auth::user();
+        }
+
+        // If current user is not Super Admin, exclude mappings for Super Admin users
+        if ($currentUser instanceof User && !$currentUser->isSuperAdmin()) {
+            // Exclude mappings where user has Super Admin role by querying pivot table directly
+            $query->whereNotExists(function ($subQuery) {
+                $subQuery->select(DB::raw(1))
+                    ->from('model_has_roles')
+                    ->whereColumn('model_has_roles.model_id', 'user_ownership_mapping.user_id')
+                    ->where('model_has_roles.model_type', User::class)
+                    ->join('roles', 'model_has_roles.role_id', '=', 'roles.id')
+                    ->where('roles.name', 'Super Admin');
+            });
+        }
 
         // Apply filters
         if (isset($filters['user_id'])) {

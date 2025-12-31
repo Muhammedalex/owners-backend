@@ -2,6 +2,7 @@
 
 namespace App\Repositories\V1\Ownership\Interfaces;
 
+use App\Models\V1\Auth\User;
 use App\Models\V1\Ownership\UserOwnershipMapping;
 use Illuminate\Database\Eloquent\Collection;
 
@@ -9,8 +10,11 @@ interface UserOwnershipMappingRepositoryInterface
 {
     /**
      * Get all mappings.
+     * 
+     * @param array $filters
+     * @param User|null $currentUser Current authenticated user (for filtering super admin users)
      */
-    public function all(array $filters = []): Collection;
+    public function all(array $filters = [], ?User $currentUser = null): Collection;
 
     /**
      * Find mapping by ID.
