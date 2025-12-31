@@ -113,12 +113,20 @@ class RoleController extends Controller
     {
         $this->authorize('delete', $role);
 
-        $this->roleService->delete($role);
+        try {
+            $this->roleService->delete($role);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Role deleted successfully.',
-        ]);
+            return response()->json([
+                'success' => true,
+                'message' => 'Role deleted successfully.',
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'errors' => $e->errors(),
+            ], 422);
+        }
     }
 
     /**

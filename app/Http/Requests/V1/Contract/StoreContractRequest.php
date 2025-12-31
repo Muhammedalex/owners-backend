@@ -67,7 +67,7 @@ class StoreContractRequest extends FormRequest
             'vat_amount' => ['nullable', 'numeric', 'min:0', 'max:9999999999.99'],
             'total_rent' => ['nullable', 'numeric', 'min:0', 'max:9999999999.99'],
             'previous_balance' => ['nullable', 'numeric', 'min:0', 'max:9999999999.99'],
-            'payment_frequency' => ['nullable', 'string', 'max:50', Rule::in(['monthly', 'quarterly', 'yearly', 'weekly'])],
+            'payment_frequency' => ['nullable', 'string', 'max:50', Rule::in(['monthly', 'quarterly', 'semi_annually', 'yearly', 'weekly'])],
             'deposit' => ['nullable', 'numeric', 'min:0', 'max:9999999999.99'],
             'deposit_status' => ['nullable', 'string', 'max:50', Rule::in(['pending', 'paid', 'refunded', 'forfeited'])],
             'document' => ['nullable', 'string', 'max:255'],

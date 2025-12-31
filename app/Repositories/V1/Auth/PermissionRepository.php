@@ -18,6 +18,7 @@ class PermissionRepository implements PermissionRepositoryInterface
     private const TEMPORARILY_HIDDEN_PERMISSIONS = [
         'ownerships.create',
         'ownerships.switch',
+        'auth.roles.delete'
     ];
 
     /**

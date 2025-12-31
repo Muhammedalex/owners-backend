@@ -7,6 +7,7 @@ use App\Models\V1\Auth\User;
 use App\Repositories\V1\Auth\Interfaces\RoleRepositoryInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\DB;
 
 class RoleRepository implements RoleRepositoryInterface
 {
@@ -44,7 +45,7 @@ class RoleRepository implements RoleRepositoryInterface
 
         // If current user is not Super Admin, exclude Super Admin role
         if ($currentUser && !$currentUser->isSuperAdmin()) {
-            $query->where('name', '!=', 'Super Admin');
+            $query->where('name', '!=', 'Super Admin')->orWhere('name', '!=', 'Owner');
         }
 
         // Apply filters
@@ -117,9 +118,23 @@ class RoleRepository implements RoleRepositoryInterface
 
     /**
      * Delete role.
+     * 
+     * @throws \Illuminate\Validation\ValidationException If role has users assigned
      */
     public function delete(Role $role): bool
     {
+        // Check if any users are assigned to this role
+        $usersCount = DB::table('model_has_roles')
+            ->where('role_id', $role->id)
+            ->where('model_type', User::class)
+            ->count();
+
+        if ($usersCount > 0) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'role' => ["Cannot delete role '{$role->name}' because it is assigned to {$usersCount} user(s). Please remove the role from all users first."],
+            ]);
+        }
+
         return $role->delete();
     }
 

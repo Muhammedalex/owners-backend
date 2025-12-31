@@ -51,7 +51,7 @@ class UserResource extends JsonResource
             'last_login_at' => $this->last_login_at?->toIso8601String(),
             'timezone' => $this->timezone,
             'locale' => $this->locale,
-
+            'is_collector' => $this->isCollector(),
             // للأدوار: لو المستخدم Super Admin نتجاوز الـ global scope
             'roles' => $this->when(true, function () {
                 if ($this->resource instanceof User && $this->resource->isSuperAdmin()) {
